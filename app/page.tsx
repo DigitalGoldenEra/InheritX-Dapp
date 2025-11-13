@@ -4,7 +4,11 @@ import Navbar from "@/src/components/layouts/Navbar";
 import { processSteps, benefitCards } from "@/src/data/static";
 import {
   FaArrowRight,
-  FaPhone
+  FaPhone,
+  FaTwitter,
+  FaLinkedin,
+  FaDiscord,
+  FaGithub,
 } from "react-icons/fa";
 
 export default function Home() {
@@ -184,42 +188,145 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer
         id="footer"
-        className="border-t border-slate-800/70 bg-[#12191D]/80 py-10 text-sm text-slate-400"
+        className="border-t border-slate-800/70 bg-[#12191D]/80 py-16 text-sm"
       >
-        <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-10 px-6 md:flex-row md:items-center md:justify-between md:px-12 lg:px-20">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/img/logo.svg"
-              alt="InheritX logo"
-              width={40}
-              height={40}
-            />
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-300">
-              InheritX © {new Date().getFullYear()}
+        <div className="mx-auto w-full max-w-360 px-6 md:px-12 lg:px-20">
+          <div className="grid gap-12 md:grid-cols-4">
+            {/* Brand Section */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-6">
+                <Image
+                  src="/img/logo.svg"
+                  alt="InheritX logo"
+                  width={48}
+                  height={48}
+                />
+                <span className="text-lg font-inheritx-display tracking-[0.3em] text-slate-100">
+                  INHERITX
+                </span>
+        </div>
+              <p className="max-w-md text-sm text-slate-400 mb-6">
+                Secure, seamless wealth transfer for the people who matter most.
+                Plan your legacy with confidence.
+              </p>
+              {/* Social Media Icons */}
+              <div className="flex items-center gap-4">
+                <a
+                  href="https://twitter.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/50 bg-slate-800/30 text-slate-400 transition-all hover:border-[#33C5E0]/50 hover:bg-[#33C5E0]/10 hover:text-[#33C5E0]"
+                  aria-label="Twitter"
+                >
+                  <FaTwitter className="text-lg" />
+                </a>
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/50 bg-slate-800/30 text-slate-400 transition-all hover:border-[#33C5E0]/50 hover:bg-[#33C5E0]/10 hover:text-[#33C5E0]"
+                  aria-label="LinkedIn"
+                >
+                  <FaLinkedin className="text-lg" />
+                </a>
+                <a
+                  href="https://discord.com"
+            target="_blank"
+            rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/50 bg-slate-800/30 text-slate-400 transition-all hover:border-[#33C5E0]/50 hover:bg-[#33C5E0]/10 hover:text-[#33C5E0]"
+                  aria-label="Discord"
+                >
+                  <FaDiscord className="text-lg" />
+          </a>
+          <a
+                  href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/50 bg-slate-800/30 text-slate-400 transition-all hover:border-[#33C5E0]/50 hover:bg-[#33C5E0]/10 hover:text-[#33C5E0]"
+                  aria-label="GitHub"
+                >
+                  <FaGithub className="text-lg" />
+                </a>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-sm font-inheritx-display uppercase tracking-[0.3em] text-slate-100 mb-4">
+                Quick Links
+              </h3>
+              <nav className="flex flex-col gap-3">
+                <Link
+                  href="#hero"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Home
+                </Link>
+                <Link
+                  href="#how-it-works"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  How It Works
+                </Link>
+                <Link
+                  href="#benefits"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Benefits
+                </Link>
+                <Link
+                  href="#cta"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Get Started
+                </Link>
+              </nav>
+            </div>
+
+            {/* Legal Links */}
+            <div>
+              <h3 className="text-sm font-inheritx-display uppercase tracking-[0.3em] text-slate-100 mb-4">
+                Legal
+              </h3>
+              <nav className="flex flex-col gap-3">
+                <Link
+                  href="#"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  href="#"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Terms & Conditions
+                </Link>
+                <Link
+                  href="#"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Code of Ethics
+                </Link>
+                <Link
+                  href="#footer"
+                  className="text-sm text-slate-400 transition-colors hover:text-[#33C5E0]"
+                >
+                  Support
+                </Link>
+              </nav>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="mt-12 pt-8 border-t border-slate-800/70 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-slate-500">
+              © {new Date().getFullYear()} InheritX. All rights reserved.
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-6 text-xs uppercase tracking-[0.3em] text-slate-400">
-            <Link href="#hero" className="hover:text-slate-100">
-              Home
-            </Link>
-            <Link href="#how-it-works" className="hover:text-slate-100">
-              About
-            </Link>
-            <Link href="#benefits" className="hover:text-slate-100">
-              FAQs
-            </Link>
-            <Link href="#cta" className="hover:text-slate-100">
-              Guidelines
-            </Link>
-            <Link href="#footer" className="hover:text-slate-100">
-              Support
-            </Link>
-          </div>
-          <div className="text-xs text-slate-500">
-            Privacy Policy · Terms &amp; Conditions · Code of Ethics
+            <p className="text-xs text-slate-500">
+              Built with security and transparency in mind.
+            </p>
           </div>
         </div>
       </footer>
