@@ -2,74 +2,184 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FaFilter, FaPlus, FaEdit, FaEye, FaTrash, FaCoins } from "react-icons/fa";
+import { FaFilter, FaPlus, FaEdit, FaEye, FaTrash, FaCoins, FaSpinner } from "react-icons/fa";
+import { useAccount } from "wagmi";
+import {
+  useInheritancePlan,
+  usePlanName,
+  usePlanDescription,
+  useDistributionPlan,
+  usePlanBeneficiaryCount,
+  useUserPlanIdToGlobal,
+} from "@/src/hooks/useInheritX";
+import { useUserPlans } from "@/src/hooks/useUserPlans";
+import {
+  AssetType,
+  PlanStatus,
+  DistributionMethod,
+  getAssetTypeName,
+  getPlanStatusName,
+  getDistributionMethodName,
+  formatTokenAmount,
+} from "@/src/lib/contract";
+import { formatEther } from "viem";
+import CreatePlanModal from "@/src/components/plans/CreatePlanModal";
 
-const plans = [
-  {
-    id: "001",
-    name: "Plan Name",
-    assets: { type: "ETH", amount: "2" },
-    beneficiary: 3,
-    trigger: "INACTIVITY (6 MONTHS)",
-    status: "ACTIVE",
-  },
-  {
-    id: "002",
-    name: "Plan Name",
-    assets: { type: "NFT", amount: "7" },
-    beneficiary: 1,
-    trigger: "TIME-LOCKED",
-    status: "COMPLETED",
-  },
-  {
-    id: "003",
-    name: "Plan Name",
-    assets: { type: "NFT", amount: "1" },
-    beneficiary: 2,
-    trigger: "INACTIVITY (6 MONTHS)",
-    status: "PENDING",
-  },
-  {
-    id: "004",
-    name: "Plan Name",
-    assets: { type: "BTC", amount: "1" },
-    beneficiary: 1,
-    trigger: "INACTIVITY (6 MONTHS)",
-    status: "EXPIRED",
-  },
-];
-
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: PlanStatus) => {
   switch (status) {
-    case "ACTIVE":
+    case PlanStatus.Active:
       return "bg-[#33C5E0]/20 text-[#33C5E0]";
-    case "COMPLETED":
+    case PlanStatus.Executed:
       return "bg-green-500/20 text-green-400";
-    case "PENDING":
+    case PlanStatus.Paused:
       return "bg-yellow-500/20 text-yellow-400";
-    case "EXPIRED":
+    case PlanStatus.Expired:
       return "bg-slate-500/20 text-slate-400";
+    case PlanStatus.Cancelled:
+      return "bg-red-500/20 text-red-400";
     default:
       return "bg-slate-500/20 text-slate-400";
   }
 };
 
-const getAssetIcon = (type: string) => {
-  switch (type) {
-    case "ETH":
+const getAssetIcon = (assetType: AssetType) => {
+  switch (assetType) {
+    case AssetType.ERC20_TOKEN1:
       return <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#33C5E0] text-xs font-bold text-[#0D1A1E]">Ξ</div>;
-    case "BTC":
-      return <div className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">₿</div>;
-    case "NFT":
+    case AssetType.ERC20_TOKEN2:
+      return <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs font-bold text-white">$</div>;
+    case AssetType.ERC20_TOKEN3:
+      return <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">$</div>;
+    case AssetType.NFT:
       return <div className="h-5 w-5 rounded bg-purple-500" />;
     default:
       return <FaCoins className="text-lg" />;
   }
 };
 
+// Component to fetch and display a single plan
+function PlanRow({ userPlanId, userAddress }: { userPlanId: number; userAddress: string }) {
+  const { data: globalPlanId, isLoading: isLoadingGlobalId } = useUserPlanIdToGlobal(
+    userAddress as `0x${string}`,
+    userPlanId
+  );
+
+  const { data: plan, isLoading: isLoadingPlan } = useInheritancePlan(
+    globalPlanId ? Number(globalPlanId) : undefined
+  );
+  const { data: planName, isLoading: isLoadingName } = usePlanName(
+    globalPlanId ? Number(globalPlanId) : undefined
+  );
+  const { data: planDescription } = usePlanDescription(
+    globalPlanId ? Number(globalPlanId) : undefined
+  );
+  const { data: distributionPlan } = useDistributionPlan(
+    globalPlanId ? Number(globalPlanId) : undefined
+  );
+  const { data: beneficiaryCount } = usePlanBeneficiaryCount(
+    globalPlanId ? Number(globalPlanId) : undefined
+  );
+
+  const isLoading = isLoadingGlobalId || isLoadingPlan || isLoadingName;
+
+  if (isLoading) {
+    return (
+      <tr>
+        <td colSpan={6} className="px-6 py-4 text-center text-slate-400">
+          <FaSpinner className="mx-auto animate-spin" />
+        </td>
+      </tr>
+    );
+  }
+
+  if (!plan || !globalPlanId || typeof plan !== 'object' || !('assetType' in plan)) {
+    return null;
+  }
+
+  const planData = plan as any;
+  const triggerText =
+    distributionPlan && 
+    typeof distributionPlan === 'object' && 
+    'distributionMethod' in distributionPlan &&
+    distributionPlan.distributionMethod !== undefined
+      ? getDistributionMethodName(distributionPlan.distributionMethod as DistributionMethod)
+      : "N/A";
+
+  return (
+    <motion.tr
+      className="border-b border-slate-800/50 transition-colors hover:bg-slate-900/30"
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <td className="px-6 py-4">
+        <div className="font-medium text-slate-100">
+          {typeof planName === 'string' && planName ? planName : `Plan #${userPlanId}`}
+        </div>
+        <div className="text-xs text-slate-500">ID: {globalPlanId.toString()}</div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
+          {getAssetIcon(planData.assetType as AssetType)}
+          <span className="text-slate-200">
+            {formatTokenAmount(planData.assetAmount)} {getAssetTypeName(planData.assetType as AssetType)}
+          </span>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-slate-200">
+        {beneficiaryCount ? Number(beneficiaryCount) : (planData.beneficiaryCount || 0)}
+      </td>
+      <td className="px-6 py-4">
+        <span className="rounded-full bg-slate-800/50 px-3 py-1 text-xs font-medium text-slate-400">
+          {triggerText}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(
+            planData.status as PlanStatus
+          )}`}
+        >
+          {getPlanStatusName(planData.status as PlanStatus)}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
+          <motion.button
+            className="rounded-lg border border-slate-800/70 bg-slate-900/50 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-slate-800/50"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <FaEdit className="inline mr-1" />
+            EDIT
+          </motion.button>
+          <motion.button
+            className="rounded-lg bg-[#33C5E0]/20 px-3 py-1.5 text-xs font-semibold text-[#33C5E0] transition-colors hover:bg-[#33C5E0]/30"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <FaEye className="inline mr-1" />
+            VIEW
+          </motion.button>
+          <motion.button
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:text-red-400"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <FaTrash className="text-sm" />
+          </motion.button>
+        </div>
+      </td>
+    </motion.tr>
+  );
+}
+
 export default function PlansPage() {
+  const { address } = useAccount();
+  const { planCount, planIds, isLoading } = useUserPlans();
   const [activeTab, setActiveTab] = useState<"Plans" | "Activities">("Plans");
-  const [hasPlans] = useState(false); // Set to true to show table view
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const hasPlans = planCount > 0;
 
   return (
     <motion.div
@@ -149,98 +259,22 @@ export default function PlansPage() {
                 </tr>
               </thead>
               <tbody>
-                {plans.map((plan, index) => (
-                  <motion.tr
-                    key={plan.id}
-                    className="border-b border-slate-800/50 transition-colors hover:bg-slate-900/30"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-100">
-                        {plan.name}
-                      </div>
-                      <div className="text-xs text-slate-500">Unique ID</div>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                      <FaSpinner className="mx-auto mb-2 animate-spin text-2xl" />
+                      <p>Loading plans...</p>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {getAssetIcon(plan.assets.type)}
-                        <span className="text-slate-200">
-                          {plan.assets.amount} {plan.assets.type}
-                        </span>
-                        {plan.assets.type === "NFT" && plan.assets.amount === "7" && (
-                          <span className="rounded-full bg-[#33C5E0]/20 px-2 py-0.5 text-xs text-[#33C5E0]">
-                            3+
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-200">{plan.beneficiary}</td>
-                    <td className="px-6 py-4">
-                      <span className="rounded-full bg-slate-800/50 px-3 py-1 text-xs font-medium text-slate-400">
-                        {plan.trigger}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(
-                          plan.status
-                        )}`}
-                      >
-                        {plan.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {plan.status === "EXPIRED" ? (
-                          <>
-                            <motion.button
-                              className="rounded-lg border border-slate-800/70 bg-slate-900/50 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-slate-800/50"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              VIEW DETAILS
-                            </motion.button>
-                            <motion.button
-                              className="rounded-lg p-2 text-slate-400 transition-colors hover:text-red-400"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <FaTrash className="text-sm" />
-                            </motion.button>
-                          </>
-                        ) : (
-                          <>
-                            <motion.button
-                              className="rounded-lg border border-slate-800/70 bg-slate-900/50 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-colors hover:bg-slate-800/50"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <FaEdit className="inline mr-1" />
-                              EDIT
-                            </motion.button>
-                            <motion.button
-                              className="rounded-lg bg-[#33C5E0]/20 px-3 py-1.5 text-xs font-semibold text-[#33C5E0] transition-colors hover:bg-[#33C5E0]/30"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <FaEye className="inline mr-1" />
-                              VIEW
-                            </motion.button>
-                            <motion.button
-                              className="rounded-lg p-2 text-slate-400 transition-colors hover:text-red-400"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <FaTrash className="text-sm" />
-                            </motion.button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                  </tr>
+                ) : (
+                  planIds.map((userPlanId) => (
+                    <PlanRow
+                      key={userPlanId}
+                      userPlanId={userPlanId}
+                      userAddress={address || ""}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -258,6 +292,7 @@ export default function PlansPage() {
               Secure your digital legacy by creating your first plan.
             </p>
             <motion.button
+              onClick={() => setIsCreateModalOpen(true)}
               className="mt-6 flex items-center gap-2 rounded-lg bg-[#33C5E0] px-6 py-3 text-sm font-semibold text-[#0D1A1E] transition-colors hover:bg-[#33C5E0]/90"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -272,7 +307,31 @@ export default function PlansPage() {
           <p className="text-center text-slate-400">Activities coming soon...</p>
         </div>
       )}
+
+      {/* Create Plan Button (shown when plans exist) */}
+      {hasPlans && (
+        <div className="flex justify-end">
+          <motion.button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-[#33C5E0] px-6 py-3 text-sm font-semibold text-[#0D1A1E] transition-colors hover:bg-[#33C5E0]/90"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <FaPlus />
+            Create New Plan
+          </motion.button>
+        </div>
+      )}
+
+      {/* Create Plan Modal */}
+      <CreatePlanModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          // Refetch plans or show success message
+          window.location.reload(); // Simple refresh for now
+        }}
+      />
     </motion.div>
   );
 }
-

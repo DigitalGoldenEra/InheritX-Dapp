@@ -1,34 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { FaArrowAltCircleUp, FaFilter, FaPlus } from "react-icons/fa";
-
-const overviewMetrics = [
-  {
-    value: 0,
-    label: "Active Plans",
-    buttonLabel: "Create Plan",
-    primary: true,
-  },
-  {
-    value: 0,
-    label: "To Withdraw",
-    buttonLabel: "Withdraw Asset",
-    primary: false,
-  },
-  {
-    value: 0,
-    label: "Created Plans",
-    buttonLabel: "Add Beneficiary",
-    primary: false,
-  },
-  {
-    value: 0,
-    label: "Pending Claims",
-    buttonLabel: "View Claims",
-    primary: false,
-  },
-];
+import { FaArrowRight, FaFilter, FaPlus } from "react-icons/fa";
+import { useAccount } from "wagmi";
+import { useUserPlanCount } from "@/src/hooks/useInheritX";
+import { useRouter } from "next/navigation";
+import CreatePlanModal from "@/src/components/plans/CreatePlanModal";
 
 const activityFilters = [
   "All",
@@ -39,12 +17,48 @@ const activityFilters = [
 ];
 
 export default function DashboardPage() {
+  const { address } = useAccount();
+  const router = useRouter();
+  const { data: planCount, isLoading: isLoadingPlanCount } = useUserPlanCount(address);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
     if (hour < 18) return "Good afternoon";
     return "Good evening";
   };
+
+  const overviewMetrics = [
+    {
+      value: planCount ? Number(planCount) : 0,
+      label: "Active Plans",
+      buttonLabel: "Create Plan",
+      primary: true,
+      onClick: () => setIsCreateModalOpen(true),
+    },
+    {
+      value: 0,
+      label: "To Withdraw",
+      buttonLabel: "Withdraw Asset",
+      primary: false,
+      onClick: () => router.push("/dashboard/claim"),
+    },
+    {
+      value: planCount ? Number(planCount) : 0,
+      label: "Created Plans",
+      buttonLabel: "View Plans",
+      primary: false,
+      onClick: () => router.push("/dashboard/plans"),
+    },
+    {
+      value: 0,
+      label: "Pending Claims",
+      buttonLabel: "View Claims",
+      primary: false,
+      onClick: () => router.push("/dashboard/claim"),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -85,6 +99,7 @@ export default function DashboardPage() {
               {metric.label}
             </div>
             <motion.button
+              onClick={metric.onClick}
               className={`mt-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
                 metric.primary
                   ? "bg-[#33C5E0] text-[#0D1A1E] hover:bg-[#33C5E0]/90"
@@ -94,7 +109,7 @@ export default function DashboardPage() {
               whileTap={{ scale: 0.98 }}
             >
               {metric.buttonLabel}
-              <FaArrowAltCircleUp className="text-xs" />
+              <FaArrowRight className="text-xs" />
             </motion.button>
           </motion.div>
         ))}
@@ -162,6 +177,7 @@ export default function DashboardPage() {
         {/* Create New Plan Button */}
         <div className="mt-6 flex justify-center">
           <motion.button
+            onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 rounded-lg bg-[#33C5E0] px-6 py-3 text-sm font-semibold text-[#0D1A1E] transition-colors hover:bg-[#33C5E0]/90"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -174,6 +190,16 @@ export default function DashboardPage() {
           </motion.button>
         </div>
       </motion.div>
+
+      {/* Create Plan Modal */}
+      <CreatePlanModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          // Refetch or show success message
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
