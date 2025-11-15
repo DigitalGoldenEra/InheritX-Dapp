@@ -39,3 +39,7 @@ body {
   background: rgba(51, 197, 224, 0.4);
   color: #0f171a;
 }
+
+button {
+  cursor: pointer;
+}
