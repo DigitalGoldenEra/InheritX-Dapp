@@ -43,7 +43,7 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <Link
-                href="#how-it-works"
+                href="/dashboard"
                 className="inline-flex items-center gap-3 rounded-full bg-[#33C5E0] px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-[#0D1A1E] "
               >
                 Start Now
