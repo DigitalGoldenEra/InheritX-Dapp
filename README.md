@@ -1,99 +1,345 @@
-## InheritX dApp Landing Page
+# InheritX - Secure Digital Inheritance Platform
 
-InheritX is a next-generation inheritance planning dApp that guides wealth transfers to beneficiaries with clarity, automation, and security. This repository contains the marketing landing page that introduces the product, highlights its benefits, and invites users to connect their wallet or contact support.
-
----
-
-## Tech Stack
-
-| Layer        | Details                                                                 |
-| ------------ | ------------------------------------------------------------------------ |
-| Framework    | [Next.js 16 (App Router)](https://nextjs.org/)                          |
-| Language     | [TypeScript 5](https://www.typescriptlang.org/)                         |
-| Styling      | [Tailwind CSS v4 (experimental `@import` API)](https://tailwindcss.com/) |
-| Icons        | [react-icons 5](https://react-icons.github.io/react-icons/)             |
+<div align="center">
+  <img src="client/public/img/logo.svg" alt="InheritX Logo" width="120">
+  
+  **A decentralized inheritance platform built on Lisk**
+  
+  [![Solidity](https://img.shields.io/badge/Solidity-0.8.22-blue.svg)](https://soliditylang.org/)
+  [![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+  [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+</div>
 
 ---
 
-## Project Structure
+## 🌟 Overview
 
-- `app/page.tsx` – Fully composed landing page with semantic sections and decorative layers.
-- `app/globals.css` – Global styles, base colors, and typography.
-- `public/img/logo.svg` – InheritX logo rendered inside the navigation and footer.
+InheritX enables users to create secure inheritance plans using smart contracts on the Lisk blockchain. The platform automates asset transfers based on selected timeframes and provides a complete solution for digital legacy management.
+
+### Key Features
+
+- **🔐 Secure Plan Creation** - Create inheritance plans with encrypted claim codes and hashed beneficiary data
+- **⏰ Flexible Distribution** - Choose from Lump Sum, Monthly, Quarterly, or Yearly distributions
+- **✅ KYC Verification** - Built-in identity verification system with admin approval
+- **📧 Automated Notifications** - Cron jobs send claim notifications when plans become due
+- **🛡️ Privacy-First** - Beneficiary information is hashed (keccak256) before on-chain storage
+- **👥 Multi-Beneficiary Support** - Up to 10 beneficiaries per plan with custom allocations
+- **🔄 UUPS Upgradeable** - Smart contract can be upgraded without losing state
 
 ---
 
-## Getting Started
+## 🏗️ Architecture
 
-### 1. Install dependencies
-
-```bash
-npm install
+```
+inheritx_dapp/
+├── contracts/           # Solidity smart contracts
+│   ├── InheritX.sol    # Main inheritance contract
+│   └── MockERC20.sol   # Test tokens
+├── client/             # Next.js frontend
+│   ├── app/            # App router pages
+│   ├── src/            # Components, hooks, utilities
+│   └── public/         # Static assets
+├── server/             # Node.js backend
+│   ├── src/            # API routes, services
+│   ├── prisma/         # Database schema
+│   └── cron/           # Scheduled tasks
+└── scripts/            # Deployment scripts
 ```
 
-> **Note:** If installation fails because of blocked network access, run the command once you regain connectivity. The landing page requires `react-icons` in addition to the default Next.js packages.
+---
 
-### 2. Start the development server
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL 14+
+- npm or yarn
+- MetaMask or compatible wallet
+
+### 1. Clone & Install
 
 ```bash
-npm run dev
+git clone https://github.com/your-repo/inheritx_dapp.git
+cd inheritx_dapp
+
+# Install client dependencies
+cd client && npm install
+
+# Install server dependencies
+cd ../server && npm install
 ```
 
-Visit `http://localhost:3000` to preview the landing page. The server provides hot reloading for changes inside the `app` directory.
+### 2. Environment Setup
+
+**Client (`client/.env.local`):**
+```env
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-project-id
+```
+
+**Server (`server/.env`):**
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/inheritx"
+JWT_SECRET="your-jwt-secret-min-32-chars"
+JWT_CLAIM_CODE_SECRET="your-claim-code-secret"
+SMTP_HOST="smtp.gmail.com"
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+FRONTEND_URL="http://localhost:3000"
+```
+
+### 3. Database Setup
+
+```bash
+cd server
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+```
+
+### 4. Deploy Smart Contract
+
+```bash
+cd client
+npm run deploy:lisk-sepolia
+```
+
+### 5. Start Development Servers
+
+```bash
+# Terminal 1 - Backend
+cd server && npm run dev
+
+# Terminal 2 - Frontend
+cd client && npm run dev
+```
+
+Visit `http://localhost:3000` 🎉
 
 ---
 
-## Available Scripts
+## 📋 How It Works
 
-| Script        | Purpose                                           |
-| ------------- | ------------------------------------------------- |
-| `npm run dev` | Starts the dev server on `http://localhost:3000`. |
-| `npm run build` | Generates an optimized production build.       |
-| `npm run start` | Serves the production build locally.           |
-| `npm run lint` | Runs ESLint with the Next.js configuration.     |
+### 1. User Registration & KYC
+
+1. User connects wallet
+2. Signs message to authenticate
+3. Submits KYC documents (ID, personal info)
+4. Admin reviews and approves/rejects KYC
+
+### 2. Creating an Inheritance Plan
+
+1. **Plan Details**: Enter name, description, asset type, amount
+2. **Distribution Method**: Choose Lump Sum, Monthly, Quarterly, or Yearly
+3. **Beneficiaries**: Add up to 10 beneficiaries with percentage allocations
+4. **Review & Create**: 
+   - Backend stores unhashed data + encrypted claim code
+   - Frontend sends hashed data to smart contract
+   - Plan is created on-chain
+
+### 3. Claim Process
+
+1. When transfer date arrives, cron job sends email notifications
+2. Beneficiary visits claim page with link from email
+3. Enters claim code + personal details (name, email, relationship)
+4. System verifies data by hashing and comparing to on-chain values
+5. If valid, beneficiary can claim their share via smart contract
+
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      PLAN CREATION                          │
+├─────────────────────────────────────────────────────────────┤
+│  Frontend → Backend: Plain text data (stored encrypted)     │
+│  Frontend → Contract: Hashed data (keccak256)               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    STORAGE LOCATIONS                        │
+├─────────────────────────────────────────────────────────────┤
+│  Backend DB: Plan name, description, beneficiary details,   │
+│              encrypted claim code, email addresses          │
+│                                                             │
+│  Smart Contract: Plan hashes, beneficiary hashes,           │
+│                  claim code hash, asset amounts             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      CLAIM PROCESS                          │
+├─────────────────────────────────────────────────────────────┤
+│  1. Cron decrypts claim code → Sends to beneficiary email   │
+│  2. Claimer enters plain text data                          │
+│  3. Contract hashes input → Compares with stored hashes     │
+│  4. If match → Assets transferred                           │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Environment
+## 🔧 Smart Contract
 
-No environment variables are required for the marketing page. If you connect this UI to on-chain functionality later, consider adding environment variable support via `.env.local`.
+### Key Functions
+
+```solidity
+// Create inheritance plan with hashed data
+function createInheritancePlan(
+    bytes32 planNameHash,
+    bytes32 planDescriptionHash,
+    BeneficiaryInput[] calldata beneficiaries,
+    uint8 assetType,
+    uint256 assetAmount,
+    uint8 distributionMethod,
+    uint64 transferDate,
+    uint8 periodicPercentage,
+    bytes32 claimCodeHash
+) external returns (uint256);
+
+// Claim inheritance by providing original unhashed data
+function claimInheritance(
+    uint256 planId,
+    string calldata claimCode,
+    string calldata beneficiaryName,
+    string calldata beneficiaryEmail,
+    string calldata beneficiaryRelationship,
+    uint256 beneficiaryIndex
+) external;
+
+// KYC management
+function submitKYC(bytes32 kycDataHash) external;
+function approveKYC(address user) external;
+function rejectKYC(address user) external;
+```
+
+### Events
+
+```solidity
+event PlanCreated(uint256 indexed globalPlanId, uint256 indexed userPlanId, address indexed owner, ...);
+event InheritanceClaimed(uint256 indexed planId, address indexed claimer, uint256 amount, ...);
+event KYCStatusChanged(address indexed user, KYCStatus oldStatus, KYCStatus newStatus, ...);
+```
 
 ---
 
-## Testing & Quality
+## 🖥️ API Endpoints
 
-- _Automated tests_: Not included yet. Add unit tests (Jest/React Testing Library) when you integrate interactive flows.
-- _Manual_: After running `npm run dev`, confirm responsive behavior across breakpoints (mobile ≥320px, tablets ≥768px, desktops ≥1280px).
-- _Linting_: Run `npm run lint` before committing to surface TypeScript and accessibility suggestions.
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/auth/nonce` | Get nonce for wallet signature |
+| POST | `/api/auth/login` | Login with wallet signature |
+| GET | `/api/auth/me` | Get current user |
+
+### KYC
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/kyc/status` | Get KYC status |
+| POST | `/api/kyc/submit` | Submit KYC documents |
+
+### Plans
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/plans` | Get user's plans |
+| POST | `/api/plans` | Create new plan |
+| PUT | `/api/plans/:id/status` | Update plan status |
+
+### Claims
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/claim/plan/:id` | Get plan info for claiming |
+| POST | `/api/claim/verify` | Verify claim data |
+| POST | `/api/claim/complete` | Mark claim complete |
+
+### Admin
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/admin/stats` | Dashboard statistics |
+| GET | `/api/admin/kyc` | List KYC applications |
+| POST | `/api/admin/kyc/:id/approve` | Approve KYC |
+| POST | `/api/admin/kyc/:id/reject` | Reject KYC |
 
 ---
 
-## Deployment
+## 🎨 Frontend Routes
 
-1. Run `npm run build` to create the optimized bundle.
-2. Deploy the `.next` output to any Node-compatible hosting (Vercel, Netlify, AWS Amplify, etc.).
-3. Ensure the project is served with HTTPS to protect wallet connections when those are implemented.
-
----
-
-## Known Limitations & Future Enhancements
-
-- Wallet connection buttons are placeholders; integrate with your preferred web3 provider (e.g., WalletConnect, RainbowKit) once backend contracts are ready.
-- All copy is static. For marketing teams, consider connecting a CMS (Sanity, Contentful, Hygraph) to manage content updates.
-- Decorative gradients are implemented in CSS; replace with bespoke illustrations if design assets become available.
-- Accessibility improvements such as keyboard focus styles and reduced-motion variants can be added in future iterations.
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/dashboard` | User dashboard |
+| `/dashboard/plans` | Manage plans |
+| `/dashboard/kyc` | KYC verification |
+| `/claim/:planId` | Claim page for beneficiaries |
+| `/admin` | Admin dashboard |
+| `/admin/kyc` | Admin KYC management |
+| `/admin/users` | User management |
 
 ---
 
-## Contributing
+## 🔒 Security Considerations
 
-1. Fork and clone the repository.
-2. Create a feature branch (`git checkout -b feature/my-change`).
-3. Run `npm run lint` and ensure the page builds (`npm run build`).
-4. Submit a descriptive pull request summarizing user-facing changes.
+- **Claim Codes**: Encrypted with JWT secret in backend, hashed on-chain
+- **Beneficiary Data**: Hashed (keccak256) before on-chain storage
+- **KYC Data**: Only hash stored on-chain, full data in secure database
+- **Access Control**: RBAC with ADMIN and SUPER_ADMIN roles
+- **Rate Limiting**: API endpoints protected against abuse
+- **CORS**: Configured for frontend origin only
 
 ---
 
-## Support
+## 📊 Database Schema
 
-Questions, feedback, or design requests? Contact the product team or open an issue in this repository. Continuous iteration keeps the InheritX experience sharp for every family. 💙
+Key models:
+- `User` - Wallet addresses and roles
+- `KYC` - Identity verification data
+- `Plan` - Inheritance plans with encrypted claim codes
+- `Beneficiary` - Plan beneficiaries (hashed + unhashed data)
+- `Distribution` - Periodic distribution schedules
+- `Activity` - Audit log
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run smart contract tests
+cd client && npm test
+
+# Run backend tests
+cd server && npm test
+```
+
+---
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing`)
+5. Open a Pull Request
+
+---
+
+## 📞 Support
+
+- **Documentation**: [docs.inheritx.io](https://docs.inheritx.io)
+- **Discord**: [discord.gg/inheritx](https://discord.gg/inheritx)
+- **Twitter**: [@InheritX](https://twitter.com/InheritX)
+
+---
+
+<div align="center">
+  <p>Built with ❤️ on <strong>Lisk</strong></p>
+  <p>Secure your digital legacy today</p>
+</div>
