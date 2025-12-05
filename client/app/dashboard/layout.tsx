@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isConnected) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0A0E12' }}>
-        <div style={{ background: '#12181E', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 48, maxWidth: 400, textAlign: 'center' }}>
+        <div style={{ background: '#12181E', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 48, maxWidth: 400, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 64, height: 64, margin: '0 auto 24px', borderRadius: '50%', background: 'rgba(51, 197, 224, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FiLock size={28} color="#33C5E0" />
           </div>
