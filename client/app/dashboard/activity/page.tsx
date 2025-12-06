@@ -41,8 +41,11 @@ export default function ActivityPage() {
   useEffect(() => {
     // For user dashboard, we'd need to fetch user-specific activity
     // For now, showing a placeholder
-    setIsLoading(false);
-    setActivities([]);
+    const initialize = () => {
+      setIsLoading(false);
+      setActivities([]);
+    };
+    initialize();
   }, []);
 
   if (isLoading) {

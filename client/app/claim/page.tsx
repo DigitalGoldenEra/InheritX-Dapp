@@ -93,7 +93,7 @@ export default function ClaimLandingPage() {
           </form>
 
           <p className="text-center text-sm text-[var(--text-muted)] mt-6">
-            Don't have a plan ID? Check your email from the plan creator for claim instructions.
+            Don&apos;t have a plan ID? Check your email from the plan creator for claim instructions.
           </p>
         </motion.div>
       </main>

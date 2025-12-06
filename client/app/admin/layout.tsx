@@ -33,11 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { isConnected } = useAccount();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const [isClient] = useState(() => typeof window !== 'undefined');
 
   useEffect(() => {
     if (isConnected && !isAuthenticated && !isLoading && isClient) {

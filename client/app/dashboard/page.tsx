@@ -99,7 +99,7 @@ export default function DashboardPage() {
             Welcome back{user?.name ? `, ${user.name}` : ''} 👋
           </h1>
           <p className="text-[#A0AEC0] text-[15px]">
-            Here's an overview of your inheritance plans.
+            Here&apos;s an overview of your inheritance plans.
           </p>
         </div>
         <Link href="/dashboard/plans" className="btn btn-primary">

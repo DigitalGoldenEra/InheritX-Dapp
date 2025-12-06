@@ -323,7 +323,7 @@ export default function ClaimPage() {
               </div>
               <h2 className="text-xl font-bold">Verification Successful!</h2>
               <p className="text-[var(--text-secondary)]">
-                You're eligible to claim your inheritance.
+                You&apos;re eligible to claim your inheritance.
               </p>
             </div>
 

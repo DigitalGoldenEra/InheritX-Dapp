@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fi';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
-import { api, CreatePlanData } from '@/lib/api';
+import { api, CreatePlanData, ContractData as ApiContractData } from '@/lib/api';
 import { inheritXABI } from '@/contract/abi';
 import { 
   INHERITX_CONTRACT_ADDRESS, 
@@ -34,6 +34,22 @@ interface Beneficiary {
   email: string;
   relationship: string;
   allocatedPercentage: number;
+}
+
+interface ContractBeneficiary {
+  nameHash: `0x${string}`;
+  emailHash: `0x${string}`;
+  relationshipHash: `0x${string}`;
+  allocatedPercentage: number;
+}
+
+// Extended ContractData for contract calls (includes additional fields needed for blockchain)
+interface ContractData extends ApiContractData {
+  assetType: number;
+  assetAmount: string;
+  distributionMethod: number;
+  transferDate: string;
+  periodicPercentage?: number;
 }
 
 type Step = 'details' | 'beneficiaries' | 'review' | 'approve' | 'create';
@@ -60,7 +76,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   ]);
 
   // Contract data from backend
-  const [contractData, setContractData] = useState<any>(null);
+  const [contractData, setContractData] = useState<ContractData | null>(null);
   const [backendPlanId, setBackendPlanId] = useState<string | null>(null);
 
   // Get selected token
@@ -143,11 +159,19 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   // Handle errors
   useEffect(() => {
     if (approveError) {
-      setError('Approval failed: ' + (approveError as any)?.shortMessage || 'Unknown error');
+      const errorMessage = approveError instanceof Error ? approveError.message : 
+        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError) 
+          ? String(approveError.shortMessage) 
+          : 'Unknown error';
+      setError('Approval failed: ' + errorMessage);
       setStep('review');
     }
     if (createError) {
-      setError('Transaction failed: ' + (createError as any)?.shortMessage || 'Unknown error');
+      const errorMessage = createError instanceof Error ? createError.message : 
+        (typeof createError === 'object' && createError !== null && 'shortMessage' in createError) 
+          ? String(createError.shortMessage) 
+          : 'Unknown error';
+      setError('Transaction failed: ' + errorMessage);
       setStep('review');
     }
   }, [approveError, createError]);
@@ -226,10 +250,10 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       const planData: CreatePlanData = {
         planName,
         planDescription,
-        assetType: assetType as any,
+        assetType: assetType as 'ERC20_TOKEN1' | 'ERC20_TOKEN2' | 'ERC20_TOKEN3',
         assetAmount,
         assetAmountWei: totalRequired.toString(),
-        distributionMethod: distributionMethod as any,
+        distributionMethod: distributionMethod as 'LUMP_SUM' | 'QUARTERLY' | 'YEARLY' | 'MONTHLY',
         transferDate: new Date(transferDate).toISOString(),
         periodicPercentage: distributionMethod !== 'LUMP_SUM' ? periodicPercentage : undefined,
         beneficiaries: beneficiaries.map(b => ({
@@ -245,7 +269,25 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         throw new Error(apiError || 'Failed to create plan');
       }
 
-      setContractData(data.contractData);
+      // Extend backend ContractData with additional fields needed for contract calls
+      // Convert string hashes to 0x${string} format and beneficiaries to ContractBeneficiary format
+      const extendedContractData: ContractData = {
+        planNameHash: data.contractData.planNameHash as `0x${string}`,
+        planDescriptionHash: data.contractData.planDescriptionHash as `0x${string}`,
+        claimCodeHash: data.contractData.claimCodeHash as `0x${string}`,
+        beneficiaries: data.contractData.beneficiaries.map(b => ({
+          nameHash: b.nameHash as `0x${string}`,
+          emailHash: b.emailHash as `0x${string}`,
+          relationshipHash: b.relationshipHash as `0x${string}`,
+          allocatedPercentage: b.allocatedPercentage,
+        })),
+        assetType: ASSET_TYPE_MAP[assetType] ?? 0,
+        assetAmount,
+        distributionMethod: DISTRIBUTION_METHOD_MAP[distributionMethod] ?? 0,
+        transferDate: new Date(transferDate).toISOString(),
+        periodicPercentage: distributionMethod !== 'LUMP_SUM' ? periodicPercentage : undefined,
+      };
+      setContractData(extendedContractData);
       setBackendPlanId(data.plan.id);
       setClaimCode(data.plan.claimCode || claimCode);
 
@@ -287,7 +329,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       args: [
         contractData.planNameHash as `0x${string}`,
         contractData.planDescriptionHash as `0x${string}`,
-        contractData.beneficiaries.map((b: any) => ({
+        (contractData.beneficiaries as ContractBeneficiary[]).map((b) => ({
           nameHash: b.nameHash as `0x${string}`,
           emailHash: b.emailHash as `0x${string}`,
           relationshipHash: b.relationshipHash as `0x${string}`,
