@@ -232,7 +232,7 @@ export default function KYCPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-10">
+    <div className="max-w-5xl mx-auto py-5">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

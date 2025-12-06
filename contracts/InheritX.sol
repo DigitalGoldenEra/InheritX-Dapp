@@ -13,11 +13,18 @@ pragma solidity ^0.8.22;
  *      - KYC verification requirement before plan creation
  *      - Escrow management and fee collection
  * 
+ * KYC FLOW:
+ * - Users submit KYC data to backend (off-chain)
+ * - Backend reviews and validates KYC data
+ * - Admin calls approveKYC() or rejectKYC() to store status on-chain
+ * - Only approved users can create inheritance plans
+ * 
  * SECURITY NOTES:
  * - Beneficiary info (name, email, relationship) is hashed before storing
  * - Claim codes are hashed before storing
  * - Original data is stored off-chain in the backend
  * - Claimers must provide matching data that hashes to stored values
+ * - KYC data is stored off-chain, only approval status is on-chain
  */
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -39,7 +46,6 @@ enum AssetType {
     ERC20_TOKEN1,   // Primary token (e.g., wrapped ETH)
     ERC20_TOKEN2,   // USDT
     ERC20_TOKEN3,   // USDC
-    NFT             // Reserved for future NFT support
 }
 
 /**
@@ -180,14 +186,16 @@ struct DistributionConfig {
 
 /**
  * @notice User KYC information
+ * @dev KYC data is submitted and reviewed off-chain. This struct stores the on-chain status
+ *      which is set when admin approves or rejects the KYC via approveKYC() or rejectKYC()
  */
 struct UserKYC {
     address userAddress;            // User's wallet address
-    KYCStatus status;               // Current KYC status
-    uint64 submittedAt;             // When KYC was submitted
-    uint64 reviewedAt;              // When KYC was reviewed
+    KYCStatus status;               // Current KYC status (set by admin)
+    uint64 submittedAt;             // When KYC was first processed on-chain (set on approve/reject)
+    uint64 reviewedAt;              // When KYC was reviewed by admin
     address reviewedBy;             // Admin who reviewed
-    bytes32 kycDataHash;            // Hash of KYC data for verification
+    bytes32 kycDataHash;            // Hash of KYC data for verification (optional)
 }
 
 /**
@@ -234,7 +242,6 @@ error PlanNotClaimable();
 error TransferDateNotReached();
 error KYCNotApproved();
 error KYCAlreadySubmitted();
-error KYCNotFound();
 
 // ============================================
 // EVENTS
@@ -288,16 +295,8 @@ event PlanStatusChanged(
 );
 
 /**
- * @notice Emitted when KYC is submitted
- */
-event KYCSubmitted(
-    address indexed user,
-    bytes32 kycDataHash,
-    uint64 submittedAt
-);
-
-/**
- * @notice Emitted when KYC status changes
+ * @notice Emitted when KYC status changes (when admin approves or rejects)
+ * @dev This is emitted when admin calls approveKYC or rejectKYC
  */
 event KYCStatusChanged(
     address indexed user,
@@ -450,10 +449,15 @@ contract InheritX is
 
     /**
      * @notice Ensures user has approved KYC (if required)
+     * @dev Checks if KYC is required and if user has approved status on-chain
      */
     modifier kycApproved() {
-        if (kycRequired && userKYC[msg.sender].status != KYCStatus.Approved) {
-            revert KYCNotApproved();
+        if (kycRequired) {
+            UserKYC memory kyc = userKYC[msg.sender];
+            // Check if KYC record exists and is approved
+            if (kyc.userAddress == address(0) || kyc.status != KYCStatus.Approved) {
+                revert KYCNotApproved();
+            }
         }
         _;
     }
@@ -513,58 +517,67 @@ contract InheritX is
     // ============================================
 
     /**
-     * @notice Submit KYC data for verification
-     * @param kycDataHash Hash of KYC data (name + email + ID document hash)
-     * @dev Actual KYC data is stored off-chain, only hash stored on-chain
+     * @notice Approve a user's KYC (admin only)
+     * @dev KYC data is submitted and reviewed off-chain in the backend.
+     *      This function is called by admin after backend approval to store status on-chain.
+     * @param user Address of user to approve
+     * @param kycDataHash Hash of KYC data for verification (optional, can be bytes32(0))
      */
-    function submitKYC(bytes32 kycDataHash) external whenNotPaused {
-        if (kycDataHash == bytes32(0)) revert InvalidInput();
+    function approveKYC(address user, bytes32 kycDataHash) external onlyRole(ADMIN_ROLE) {
+        if (user == address(0)) revert ZeroAddress();
         
-        UserKYC storage kyc = userKYC[msg.sender];
+        UserKYC storage kyc = userKYC[user];
         
-        // Allow resubmission if rejected
-        if (kyc.status == KYCStatus.Pending || kyc.status == KYCStatus.Approved) {
+        // If KYC already exists and is approved, revert
+        if (kyc.status == KYCStatus.Approved) {
             revert KYCAlreadySubmitted();
         }
 
-        kyc.userAddress = msg.sender;
-        kyc.status = KYCStatus.Pending;
-        kyc.submittedAt = uint64(block.timestamp);
-        kyc.kycDataHash = kycDataHash;
-        kyc.reviewedAt = 0;
-        kyc.reviewedBy = address(0);
-
-        emit KYCSubmitted(msg.sender, kycDataHash, uint64(block.timestamp));
-    }
-
-    /**
-     * @notice Approve a user's KYC (admin only)
-     * @param user Address of user to approve
-     */
-    function approveKYC(address user) external onlyRole(ADMIN_ROLE) {
-        UserKYC storage kyc = userKYC[user];
-        if (kyc.status != KYCStatus.Pending) revert KYCNotFound();
-
         KYCStatus oldStatus = kyc.status;
+        
+        // Initialize or update KYC record
+        kyc.userAddress = user;
         kyc.status = KYCStatus.Approved;
         kyc.reviewedAt = uint64(block.timestamp);
         kyc.reviewedBy = msg.sender;
+        
+        // Store hash if provided
+        if (kycDataHash != bytes32(0)) {
+            kyc.kycDataHash = kycDataHash;
+        }
+        
+        // Set submittedAt to reviewedAt if not already set
+        if (kyc.submittedAt == 0) {
+            kyc.submittedAt = uint64(block.timestamp);
+        }
 
         emit KYCStatusChanged(user, oldStatus, KYCStatus.Approved, msg.sender, uint64(block.timestamp));
     }
 
     /**
      * @notice Reject a user's KYC (admin only)
+     * @dev KYC data is submitted and reviewed off-chain in the backend.
+     *      This function is called by admin after backend rejection to store status on-chain.
      * @param user Address of user to reject
      */
     function rejectKYC(address user) external onlyRole(ADMIN_ROLE) {
+        if (user == address(0)) revert ZeroAddress();
+        
         UserKYC storage kyc = userKYC[user];
-        if (kyc.status != KYCStatus.Pending) revert KYCNotFound();
-
+        
+        // If KYC already exists and is rejected, allow updating
         KYCStatus oldStatus = kyc.status;
+        
+        // Initialize or update KYC record
+        kyc.userAddress = user;
         kyc.status = KYCStatus.Rejected;
         kyc.reviewedAt = uint64(block.timestamp);
         kyc.reviewedBy = msg.sender;
+        
+        // Set submittedAt to reviewedAt if not already set
+        if (kyc.submittedAt == 0) {
+            kyc.submittedAt = uint64(block.timestamp);
+        }
 
         emit KYCStatusChanged(user, oldStatus, KYCStatus.Rejected, msg.sender, uint64(block.timestamp));
     }
@@ -581,10 +594,17 @@ contract InheritX is
     /**
      * @notice Get user's KYC status
      * @param user Address to check
-     * @return KYC status enum value
+     * @return KYC status enum value (NotSubmitted if never approved/rejected on-chain)
+     * @dev Returns NotSubmitted if user has not been approved or rejected on-chain yet.
+     *      KYC submission happens off-chain, only approval/rejection is stored on-chain.
      */
     function getKYCStatus(address user) external view returns (KYCStatus) {
-        return userKYC[user].status;
+        UserKYC memory kyc = userKYC[user];
+        // If KYC record doesn't exist (userAddress is zero), return NotSubmitted
+        if (kyc.userAddress == address(0)) {
+            return KYCStatus.NotSubmitted;
+        }
+        return kyc.status;
     }
 
     /**

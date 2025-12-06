@@ -10,11 +10,9 @@ import { useState, useEffect } from 'react';
 const config = getDefaultConfig({
   appName: 'InheritX',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo',
-  chains: [liskSepolia, sepolia, mainnet],
+  chains: [liskSepolia],
   transports: {
     [liskSepolia.id]: http(),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
   },
   ssr: true,
 });

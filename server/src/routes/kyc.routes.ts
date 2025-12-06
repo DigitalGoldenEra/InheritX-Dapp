@@ -6,52 +6,54 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { authenticateToken } from '../middleware/auth';
 import { createKYCHash } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { createCloudinaryStorage, isCloudinaryConfigured } from '../utils/cloudinary';
 
 const router = Router();
 
-// Ensure uploads directory exists
-const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  logger.info('Created uploads directory:', { path: uploadDir });
+// Configure multer for Cloudinary uploads
+let upload: multer.Multer;
+
+if (isCloudinaryConfigured()) {
+  // Use Cloudinary storage
+  const cloudinaryStorage = createCloudinaryStorage();
+  upload = multer({
+    storage: cloudinaryStorage,
+    limits: {
+      fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880'), // 5MB default
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+      }
+    },
+  });
+  logger.info('Cloudinary storage configured for KYC uploads');
+} else {
+  // Fallback to memory storage if Cloudinary is not configured
+  logger.warn('Cloudinary not configured. Using memory storage. Files will not be persisted.');
+  upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880'),
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+      }
+    },
+  });
 }
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Ensure directory exists before saving
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `kyc-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880'), // 5MB default
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
-    }
-  },
-});
 
 // Validation schemas
 const kycSubmitSchema = z.object({
@@ -244,18 +246,40 @@ router.post(
       throw new AppError('ID document is required', 400);
     }
 
-    // Verify file was saved successfully
-    const filePath = path.join(uploadDir, req.file.filename);
-    if (!fs.existsSync(filePath)) {
-      logger.error('File was not saved correctly:', { filename: req.file.filename, path: filePath });
-      throw new AppError('Failed to save uploaded file', 500);
-    }
-
     const data = kycSubmitSchema.parse(req.body);
+
+    // Get file URL from Cloudinary
+    // multer-storage-cloudinary stores the result in req.file.path (secure URL)
+    let documentUrl: string;
+    
+    if (isCloudinaryConfigured()) {
+      // File is already uploaded to Cloudinary via multer-storage-cloudinary
+      // The file object will have the Cloudinary result with 'path' (secure URL) property
+      const cloudinaryFile = req.file as any;
+      if (cloudinaryFile?.path) {
+        documentUrl = cloudinaryFile.path; // This is the secure URL from Cloudinary
+        logger.info('File uploaded to Cloudinary:', { 
+          url: documentUrl,
+          publicId: cloudinaryFile.filename,
+          size: cloudinaryFile.size 
+        });
+      } else {
+        logger.error('Cloudinary upload failed - missing path:', { file: req.file });
+        throw new AppError('Failed to upload file to Cloudinary', 500);
+      }
+    } else {
+      // Fallback: If Cloudinary is not configured, we need to handle memory storage
+      // For production, Cloudinary should always be configured
+      throw new AppError('File storage is not configured. Please configure Cloudinary.', 500);
+    }
     
     // Check if user already has approved KYC
     const existingKYC = await prisma.kYC.findUnique({
       where: { userId: req.user!.id },
+      select: {
+        status: true,
+        idDocumentUrl: true,
+      },
     });
 
     if (existingKYC?.status === 'APPROVED') {
@@ -281,7 +305,7 @@ router.post(
         idType: data.idType as any,
         idNumber: data.idNumber,
         idExpiryDate: new Date(data.idExpiryDate),
-        idDocumentUrl: req.file?.filename,
+        idDocumentUrl: documentUrl, // Store Cloudinary URL
         address: data.address,
         city: data.city,
         country: data.country,
@@ -297,17 +321,30 @@ router.post(
         idType: data.idType as any,
         idNumber: data.idNumber,
         idExpiryDate: new Date(data.idExpiryDate),
-        idDocumentUrl: req.file?.filename || undefined,
+        idDocumentUrl: documentUrl, // Store Cloudinary URL
         address: data.address,
         city: data.city,
         country: data.country,
         postalCode: data.postalCode,
         status: 'PENDING',
         submittedAt: new Date(),
+        reviewedAt: null, // Reset review date on resubmission
         rejectionReason: null,
         kycDataHash,
       },
     });
+
+    // Delete old document from Cloudinary if resubmitting
+    if (existingKYC?.idDocumentUrl && existingKYC.idDocumentUrl !== documentUrl) {
+      try {
+        const { deleteCloudinaryImage } = await import('../utils/cloudinary');
+        await deleteCloudinaryImage(existingKYC.idDocumentUrl);
+        logger.info('Old KYC document deleted from Cloudinary');
+      } catch (error) {
+        // Log but don't fail the request if deletion fails
+        logger.warn('Failed to delete old document from Cloudinary:', { error });
+      }
+    }
 
     // Update user email if provided
     await prisma.user.update({
