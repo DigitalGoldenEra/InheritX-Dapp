@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { authenticateToken } from '../middleware/auth';
@@ -15,10 +16,21 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
+// Ensure uploads directory exists
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  logger.info('Created uploads directory:', { path: uploadDir });
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, process.env.UPLOAD_DIR || './uploads');
+    // Ensure directory exists before saving
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -45,15 +57,15 @@ const upload = multer({
 const kycSubmitSchema = z.object({
   fullName: z.string().min(2).max(100),
   email: z.string().email(),
-  dateOfBirth: z.string().optional(),
-  nationality: z.string().optional(),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  nationality: z.string().min(2, 'Nationality is required'),
   idType: z.enum(['PASSPORT', 'DRIVERS_LICENSE', 'NATIONAL_ID', 'OTHER']),
   idNumber: z.string().min(4).max(50),
-  idExpiryDate: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  country: z.string().optional(),
-  postalCode: z.string().optional(),
+  idExpiryDate: z.string().min(1, 'ID expiry date is required'),
+  address: z.string().min(5, 'Address is required'),
+  city: z.string().min(2, 'City is required'),
+  country: z.string().min(2, 'Country is required'),
+  postalCode: z.string().min(3, 'Postal code is required'),
 });
 
 /**
@@ -147,8 +159,15 @@ router.get('/status', authenticateToken, asyncHandler(async (req: Request, res: 
  *             required:
  *               - fullName
  *               - email
+ *               - dateOfBirth
+ *               - nationality
  *               - idType
  *               - idNumber
+ *               - idExpiryDate
+ *               - address
+ *               - city
+ *               - country
+ *               - postalCode
  *               - idDocument
  *             properties:
  *               fullName:
@@ -163,8 +182,10 @@ router.get('/status', authenticateToken, asyncHandler(async (req: Request, res: 
  *               dateOfBirth:
  *                 type: string
  *                 format: date
+ *                 description: Required
  *               nationality:
  *                 type: string
+ *                 description: Required
  *               idType:
  *                 type: string
  *                 enum: [PASSPORT, DRIVERS_LICENSE, NATIONAL_ID, OTHER]
@@ -175,14 +196,19 @@ router.get('/status', authenticateToken, asyncHandler(async (req: Request, res: 
  *               idExpiryDate:
  *                 type: string
  *                 format: date
+ *                 description: Required
  *               address:
  *                 type: string
+ *                 description: Required
  *               city:
  *                 type: string
+ *                 description: Required
  *               country:
  *                 type: string
+ *                 description: Required
  *               postalCode:
  *                 type: string
+ *                 description: Required
  *               idDocument:
  *                 type: string
  *                 format: binary
@@ -213,6 +239,18 @@ router.post(
   authenticateToken,
   upload.single('idDocument'),
   asyncHandler(async (req: Request, res: Response) => {
+    // Validate file was uploaded
+    if (!req.file) {
+      throw new AppError('ID document is required', 400);
+    }
+
+    // Verify file was saved successfully
+    const filePath = path.join(uploadDir, req.file.filename);
+    if (!fs.existsSync(filePath)) {
+      logger.error('File was not saved correctly:', { filename: req.file.filename, path: filePath });
+      throw new AppError('Failed to save uploaded file', 500);
+    }
+
     const data = kycSubmitSchema.parse(req.body);
     
     // Check if user already has approved KYC
@@ -238,11 +276,11 @@ router.post(
         userId: req.user!.id,
         fullName: data.fullName,
         email: data.email,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+        dateOfBirth: new Date(data.dateOfBirth),
         nationality: data.nationality,
         idType: data.idType as any,
         idNumber: data.idNumber,
-        idExpiryDate: data.idExpiryDate ? new Date(data.idExpiryDate) : null,
+        idExpiryDate: new Date(data.idExpiryDate),
         idDocumentUrl: req.file?.filename,
         address: data.address,
         city: data.city,
@@ -254,11 +292,11 @@ router.post(
       update: {
         fullName: data.fullName,
         email: data.email,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+        dateOfBirth: new Date(data.dateOfBirth),
         nationality: data.nationality,
         idType: data.idType as any,
         idNumber: data.idNumber,
-        idExpiryDate: data.idExpiryDate ? new Date(data.idExpiryDate) : null,
+        idExpiryDate: new Date(data.idExpiryDate),
         idDocumentUrl: req.file?.filename || undefined,
         address: data.address,
         city: data.city,

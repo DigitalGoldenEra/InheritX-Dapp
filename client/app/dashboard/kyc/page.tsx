@@ -3,20 +3,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  FiUpload, 
   FiCheck, 
-  FiX, 
   FiClock, 
   FiShield,
-  FiAlertCircle,
-  FiFile
+  FiAlertCircle
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { api, KYCStatus } from '@/lib/api';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { keccak256, encodePacked } from 'viem';
 import { inheritXABI } from '@/contract/abi';
 import { INHERITX_CONTRACT_ADDRESS } from '@/lib/contract';
+import Input from '@/components/Input';
 
 const ID_TYPES = [
   { value: 'PASSPORT', label: 'International Passport' },
@@ -116,7 +113,9 @@ export default function KYCPage() {
 
     try {
       // Validate required fields
-      if (!formData.fullName || !formData.email || !formData.idType || !formData.idNumber) {
+      if (!formData.fullName || !formData.email || !formData.dateOfBirth || !formData.nationality || 
+          !formData.idType || !formData.idNumber || !formData.idExpiryDate || 
+          !formData.address || !formData.city || !formData.country || !formData.postalCode) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -176,7 +175,7 @@ export default function KYCPage() {
   // Show status if already submitted
   if (kycStatus && kycStatus.status !== 'NOT_SUBMITTED' && kycStatus.status !== 'REJECTED') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl my-10 mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -233,13 +232,13 @@ export default function KYCPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-5xl mx-auto py-10">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">KYC Verification</h1>
+          <h1 className="text-3xl mb-2 font-bold">KYC Verification</h1>
           <p className="text-[var(--text-secondary)]">
             Complete your identity verification to create inheritance plans.
           </p>
@@ -271,59 +270,48 @@ export default function KYCPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="card p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="border border-white/6 rounded-[15px] p-8 space-y-6">
           {/* Personal Information */}
           <div>
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <FiShield className="text-[var(--primary)]" />
+            <h3 className="font-semibold text-2xl mb-6 flex items-center text-primary gap-2">
               Personal Information
             </h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="input-group">
-                <label className="input-label">Full Name *</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="As shown on ID"
-                  required
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Email Address *</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Date of Birth</label>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleInputChange}
-                  className="input"
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Nationality</label>
-                <input
-                  type="text"
-                  name="nationality"
-                  value={formData.nationality}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="Country of citizenship"
-                />
-              </div>
+              <Input
+                label="Full Name"
+                name="fullName"
+                type="text"
+                value={formData.fullName}
+                onChange={handleInputChange}
+                placeholder="As shown on ID"
+                required
+              />
+              <Input
+                label="Email Address"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="your@email.com"
+                required
+              />
+              <Input
+                label="Date of Birth"
+                name="dateOfBirth"
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={handleInputChange}
+                required
+              />
+              <Input
+                label="Nationality"
+                name="nationality"
+                type="text"
+                value={formData.nationality}
+                onChange={handleInputChange}
+                placeholder="Country of citizenship"
+                required
+              />
             </div>
           </div>
 
@@ -331,132 +319,96 @@ export default function KYCPage() {
 
           {/* ID Document */}
           <div>
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <FiFile className="text-[var(--primary)]" />
+            <h3 className="font-semibold text-2xl mb-6 flex items-center text-primary gap-2">
               Identity Document
             </h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="input-group">
-                <label className="input-label">ID Type *</label>
-                <select
-                  name="idType"
-                  value={formData.idType}
-                  onChange={handleInputChange}
-                  className="input"
-                  required
-                >
-                  {ID_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="input-group">
-                <label className="input-label">ID Number *</label>
-                <input
-                  type="text"
-                  name="idNumber"
-                  value={formData.idNumber}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="Document number"
-                  required
-                />
-              </div>
-              <div className="input-group md:col-span-2">
-                <label className="input-label">Expiry Date</label>
-                <input
-                  type="date"
-                  name="idExpiryDate"
-                  value={formData.idExpiryDate}
-                  onChange={handleInputChange}
-                  className="input"
-                />
-              </div>
+              <Input
+                label="ID Type"
+                name="idType"
+                type="select"
+                value={formData.idType}
+                onChange={handleInputChange}
+                options={ID_TYPES}
+                required
+              />
+              <Input
+                label="ID Number"
+                name="idNumber"
+                type="text"
+                value={formData.idNumber}
+                onChange={handleInputChange}
+                placeholder="Document number"
+                required
+              />
+              <Input
+                label="Expiry Date"
+                name="idExpiryDate"
+                type="date"
+                value={formData.idExpiryDate}
+                onChange={handleInputChange}
+                colSpan={2}
+                required
+              />
             </div>
 
             {/* File Upload */}
             <div className="mt-4">
-              <label className="input-label">Upload ID Document *</label>
-              <div className="mt-2">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[var(--border-default)] rounded-xl cursor-pointer hover:border-[var(--primary)] transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    {idDocument ? (
-                      <>
-                        <FiCheck className="text-[var(--accent-green)] mb-2" size={24} />
-                        <p className="text-sm text-[var(--text-secondary)]">{idDocument.name}</p>
-                        <p className="text-xs text-[var(--text-muted)]">Click to replace</p>
-                      </>
-                    ) : (
-                      <>
-                        <FiUpload className="text-[var(--primary)] mb-2" size={24} />
-                        <p className="text-sm text-[var(--text-secondary)]">Click to upload</p>
-                        <p className="text-xs text-[var(--text-muted)]">JPEG, PNG or PDF (max 5MB)</p>
-                      </>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={handleFileChange}
-                  />
-                </label>
-              </div>
+              <Input
+                label="Upload ID Document"
+                name="idDocument"
+                type="file"
+                onFileChange={handleFileChange}
+                accept=".jpg,.jpeg,.png,.pdf"
+                file={idDocument}
+                required
+              />
             </div>
           </div>
 
           <div className="divider" />
 
-          {/* Address (Optional) */}
+          {/* Address */}
           <div>
-            <h3 className="font-semibold mb-4">Address (Optional)</h3>
+            <h3 className="font-semibold mb-4">Address</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="input-group md:col-span-2">
-                <label className="input-label">Street Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="Street address"
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">City</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="City"
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Country</label>
-                <input
-                  type="text"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="Country"
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Postal Code</label>
-                <input
-                  type="text"
-                  name="postalCode"
-                  value={formData.postalCode}
-                  onChange={handleInputChange}
-                  className="input"
-                  placeholder="Postal code"
-                />
-              </div>
+              <Input
+                label="Street Address"
+                name="address"
+                type="text"
+                value={formData.address}
+                onChange={handleInputChange}
+                placeholder="Street address"
+                colSpan={2}
+                required
+              />
+              <Input
+                label="City"
+                name="city"
+                type="text"
+                value={formData.city}
+                onChange={handleInputChange}
+                placeholder="City"
+                required
+              />
+              <Input
+                label="Country"
+                name="country"
+                type="text"
+                value={formData.country}
+                onChange={handleInputChange}
+                placeholder="Country"
+                required
+              />
+              <Input
+                label="Postal Code"
+                name="postalCode"
+                type="text"
+                value={formData.postalCode}
+                onChange={handleInputChange}
+                placeholder="Postal code"
+                required
+              />
             </div>
           </div>
 

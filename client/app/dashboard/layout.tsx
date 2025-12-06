@@ -62,13 +62,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isConnected) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0A0E12' }}>
-        <div style={{ background: '#12181E', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 48, maxWidth: 400, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 64, height: 64, margin: '0 auto 24px', borderRadius: '50%', background: 'rgba(51, 197, 224, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0A0E12]">
+        <div className="bg-[#12181E] border border-white/6 rounded-[20px] p-12 max-w-[400px] text-center flex flex-col items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[rgba(51,197,224,0.1)] flex items-center justify-center">
             <FiLock size={28} color="#33C5E0" />
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Connect Your Wallet</h1>
-          <p style={{ color: '#A0AEC0', fontSize: 14, marginBottom: 24 }}>
+          <h1 className="text-xl font-bold mb-2">Connect Your Wallet</h1>
+          <p className="text-[#A0AEC0] text-sm mb-6">
             Connect your Web3 wallet to access the dashboard.
           </p>
           <ConnectButton />
@@ -81,96 +81,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div className="page-loader">
         <div className="spinner" />
-        <p style={{ marginTop: 16, color: '#A0AEC0' }}>Authenticating...</p>
+        <p className="mt-4 text-[#A0AEC0]">Authenticating...</p>
       </div>
     );
   }
 
   return (
     <>
-      <style jsx global>{`
-        .dashboard-container {
-          min-height: 100vh;
-          display: flex;
-          background: #0A0E12;
-        }
-        .dashboard-sidebar {
-          position: fixed;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 280px;
-          background: #12181E;
-          border-right: 1px solid rgba(255,255,255,0.06);
-          display: flex;
-          flex-direction: column;
-          z-index: 50;
-          transform: translateX(-100%);
-          transition: transform 0.3s ease;
-        }
-        .dashboard-sidebar.open {
-          transform: translateX(0);
-        }
-        .dashboard-main {
-          flex: 1;
-          margin-left: 0;
-          min-width: 0;
-        }
-        .mobile-menu-btn {
-          display: block;
-        }
-        .desktop-spacer {
-          display: none;
-        }
-        @media (min-width: 1024px) {
-          .dashboard-sidebar {
-            transform: translateX(0);
-          }
-          .dashboard-main {
-            margin-left: 280px;
-          }
-          .mobile-menu-btn {
-            display: none;
-          }
-          .desktop-spacer {
-            display: block;
-          }
-          .mobile-close-btn {
-            display: none;
-          }
-        }
-      `}</style>
-
-      <div className="dashboard-container">
+      <div className="min-h-screen flex bg-[#0A0E12]">
         {/* Overlay */}
         {sidebarOpen && (
           <div 
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`dashboard-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <aside className={`fixed left-0 top-0 bottom-0 w-[280px] bg-[#12181E] border-r border-white/6 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
           {/* Logo */}
-          <div style={{ padding: 20, borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'white' }}>
-              <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #33C5E0, #1A8A9E)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>IX</div>
-              <span style={{ fontWeight: 700, fontSize: 18 }}>InheritX</span>
+          <div className="p-5 border-b border-white/6 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 no-underline text-white">
+              <div className="w-9 h-9 bg-gradient-to-br from-[#33C5E0] to-[#1A8A9E] rounded-[10px] flex items-center justify-center font-extrabold text-sm">IX</div>
+              <span className="font-bold text-lg">InheritX</span>
             </Link>
             <button 
-              className="mobile-close-btn"
+              className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"
               onClick={() => setSidebarOpen(false)}
-              style={{ padding: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#A0AEC0' }}
             >
               <FiX size={20} />
             </button>
           </div>
 
           {/* Nav */}
-          <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#64748B', padding: '8px 12px' }}>
+          <nav className="flex-1 py-4 px-3 overflow-y-auto">
+            <div className="mb-6">
+              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[#64748B] px-3 py-2">
                 Main Menu
               </div>
               {navItems.map((item) => (
@@ -178,19 +126,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: 12,
-                    borderRadius: 10,
-                    color: isActive(item.href) ? '#33C5E0' : '#A0AEC0',
-                    background: isActive(item.href) ? 'rgba(51, 197, 224, 0.1)' : 'transparent',
-                    textDecoration: 'none',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    marginBottom: 4
-                  }}
+                  className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium mb-1 ${
+                    isActive(item.href) 
+                      ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]' 
+                      : 'text-[#A0AEC0] bg-transparent'
+                  }`}
                 >
                   <item.icon size={18} />
                   {item.label}
@@ -198,25 +138,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               ))}
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#64748B', padding: '8px 12px' }}>
+            <div className="mb-6">
+              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[#64748B] px-3 py-2">
                 Beneficiary
               </div>
               <Link
                 href="/claim"
                 onClick={() => setSidebarOpen(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  color: pathname.startsWith('/claim') ? '#33C5E0' : '#A0AEC0',
-                  background: pathname.startsWith('/claim') ? 'rgba(51, 197, 224, 0.1)' : 'transparent',
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  fontWeight: 500
-                }}
+                className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium ${
+                  pathname.startsWith('/claim')
+                    ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]' 
+                    : 'text-[#A0AEC0] bg-transparent'
+                }`}
               >
                 <FiGift size={18} />
                 Claim Inheritance
@@ -224,26 +157,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#64748B', padding: '8px 12px' }}>
+              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[#64748B] px-3 py-2">
                 Account
               </div>
               <button
                 onClick={logout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  color: '#EF4444',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  width: '100%',
-                  textAlign: 'left'
-                }}
+                className="flex items-center gap-3 p-3 rounded-[10px] text-[#EF4444] bg-transparent border-none cursor-pointer text-sm font-medium w-full text-left"
               >
                 <FiLogOut size={18} />
                 Disconnect
@@ -252,9 +171,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {/* Footer */}
-          <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ background: '#0A0E12', borderRadius: 12, padding: 16 }}>
-              <div style={{ fontSize: 12, color: '#64748B', marginBottom: 8 }}>KYC Status</div>
+          <div className="p-4 border-t border-white/6">
+            <div className="bg-[#0A0E12] rounded-xl p-4">
+              <div className="text-xs text-[#64748B] mb-2">KYC Status</div>
               <span className={`badge ${
                 user?.kycStatus === 'APPROVED' ? 'badge-success' :
                 user?.kycStatus === 'PENDING' ? 'badge-purple' : 'badge-warning'
@@ -266,31 +185,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Main Content */}
-        <div className="dashboard-main">
+        <div className="flex-1 ml-0 min-w-0 lg:ml-[280px]">
           {/* Header */}
-          <header style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 30,
-            background: 'rgba(10, 14, 18, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, padding: '0 24px' }}>
+          <header className="sticky top-0 z-30 bg-[#12181E] backdrop-blur-[20px] border-b border-white/6">
+            <div className="flex items-center justify-between h-[77px] px-6">
               <button
-                className="mobile-menu-btn"
+                className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"
                 onClick={() => setSidebarOpen(true)}
-                style={{ padding: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#A0AEC0' }}
               >
                 <FiMenu size={20} />
               </button>
 
-              <div className="desktop-spacer" />
+              <div className="hidden lg:block" />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <button style={{ width: 40, height: 40, borderRadius: 10, background: '#12181E', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A0AEC0', position: 'relative' }}>
+              <div className="flex items-center gap-3">
+                <button className="w-10 h-10 rounded-[10px] bg-[#12181E] border border-white/6 cursor-pointer flex items-center justify-center text-[#A0AEC0] relative">
                   <FiBell size={18} />
-                  <span style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, background: '#33C5E0', borderRadius: '50%' }} />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-[#33C5E0] rounded-full" />
                 </button>
 
                 <ConnectButton.Custom>
@@ -299,32 +210,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     if (!connected) return null;
 
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="flex items-center gap-2">
                         {chain.unsupported && (
-                          <button onClick={openChainModal} className="btn btn-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                          <button onClick={openChainModal} className="btn btn-sm bg-[rgba(239,68,68,0.1)] text-[#EF4444] border border-[rgba(239,68,68,0.2)]">
                             Wrong network
                           </button>
                         )}
                         <button
                           onClick={openAccountModal}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: '8px 12px',
-                            background: '#12181E',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: 12,
-                            cursor: 'pointer',
-                            color: 'white'
-                          }}
+                          className="flex items-center gap-2.5 px-3 py-2 bg-[#12181E] border border-white/6 rounded-xl cursor-pointer text-white"
                         >
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #33C5E0, #8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <FiUser size={14} />
+                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                            <FiUser size={12} color="black" />
                           </div>
-                          <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{user?.name || formatAddress(account.address)}</div>
-                            <div style={{ fontSize: 11, color: '#64748B' }}>{account.displayBalance}</div>
+                          <div className="text-left text-xs">
+                            <div className="text-[10px] font-medium">{user?.name || formatAddress(account.address)}</div>
+                            <div className="text-[10px] text-[#64748B]">{account.displayBalance}</div>
                           </div>
                         </button>
                       </div>
@@ -335,7 +236,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <main style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>
+          <main className="p-6 min-h-[calc(100vh-64px)] py-20">
             {children}
           </main>
         </div>

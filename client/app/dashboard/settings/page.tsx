@@ -181,7 +181,7 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="card p-6 border-[var(--accent-red)]/30"
+        className="card p-6 badge-error border border-[var(--accent-red)]/50"
       >
         <h2 className="text-lg font-semibold mb-4 text-[var(--accent-red)]">Danger Zone</h2>
         <p className="text-sm text-[var(--text-secondary)] mb-4">

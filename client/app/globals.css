@@ -1,8 +1,5 @@
 @import "tailwindcss";
-
-/* ============================================
-   Tailwind v4 Theme Configuration
-   ============================================ */
+@config "../tailwind.config.ts";
 
 @theme {
   --color-primary: #33C5E0;
@@ -14,18 +11,8 @@
   --color-dark-elevated: #141820;
   --color-dark-section: #0A0D10;
   
-  --font-family-heading: 'Syne', sans-serif;
-  --font-family-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* ============================================
-   Base Styles
-   ============================================ */
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  --font-family-heading: var(--font-syne), sans-serif;
+  --font-family-body: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html {
@@ -59,10 +46,6 @@ body {
   border-radius: 3px;
 }
 
-/* ============================================
-   Typography
-   ============================================ */
-
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-heading);
   font-weight: 700;
@@ -70,10 +53,6 @@ h1, h2, h3, h4, h5, h6 {
   color: #ffffff;
   letter-spacing: -0.02em;
 }
-
-/* ============================================
-   Buttons
-   ============================================ */
 
 .btn {
   display: inline-flex;
@@ -108,11 +87,6 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.btn-secondary:hover {
-  border-color: rgba(51, 197, 224, 0.3);
-  background: var(--color-dark-card);
-}
-
 .btn-sm {
   padding: 8px 16px;
   font-size: 13px;
@@ -129,10 +103,6 @@ h1, h2, h3, h4, h5, h6 {
   transform: none;
 }
 
-/* ============================================
-   Cards
-   ============================================ */
-
 .card {
   background: var(--color-dark-card);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -143,10 +113,6 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(51, 197, 224, 0.3);
   transform: translateY(-4px);
 }
-
-/* ============================================
-   Badges
-   ============================================ */
 
 .badge {
   display: inline-flex;
@@ -184,14 +150,23 @@ h1, h2, h3, h4, h5, h6 {
   color: #8B5CF6;
 }
 
-/* ============================================
-   Form Elements
-   ============================================ */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #94A3B8;
+  margin-bottom: 4px;
+}
 
 .input {
   width: 100%;
   padding: 12px 16px;
-  background: var(--color-dark-elevated);
+  background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   color: #ffffff;
@@ -210,9 +185,15 @@ h1, h2, h3, h4, h5, h6 {
   color: #64748B;
 }
 
-/* ============================================
-   Tables
-   ============================================ */
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+textarea.input {
+  resize: vertical;
+  min-height: 100px;
+}
 
 table {
   width: 100%;
@@ -240,10 +221,6 @@ td {
 tr:hover td {
   background: rgba(255, 255, 255, 0.02);
 }
-
-/* ============================================
-   Modal
-   ============================================ */
 
 .modal-overlay {
   position: fixed;
@@ -288,10 +265,6 @@ tr:hover td {
   padding: 16px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
-
-/* ============================================
-   Loading States
-   ============================================ */
 
 .spinner {
   width: 24px;

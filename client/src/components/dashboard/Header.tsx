@@ -56,26 +56,9 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
                   )}
 
                   <button
-                    onClick={openChainModal}
-                    className="btn btn-secondary btn-sm hidden sm:flex items-center gap-2"
-                  >
-                    {chain.hasIcon && chain.iconUrl && (
-                      <img
-                        src={chain.iconUrl}
-                        alt={chain.name ?? 'Chain'}
-                        className="w-4 h-4 rounded-full"
-                      />
-                    )}
-                    <span className="hidden md:inline">{chain.name}</span>
-                  </button>
-
-                  <button
                     onClick={openAccountModal}
-                    className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl hover:border-[var(--border-hover)] transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 border border-[var(--border-subtle)] rounded-xl hover:border-[var(--border-hover)] transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--accent-purple)] flex items-center justify-center">
-                      <FiUser size={14} className="text-[var(--bg-void)]" />
-                    </div>
                     <div className="hidden sm:block text-left">
                       <div className="text-sm font-medium">
                         {user?.name || formatAddress(account.address)}

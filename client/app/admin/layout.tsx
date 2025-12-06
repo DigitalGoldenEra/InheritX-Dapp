@@ -68,13 +68,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isConnected) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0A0E12' }}>
-        <div style={{ background: '#12181E', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 48, maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ width: 64, height: 64, margin: '0 auto 24px', borderRadius: '50%', background: 'rgba(51, 197, 224, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0A0E12]">
+        <div className="bg-[#12181E] border border-white/6 rounded-[20px] p-12 max-w-[400px] text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[rgba(51,197,224,0.1)] flex items-center justify-center">
             <FiLock size={28} color="#33C5E0" />
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Admin Access Required</h1>
-          <p style={{ color: '#A0AEC0', fontSize: 14, marginBottom: 24 }}>
+          <h1 className="text-xl font-bold mb-2">Admin Access Required</h1>
+          <p className="text-[#A0AEC0] text-sm mb-6">
             Connect your wallet to access the admin dashboard.
           </p>
           <ConnectButton />
@@ -87,20 +87,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="page-loader">
         <div className="spinner" />
-        <p style={{ marginTop: 16, color: '#A0AEC0' }}>Authenticating...</p>
+        <p className="mt-4 text-[#A0AEC0]">Authenticating...</p>
       </div>
     );
   }
 
   if (user && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0A0E12' }}>
-        <div style={{ background: '#12181E', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 48, maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ width: 64, height: 64, margin: '0 auto 24px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0A0E12]">
+        <div className="bg-[#12181E] border border-white/6 rounded-[20px] p-12 max-w-[400px] text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[rgba(239,68,68,0.1)] flex items-center justify-center">
             <FiLock size={28} color="#EF4444" />
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Access Denied</h1>
-          <p style={{ color: '#A0AEC0', fontSize: 14, marginBottom: 24 }}>
+          <h1 className="text-xl font-bold mb-2">Access Denied</h1>
+          <p className="text-[#A0AEC0] text-sm mb-6">
             You don't have permission to access the admin dashboard.
           </p>
           <Link href="/dashboard" className="btn btn-primary">
@@ -113,92 +113,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <>
-      <style jsx global>{`
-        .admin-container {
-          min-height: 100vh;
-          display: flex;
-          background: #0A0E12;
-        }
-        .admin-sidebar {
-          position: fixed;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 280px;
-          background: #12181E;
-          border-right: 1px solid rgba(255,255,255,0.06);
-          display: flex;
-          flex-direction: column;
-          z-index: 50;
-          transform: translateX(-100%);
-          transition: transform 0.3s ease;
-        }
-        .admin-sidebar.open {
-          transform: translateX(0);
-        }
-        .admin-main {
-          flex: 1;
-          margin-left: 0;
-          min-width: 0;
-        }
-        .admin-mobile-menu-btn {
-          display: block;
-        }
-        .admin-desktop-spacer {
-          display: none;
-        }
-        @media (min-width: 1024px) {
-          .admin-sidebar {
-            transform: translateX(0);
-          }
-          .admin-main {
-            margin-left: 280px;
-          }
-          .admin-mobile-menu-btn {
-            display: none;
-          }
-          .admin-desktop-spacer {
-            display: block;
-          }
-          .admin-mobile-close-btn {
-            display: none;
-          }
-        }
-      `}</style>
-
-      <div className="admin-container">
+      <div className="min-h-screen flex bg-[#0A0E12]">
         {/* Overlay */}
         {sidebarOpen && (
           <div 
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <aside className={`fixed left-0 top-0 bottom-0 w-[280px] bg-[#12181E] border-r border-white/6 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
           {/* Logo */}
-          <div style={{ padding: 20, borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'white' }}>
-              <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #33C5E0, #1A8A9E)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>IX</div>
+          <div className="p-5 border-b border-white/6 flex items-center justify-between">
+            <Link href="/admin" className="flex items-center gap-2.5 no-underline text-white">
+              <div className="w-9 h-9 bg-gradient-to-br from-[#33C5E0] to-[#1A8A9E] rounded-[10px] flex items-center justify-center font-extrabold text-sm">IX</div>
               <div>
-                <span style={{ fontWeight: 700, fontSize: 18 }}>InheritX</span>
-                <span className="badge badge-purple" style={{ marginLeft: 8, fontSize: 10 }}>Admin</span>
+                <span className="font-bold text-lg">InheritX</span>
+                <span className="badge badge-purple ml-2 text-[10px]">Admin</span>
               </div>
             </Link>
             <button 
-              className="admin-mobile-close-btn"
+              className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"
               onClick={() => setSidebarOpen(false)}
-              style={{ padding: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#A0AEC0' }}
             >
               <FiX size={20} />
             </button>
           </div>
 
           {/* Nav */}
-          <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#64748B', padding: '8px 12px' }}>
+          <nav className="flex-1 py-4 px-3 overflow-y-auto">
+            <div className="mb-6">
+              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[#64748B] px-3 py-2">
                 Administration
               </div>
               {adminNavItems.map((item) => (
@@ -206,19 +154,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: 12,
-                    borderRadius: 10,
-                    color: isActive(item.href) ? '#33C5E0' : '#A0AEC0',
-                    background: isActive(item.href) ? 'rgba(51, 197, 224, 0.1)' : 'transparent',
-                    textDecoration: 'none',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    marginBottom: 4
-                  }}
+                  className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium mb-1 ${
+                    isActive(item.href) 
+                      ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]' 
+                      : 'text-[#A0AEC0] bg-transparent'
+                  }`}
                 >
                   <item.icon size={18} />
                   {item.label}
@@ -227,46 +167,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: '#64748B', padding: '8px 12px' }}>
+              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[#64748B] px-3 py-2">
                 Quick Links
               </div>
               <Link
                 href="/dashboard"
                 onClick={() => setSidebarOpen(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  color: '#A0AEC0',
-                  background: 'transparent',
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  marginBottom: 4
-                }}
+                className="flex items-center gap-3 p-3 rounded-[10px] text-[#A0AEC0] bg-transparent no-underline text-sm font-medium mb-1"
               >
                 <FiArrowLeft size={18} />
                 Back to Dashboard
               </Link>
               <button
                 onClick={logout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  color: '#EF4444',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  width: '100%',
-                  textAlign: 'left'
-                }}
+                className="flex items-center gap-3 p-3 rounded-[10px] text-[#EF4444] bg-transparent border-none cursor-pointer text-sm font-medium w-full text-left"
               >
                 <FiLogOut size={18} />
                 Disconnect
@@ -275,42 +189,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
 
           {/* Footer */}
-          <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ background: '#0A0E12', borderRadius: 12, padding: 12 }}>
-              <div style={{ fontSize: 12, color: '#64748B', marginBottom: 4 }}>Logged in as</div>
-              <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 2 }}>{user?.name || 'Admin'}</div>
-              <div style={{ fontSize: 12, color: '#33C5E0' }}>{user?.role}</div>
+          <div className="p-4 border-t border-white/6">
+            <div className="bg-[#0A0E12] rounded-xl p-3">
+              <div className="text-xs text-[#64748B] mb-1">Logged in as</div>
+              <div className="font-medium text-sm mb-0.5">{user?.name || 'Admin'}</div>
+              <div className="text-xs text-[#33C5E0]">{user?.role}</div>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
-        <div className="admin-main">
+        <div className="flex-1 ml-0 min-w-0 lg:ml-[280px]">
           {/* Header */}
-          <header style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 30,
-            background: 'rgba(10, 14, 18, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, padding: '0 24px' }}>
+          <header className="sticky top-0 z-30 bg-[rgba(10,14,18,0.9)] backdrop-blur-[20px] border-b border-white/6">
+            <div className="flex items-center justify-between h-16 px-6">
               <button
-                className="admin-mobile-menu-btn"
+                className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"
                 onClick={() => setSidebarOpen(true)}
-                style={{ padding: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#A0AEC0' }}
               >
                 <FiMenu size={20} />
               </button>
 
-              <div className="admin-desktop-spacer" />
+              <div className="hidden lg:block" />
 
               <ConnectButton />
             </div>
           </header>
 
-          <main style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>
+          <main className="p-6 min-h-[calc(100vh-64px)]">
             {children}
           </main>
         </div>

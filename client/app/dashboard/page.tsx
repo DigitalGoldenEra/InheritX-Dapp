@@ -80,10 +80,10 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+      <div className="p-6">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: 140, borderRadius: 16 }} />
+            <div key={i} className="skeleton h-[140px] rounded-2xl" />
           ))}
         </div>
       </div>
@@ -91,14 +91,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+    <div className="max-w-[1400px] mx-auto">
       {/* Welcome Section */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>
+          <h1 className="text-[28px] font-bold mb-1">
             Welcome back{user?.name ? `, ${user.name}` : ''} 👋
           </h1>
-          <p style={{ color: '#A0AEC0', fontSize: 15 }}>
+          <p className="text-[#A0AEC0] text-[15px]">
             Here's an overview of your inheritance plans.
           </p>
         </div>
@@ -113,25 +113,20 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 16,
-            padding: 20,
-            borderRadius: 12,
-            marginBottom: 24,
-            background: kycStatus.status === 'PENDING' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-            border: `1px solid ${kycStatus.status === 'PENDING' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`
-          }}
+          className={`flex items-start gap-4 p-5 rounded-xl mb-6 ${
+            kycStatus.status === 'PENDING' 
+              ? 'bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)]' 
+              : 'bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)]'
+          }`}
         >
           <FiAlertCircle size={22} color={kycStatus.status === 'PENDING' ? '#8B5CF6' : '#F59E0B'} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+          <div className="flex-1">
+            <div className="font-semibold mb-1">
               {kycStatus.status === 'NOT_SUBMITTED' && 'KYC Verification Required'}
               {kycStatus.status === 'PENDING' && 'KYC Verification Pending'}
               {kycStatus.status === 'REJECTED' && 'KYC Verification Rejected'}
             </div>
-            <div style={{ fontSize: 14, color: '#A0AEC0' }}>
+            <div className="text-sm text-[#A0AEC0]">
               {kycStatus.status === 'NOT_SUBMITTED' && 'Complete KYC verification to create inheritance plans.'}
               {kycStatus.status === 'PENDING' && 'Your KYC is being reviewed. This usually takes 24-48 hours.'}
               {kycStatus.status === 'REJECTED' && (kycStatus.rejectionReason || 'Please resubmit your KYC.')}
@@ -146,66 +141,43 @@ export default function DashboardPage() {
       )}
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5 mb-8">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
-            style={{
-              background: '#12181E',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 16,
-              padding: 24,
-            }}
+            className="bg-[#12181E] border border-white/6 rounded-2xl p-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
           >
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 16,
-              background: stat.bg,
-              color: stat.color
-            }}>
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+              style={{ background: stat.bg, color: stat.color }}
+            >
               {stat.icon}
             </div>
-            <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>{stat.value}</div>
-            <div style={{ fontSize: 14, color: '#64748B' }}>{stat.label}</div>
+            <div className="text-[28px] font-bold mb-1">{stat.value}</div>
+            <div className="text-sm text-[#64748B]">{stat.label}</div>
           </motion.div>
         ))}
       </div>
 
       {/* Content Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
+      <div className="grid grid-cols-[1fr_360px] gap-6">
         {/* Recent Plans */}
-        <div style={{
-          background: '#12181E',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 16,
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            padding: '16px 24px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600 }}>Recent Plans</h2>
-            <Link href="/dashboard/plans" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#33C5E0', fontSize: 13, textDecoration: 'none' }}>
+        <div className="bg-[#12181E] border border-white/6 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/6 flex items-center justify-between">
+            <h2 className="text-base font-semibold">Recent Plans</h2>
+            <Link href="/dashboard/plans" className="flex items-center gap-1 text-[#33C5E0] text-[13px] no-underline">
               View All <FiArrowRight size={14} />
             </Link>
           </div>
           
           {recentPlans.length === 0 ? (
-            <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-              <FiFileText size={40} color="#64748B" style={{ marginBottom: 16 }} />
-              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No Plans Yet</h3>
-              <p style={{ color: '#A0AEC0', fontSize: 14, marginBottom: 20 }}>
+            <div className="py-16 px-6 text-center">
+              <FiFileText size={40} color="#64748B" className="mb-4 mx-auto" />
+              <h3 className="text-base font-semibold mb-2">No Plans Yet</h3>
+              <p className="text-[#A0AEC0] text-sm mb-5">
                 Create your first inheritance plan.
               </p>
               <Link href="/dashboard/plans" className="btn btn-primary btn-sm">
@@ -222,25 +194,17 @@ export default function DashboardPage() {
                   <Link
                     key={plan.id}
                     href={`/dashboard/plans/${plan.id}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '16px 24px',
-                      borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      transition: 'background 0.2s'
-                    }}
+                    className="flex items-center px-6 py-4 border-b border-white/[0.04] no-underline text-inherit transition-colors hover:bg-white/[0.02]"
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                         {plan.planName}
                       </div>
-                      <div style={{ fontSize: 13, color: '#64748B' }}>
+                      <div className="text-[13px] text-[#64748B]">
                         {plan.assetAmount} {token?.symbol} • {plan.beneficiaries.length} beneficiaries
                       </div>
                     </div>
-                    <span className={`badge ${statusBadge.variant}`} style={{ marginLeft: 16 }}>
+                    <span className={`badge ${statusBadge.variant} ml-4`}>
                       {statusBadge.label}
                     </span>
                   </Link>
@@ -251,95 +215,58 @@ export default function DashboardPage() {
         </div>
 
         {/* Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="flex flex-col gap-5">
           {/* Quick Actions */}
-          <div style={{
-            background: '#12181E',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 16,
-            padding: 20
-          }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: '#A0AEC0' }}>Quick Actions</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="bg-[#12181E] border border-white/6 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold mb-4 text-[#A0AEC0]">Quick Actions</h3>
+            <div className="flex flex-col gap-2">
               <Link
                 href="/dashboard/plans"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  transition: 'background 0.2s'
-                }}
+                className="flex items-center gap-3 p-3 rounded-[10px] no-underline text-inherit transition-colors hover:bg-white/[0.02]"
               >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(51, 197, 224, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="w-10 h-10 rounded-[10px] bg-[rgba(51,197,224,0.1)] flex items-center justify-center">
                   <FiPlus size={18} color="#33C5E0" />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>Create New Plan</div>
-                  <div style={{ fontSize: 12, color: '#64748B' }}>Set up inheritance</div>
+                  <div className="font-medium text-sm">Create New Plan</div>
+                  <div className="text-xs text-[#64748B]">Set up inheritance</div>
                 </div>
               </Link>
               <Link
                 href="/dashboard/kyc"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  transition: 'background 0.2s'
-                }}
+                className="flex items-center gap-3 p-3 rounded-[10px] no-underline text-inherit transition-colors hover:bg-white/[0.02]"
               >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="w-10 h-10 rounded-[10px] bg-[rgba(139,92,246,0.1)] flex items-center justify-center">
                   <FiShield size={18} color="#8B5CF6" />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>KYC Verification</div>
-                  <div style={{ fontSize: 12, color: '#64748B' }}>
+                  <div className="font-medium text-sm">KYC Verification</div>
+                  <div className="text-xs text-[#64748B]">
                     {kycStatus?.status === 'APPROVED' ? 'Verified' : 'Complete verification'}
                   </div>
                 </div>
               </Link>
               <Link
                 href="/claim"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 10,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  transition: 'background 0.2s'
-                }}
+                className="flex items-center gap-3 p-3 rounded-[10px] no-underline text-inherit transition-colors hover:bg-white/[0.02]"
               >
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="w-10 h-10 rounded-[10px] bg-[rgba(16,185,129,0.1)] flex items-center justify-center">
                   <FiGift size={18} color="#10B981" />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: 14 }}>Claim Inheritance</div>
-                  <div style={{ fontSize: 12, color: '#64748B' }}>For beneficiaries</div>
+                  <div className="font-medium text-sm">Claim Inheritance</div>
+                  <div className="text-xs text-[#64748B]">For beneficiaries</div>
                 </div>
               </Link>
             </div>
           </div>
 
           {/* Account Status */}
-          <div style={{
-            background: '#12181E',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 16,
-            padding: 20
-          }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: '#A0AEC0' }}>Account Status</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: '#64748B' }}>KYC Status</span>
+          <div className="bg-[#12181E] border border-white/6 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold mb-4 text-[#A0AEC0]">Account Status</h3>
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#64748B]">KYC Status</span>
                 <span className={`badge ${
                   kycStatus?.status === 'APPROVED' ? 'badge-success' :
                   kycStatus?.status === 'PENDING' ? 'badge-purple' : 'badge-warning'
@@ -347,13 +274,13 @@ export default function DashboardPage() {
                   {kycStatus?.status || 'Not Submitted'}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: '#64748B' }}>Role</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#64748B]">Role</span>
                 <span className="badge badge-primary">{user?.role || 'User'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: '#64748B' }}>Plans</span>
-                <span style={{ fontWeight: 600 }}>{plans.length}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#64748B]">Plans</span>
+                <span className="font-semibold">{plans.length}</span>
               </div>
             </div>
           </div>

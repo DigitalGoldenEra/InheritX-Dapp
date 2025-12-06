@@ -19,18 +19,6 @@ import {
   FiX
 } from 'react-icons/fi';
 
-const COLORS = {
-  primary: '#33C5E0',
-  primaryHover: '#2AB5CF',
-  dark: '#050608',
-  darkCard: '#0C0F12',
-  darkSection: '#0A0D10',
-  textMuted: '#94A3B8',
-  textDim: '#64748B',
-  border: 'rgba(255,255,255,0.06)',
-  borderHover: 'rgba(51,197,224,0.3)',
-};
-
 export default function HomePage() {
   const { isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
@@ -70,81 +58,29 @@ export default function HomePage() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.dark }}>
+    <div className="min-h-screen bg-dark">
       {/* Ambient background */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        pointerEvents: 'none',
-        overflow: 'hidden'
-      }}>
-        <div style={{ 
-          position: 'absolute',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 1000,
-          height: 600,
-          background: 'radial-gradient(ellipse at center, rgba(51,197,224,0.08), transparent 70%)' 
-        }} />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[radial-gradient(ellipse_at_center,rgba(51,197,224,0.08),transparent_70%)]" />
       </div>
 
       {/* Navigation */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        background: 'rgba(5,6,8,0.9)',
-        backdropFilter: 'blur(20px)',
-      }}>
-        <div style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          padding: '0 24px',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: 10,
-          marginTop: '20px'
-        }}>
-          <Link href="/" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 12, 
-            textDecoration: 'none', 
-            color: 'white', 
-            fontFamily: "'Syne', sans-serif",
-            fontWeight: 700, 
-            fontSize: 20
-          }}>
-            <div style={{ 
-              width: 36, 
-              height: 36, 
-              background: `linear-gradient(135deg, ${COLORS.primary}, #1A8A9E)`, 
-              borderRadius: 10, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontWeight: 800, 
-              fontSize: 14,
-              color: COLORS.dark
-            }}>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[rgba(5,6,8,0.9)] backdrop-blur-[20px]">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between border border-white/6 rounded-[15px] mt-5">
+          <Link href="/" className="flex items-center gap-3 no-underline text-white font-['Syne',sans-serif] font-bold text-xl">
+            <div className="w-9 h-9 bg-linear-to-br from-primary to-primary-dark rounded-[10px] flex items-center justify-center font-extrabold text-sm text-dark">
               IX
             </div>
             InheritX
           </Link>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: 40 }} className="hide-on-mobile">
-            <a href="#features" style={{ color: COLORS.textMuted, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Features</a>
-            <a href="#how-it-works" style={{ color: COLORS.textMuted, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>How It Works</a>
-            <a href="#security" style={{ color: COLORS.textMuted, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Security</a>
+          <div className="hidden md:flex items-center gap-10">
+            <a href="#features" className="text-[#94A3B8] no-underline text-sm font-medium">Features</a>
+            <a href="#how-it-works" className="text-[#94A3B8] no-underline text-sm font-medium">How It Works</a>
+            <a href="#security" className="text-[#94A3B8] no-underline text-sm font-medium">Security</a>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="flex items-center gap-3">
             {mounted && (
               isConnected ? (
                 <Link href="/dashboard" className="btn btn-primary btn-sm">
@@ -162,15 +98,7 @@ export default function HomePage() {
             )}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{ 
-                padding: 8, 
-                background: 'transparent', 
-                border: 'none', 
-                cursor: 'pointer', 
-                color: COLORS.textMuted,
-                display: 'none'
-              }}
-              className="show-on-mobile"
+              className="md:hidden p-2 bg-transparent border-none cursor-pointer text-[#94A3B8]"
             >
               {mobileMenuOpen ? <FiX size={20} /> : <FiMenu size={20} />}
             </button>
@@ -179,68 +107,33 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '100px 24px 80px',
-        position: 'relative'
-      }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+      <section className="min-h-screen flex flex-col items-center justify-center pt-[100px] pb-20 px-6 relative">
+        <div className="max-w-[900px] mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
             {/* Badge */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 16px',
-              background: 'rgba(51,197,224,0.1)',
-              border: '1px solid rgba(51,197,224,0.2)',
-              borderRadius: 100,
-              fontSize: 13,
-              color: COLORS.primary,
-              marginBottom: 40,
-              fontWeight: 500
-            }}>
-              <span style={{ width: 6, height: 6, background: COLORS.primary, borderRadius: '50%' }} />
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[rgba(51,197,224,0.1)] border border-[rgba(51,197,224,0.2)] rounded-full text-[13px] text-[#33C5E0] mb-10 font-medium">
+              <span className="w-1.5 h-1.5 bg-[#33C5E0] rounded-full" />
               Powered by Lisk Blockchain
             </div>
 
             {/* Headline */}
-            <h1 style={{ 
-              fontFamily: "'Syne', sans-serif",
-              fontSize: 'clamp(42px, 4vw, 80px)', 
-              fontWeight: 800, 
-              lineHeight: 1, 
-              marginBottom: 24,
-              letterSpacing: '-0.03em'
-            }}>
-              <span style={{ color: '#fff' }}>SECURE YOUR</span>
+            <h1 className="font-['Syne',sans-serif] text-[clamp(42px,4vw,80px)] font-extrabold leading-none mb-6 tracking-[-0.03em]">
+              <span className="text-white">SECURE YOUR</span>
               <br />
-              <span style={{ color: COLORS.primary }}>DIGITAL LEGACY</span>
+              <span className="text-[#33C5E0]">DIGITAL LEGACY</span>
             </h1>
 
-            <p style={{ 
-              fontSize: 18, 
-              color: COLORS.textMuted, 
-              marginBottom: 48,
-              maxWidth: 540,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              lineHeight: 1.7
-            }}>
+            <p className="text-lg text-[#94A3B8] mb-12 max-w-[540px] mx-auto leading-[1.7]">
               Create automated inheritance plans for your crypto assets. 
               Trustless, private, and fully on-chain.
             </p>
 
             {/* CTA Buttons */}
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 64 }}>
+            <div className="flex gap-4 justify-center flex-wrap mb-16">
               {mounted && (
                 isConnected ? (
                   <Link href="/dashboard" className="btn btn-primary btn-lg">
@@ -249,7 +142,7 @@ export default function HomePage() {
                 ) : (
                   <ConnectButton.Custom>
                     {({ openConnectModal }) => (
-                      <button onClick={openConnectModal} className="btn btn-primary btn-lg" style={{ minWidth: 180 }}>
+                      <button onClick={openConnectModal} className="btn btn-primary btn-lg min-w-[180px]">
                         Get Started <FiArrowRight size={18} />
                       </button>
                     )}
@@ -262,18 +155,13 @@ export default function HomePage() {
             </div>
 
             {/* Stats */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
+            <div className="flex justify-center gap-12 flex-wrap">
               {stats.map((stat, i) => (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{ 
-                    fontFamily: "'Syne', sans-serif",
-                    fontSize: 32, 
-                    fontWeight: 800, 
-                    color: '#fff'
-                  }}>
+                <div key={i} className="text-center">
+                  <div className="font-['Syne',sans-serif] text-[32px] font-extrabold text-white">
                     {stat.value}
                   </div>
-                  <div style={{ fontSize: 13, color: COLORS.textDim, marginTop: 4 }}>{stat.label}</div>
+                  <div className="text-[13px] text-[#64748B] mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -282,82 +170,41 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" style={{ padding: '100px 24px', background: COLORS.darkSection }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <section id="features" className="py-[100px] px-6 bg-[#0A0D10]">
+        <div className="max-w-[1200px] mx-auto">
           <motion.div 
-            style={{ marginBottom: 64 }}
+            className="mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <p style={{ 
-              fontSize: 12, 
-              fontWeight: 600, 
-              letterSpacing: 2, 
-              color: COLORS.primary, 
-              marginBottom: 12,
-              textTransform: 'uppercase'
-            }}>
+            <p className="text-xs font-semibold tracking-[2px] text-[#33C5E0] mb-3 uppercase">
               Features
             </p>
-            <h2 style={{ 
-              fontFamily: "'Syne', sans-serif",
-              fontSize: 'clamp(32px, 5vw, 48px)', 
-              fontWeight: 700, 
-              maxWidth: 600,
-              lineHeight: 1.1,
-              color: '#fff'
-            }}>
+            <h2 className="font-['Syne',sans-serif] text-[clamp(32px,5vw,48px)] font-bold max-w-[600px] leading-[1.1] text-white">
               Everything you need for digital estate planning
             </h2>
           </motion.div>
 
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-            gap: 16 
-          }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
                 <motion.div
                   key={index}
-                  style={{
-                    background: COLORS.darkCard,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 16,
-                    padding: 28,
-                    transition: 'all 0.3s ease'
-                  }}
+                  className="bg-[#0C0F12] border border-white/6 rounded-2xl p-7 transition-all duration-300 hover:border-[rgba(51,197,224,0.3)]"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  whileHover={{ borderColor: COLORS.borderHover }}
                 >
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(51,197,224,0.1)',
-                    color: COLORS.primary,
-                    marginBottom: 20
-                  }}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[rgba(51,197,224,0.1)] text-[#33C5E0] mb-5">
                     <Icon size={22} />
                   </div>
-                  <h3 style={{ 
-                    fontFamily: "'Syne', sans-serif",
-                    fontSize: 18, 
-                    fontWeight: 600, 
-                    marginBottom: 8,
-                    color: '#fff'
-                  }}>
+                  <h3 className="font-['Syne',sans-serif] text-lg font-semibold mb-2 text-white">
                     {feature.title}
                   </h3>
-                  <p style={{ fontSize: 14, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                  <p className="text-sm text-[#94A3B8] leading-[1.6]">
                     {feature.desc}
                   </p>
                 </motion.div>
@@ -368,75 +215,39 @@ export default function HomePage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" style={{ padding: '100px 24px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <section id="how-it-works" className="py-[100px] px-6">
+        <div className="max-w-[1200px] mx-auto">
           <motion.div 
-            style={{ textAlign: 'center', marginBottom: 64 }}
+            className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <p style={{ 
-              fontSize: 12, 
-              fontWeight: 600, 
-              letterSpacing: 2, 
-              color: COLORS.primary, 
-              marginBottom: 12,
-              textTransform: 'uppercase'
-            }}>
+            <p className="text-xs font-semibold tracking-[2px] text-[#33C5E0] mb-3 uppercase">
               Process
             </p>
-            <h2 style={{ 
-              fontFamily: "'Syne', sans-serif",
-              fontSize: 'clamp(32px, 5vw, 48px)', 
-              fontWeight: 700,
-              color: '#fff'
-            }}>
+            <h2 className="font-['Syne',sans-serif] text-[clamp(32px,5vw,48px)] font-bold text-white">
               How it works
             </h2>
           </motion.div>
 
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: 32
-          }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-8">
             {steps.map((item, index) => (
               <motion.div
                 key={index}
-                style={{ textAlign: 'center', padding: 16 }}
+                className="text-center p-4"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
-                <div style={{
-                  width: 72,
-                  height: 72,
-                  margin: '0 auto 20px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'rgba(51,197,224,0.1)',
-                  border: '1px solid rgba(51,197,224,0.2)',
-                  fontFamily: "'Syne', sans-serif",
-                  fontSize: 22,
-                  fontWeight: 800,
-                  color: COLORS.primary
-                }}>
+                <div className="w-18 h-18 mx-auto mb-5 rounded-full flex items-center justify-center bg-[rgba(51,197,224,0.1)] border border-[rgba(51,197,224,0.2)] font-['Syne',sans-serif] text-[22px] font-extrabold text-[#33C5E0]">
                   {item.step}
                 </div>
-                <h3 style={{ 
-                  fontFamily: "'Syne', sans-serif",
-                  fontSize: 20, 
-                  fontWeight: 700, 
-                  marginBottom: 8,
-                  color: '#fff'
-                }}>
+                <h3 className="font-['Syne',sans-serif] text-xl font-bold mb-2 text-white">
                   {item.title}
                 </h3>
-                <p style={{ fontSize: 14, color: COLORS.textMuted }}>
+                <p className="text-sm text-[#94A3B8]">
                   {item.desc}
                 </p>
               </motion.div>
@@ -446,76 +257,41 @@ export default function HomePage() {
       </section>
 
       {/* Security Section */}
-      <section id="security" style={{ padding: '100px 24px', background: COLORS.darkSection }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <section id="security" className="py-[100px] px-6 bg-[#0A0D10]">
+        <div className="max-w-[1200px] mx-auto">
           <motion.div
-            style={{
-              background: 'linear-gradient(135deg, rgba(51,197,224,0.05), transparent)',
-              border: '1px solid rgba(51,197,224,0.1)',
-              borderRadius: 24,
-              padding: 'clamp(32px, 6vw, 64px)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
+            className="bg-gradient-to-br from-[rgba(51,197,224,0.05)] to-transparent border border-[rgba(51,197,224,0.1)] rounded-3xl p-[clamp(32px,6vw,64px)] relative overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-              gap: 48,
-              alignItems: 'center'
-            }}>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-12 items-center">
               <div>
-                <p style={{ 
-                  fontSize: 12, 
-                  fontWeight: 600, 
-                  letterSpacing: 2, 
-                  color: COLORS.primary, 
-                  marginBottom: 12,
-                  textTransform: 'uppercase'
-                }}>
+                <p className="text-xs font-semibold tracking-[2px] text-[#33C5E0] mb-3 uppercase">
                   Security
                 </p>
-                <h2 style={{ 
-                  fontFamily: "'Syne', sans-serif",
-                  fontSize: 'clamp(28px, 4vw, 40px)', 
-                  fontWeight: 700, 
-                  marginBottom: 20,
-                  color: '#fff'
-                }}>
+                <h2 className="font-['Syne',sans-serif] text-[clamp(28px,4vw,40px)] font-bold mb-5 text-white">
                   Built for trust
                 </h2>
-                <p style={{ fontSize: 15, color: COLORS.textMuted, marginBottom: 28, lineHeight: 1.7 }}>
+                <p className="text-[15px] text-[#94A3B8] mb-7 leading-[1.7]">
                   Your inheritance plans are protected by multiple layers of security. 
                   We never have access to your assets.
                 </p>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div className="flex flex-col gap-3.5">
                   {securityItems.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: COLORS.primary,
-                        flexShrink: 0,
-                        marginTop: 2
-                      }}>
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center bg-[#33C5E0] shrink-0 mt-0.5">
                         <FiCheck size={12} color="#000" />
                       </div>
-                      <span style={{ fontSize: 14, color: COLORS.textMuted, lineHeight: 1.5 }}>{item}</span>
+                      <span className="text-sm text-[#94A3B8] leading-[1.5]">{item}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <img src="/img/hero-img.png" alt="Security" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <div className="flex justify-center">
+                <img src="/img/hero-img.png" alt="Security" className="w-full h-full object-contain" />
               </div>
             </div>
           </motion.div>
@@ -523,23 +299,17 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section style={{ padding: '100px 24px' }}>
+      <section className="py-[100px] px-6">
         <motion.div
-          style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}
+          className="max-w-[1200px] mx-auto text-center"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 style={{ 
-            fontFamily: "'Syne', sans-serif",
-            fontSize: 'clamp(28px, 4vw, 44px)', 
-            fontWeight: 700, 
-            marginBottom: 16,
-            color: '#fff'
-          }}>
+          <h2 className="font-['Syne',sans-serif] text-[clamp(28px,4vw,44px)] font-bold mb-4 text-white">
             Ready to secure your legacy?
           </h2>
-          <p style={{ fontSize: 16, color: COLORS.textMuted, marginBottom: 36, maxWidth: 450, marginLeft: 'auto', marginRight: 'auto' }}>
+          <p className="text-base text-[#94A3B8] mb-9 max-w-[450px] mx-auto">
             Join thousands who trust InheritX for their digital inheritance planning.
           </p>
           {mounted && (
@@ -550,7 +320,7 @@ export default function HomePage() {
             ) : (
               <ConnectButton.Custom>
                 {({ openConnectModal }) => (
-                  <button onClick={openConnectModal} className="btn btn-primary btn-lg" style={{ minWidth: 180 }}>
+                  <button onClick={openConnectModal} className="btn btn-primary btn-lg min-w-[180px]">
                     Start Now <FiArrowRight size={18} />
                   </button>
                 )}
@@ -561,69 +331,24 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer style={{ 
-        padding: '28px 24px', 
-        borderTop: `1px solid ${COLORS.border}`
-      }}>
-        <div style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 20
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 10,
-            fontFamily: "'Syne', sans-serif"
-          }}>
-            <div style={{ 
-              width: 24, 
-              height: 24, 
-              background: COLORS.primary, 
-              borderRadius: 6, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontWeight: 700, 
-              fontSize: 10,
-              color: COLORS.dark
-            }}>
+      <footer className="py-7 px-6 border-t border-white/6">
+        <div className="max-w-[1200px] mx-auto flex items-center justify-between flex-wrap gap-5">
+          <div className="flex items-center gap-2.5 font-['Syne',sans-serif]">
+            <div className="w-6 h-6 bg-[#33C5E0] rounded-md flex items-center justify-center font-bold text-[10px] text-[#050608]">
               IX
             </div>
-            <span style={{ fontWeight: 600, fontSize: 14, color: '#fff' }}>InheritX</span>
+            <span className="font-semibold text-sm text-white">InheritX</span>
           </div>
-          <div style={{ fontSize: 13, color: COLORS.textDim }}>
+          <div className="text-[13px] text-[#64748B]">
             © 2024 InheritX. Built on Lisk.
           </div>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <a href="#" style={{ fontSize: 13, color: COLORS.textDim, textDecoration: 'none' }}>Terms</a>
-            <a href="#" style={{ fontSize: 13, color: COLORS.textDim, textDecoration: 'none' }}>Privacy</a>
-            <a href="#" style={{ fontSize: 13, color: COLORS.textDim, textDecoration: 'none' }}>Docs</a>
+          <div className="flex gap-6">
+            <a href="#" className="text-[13px] text-[#64748B] no-underline">Terms</a>
+            <a href="#" className="text-[13px] text-[#64748B] no-underline">Privacy</a>
+            <a href="#" className="text-[13px] text-[#64748B] no-underline">Docs</a>
           </div>
         </div>
       </footer>
-
-      {/* Mobile responsive styles */}
-      <style jsx global>{`
-        .hide-on-mobile {
-          display: flex;
-        }
-        .show-on-mobile {
-          display: none !important;
-        }
-        @media (max-width: 768px) {
-          .hide-on-mobile {
-            display: none !important;
-          }
-          .show-on-mobile {
-            display: block !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

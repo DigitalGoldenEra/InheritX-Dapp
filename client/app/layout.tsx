@@ -1,6 +1,24 @@
 import type { Metadata } from 'next';
+import { Inter, Syne } from 'next/font/google';
 import { Providers } from './providers';
+import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
+
+// Configure Inter font for body text
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+// Configure Syne font for headings
+const syne = Syne({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-syne',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'InheritX - Secure Digital Inheritance Platform',
@@ -19,16 +37,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
+    <html lang="en" className={`${inter.variable} ${syne.variable}`}>
+      <body className={inter.className}>
+        <NextTopLoader
+          color="#33C5E0"
+          height={3}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+          shadow="0 0 10px #33C5E0,0 0 5px #33C5E0"
         />
-      </head>
-      <body>
         <Providers>{children}</Providers>
       </body>
     </html>
