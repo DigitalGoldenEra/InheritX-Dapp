@@ -1,9 +1,41 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
-import {InheritX} from "../contracts/InheritX.sol";
-import {MockERC20} from "../contracts/MockERC20.sol";
+import {
+    InheritX,
+    KYCStatus,
+    AssetType,
+    PlanStatus,
+    DistributionMethod,
+    BeneficiaryInput,
+    Beneficiary,
+    InheritancePlan,
+    UserPlanMapping,
+    FeeConfig,
+    ZeroAddress,
+    Unauthorized,
+    InvalidInput,
+    InvalidState,
+    PlanNotFound,
+    PlanNotActive,
+    InvalidBeneficiaries,
+    MaxBeneficiariesReached,
+    InvalidPercentage,
+    PercentageMustEqual100,
+    InvalidAssetType,
+    InsufficientAllowance,
+    InsufficientUserBalance,
+    TransferFailed,
+    InvalidClaimCode,
+    InvalidBeneficiaryData,
+    AlreadyClaimed,
+    PlanNotClaimable,
+    TransferDateNotReached,
+    KYCNotApproved,
+    KYCAlreadySubmitted
+} from "../InheritX.sol";
+import {MockERC20} from "../MockERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -41,7 +73,8 @@ contract InheritXTest is Test {
 
     uint256 constant INITIAL_BALANCE = 1000000 * 1e18;
     uint256 constant PLAN_AMOUNT = 10000 * 1e18;
-    uint64 constant FUTURE_DATE = uint64(block.timestamp + 365 days);
+    // FUTURE_DATE will be set in setUp() using block.timestamp
+    uint64 public FUTURE_DATE;
 
     event PlanCreated(
         uint256 indexed globalPlanId,
@@ -57,8 +90,8 @@ contract InheritXTest is Test {
 
     event KYCStatusChanged(
         address indexed user,
-        InheritX.KYCStatus oldStatus,
-        InheritX.KYCStatus newStatus,
+        KYCStatus oldStatus,
+        KYCStatus newStatus,
         address indexed reviewedBy,
         uint64 changedAt
     );
@@ -73,8 +106,8 @@ contract InheritXTest is Test {
 
     event PlanStatusChanged(
         uint256 indexed planId,
-        InheritX.PlanStatus oldStatus,
-        InheritX.PlanStatus newStatus,
+        PlanStatus oldStatus,
+        PlanStatus newStatus,
         uint64 changedAt
     );
 
@@ -118,6 +151,9 @@ contract InheritXTest is Test {
         inheritX.grantRole(ADMIN_ROLE, admin);
         inheritX.grantRole(OPERATOR_ROLE, admin);
         vm.stopPrank();
+
+        // Set FUTURE_DATE (can't be constant because it uses block.timestamp)
+        FUTURE_DATE = uint64(block.timestamp + 365 days);
     }
 
     // ============================================
@@ -129,8 +165,8 @@ contract InheritXTest is Test {
         string memory email,
         string memory relationship,
         uint256 percentage
-    ) internal pure returns (InheritX.BeneficiaryInput memory) {
-        return InheritX.BeneficiaryInput({
+    ) internal pure returns (BeneficiaryInput memory) {
+        return BeneficiaryInput({
             nameHash: keccak256(bytes(name)),
             emailHash: keccak256(bytes(email)),
             relationshipHash: keccak256(bytes(relationship)),
@@ -178,7 +214,7 @@ contract InheritXTest is Test {
             address(usdtToken),
             address(usdcToken)
         );
-        vm.expectRevert(InheritX.ZeroAddress.selector);
+        vm.expectRevert(ZeroAddress.selector);
         new ERC1967Proxy(address(newImpl), initData);
     }
 
@@ -200,7 +236,7 @@ contract InheritXTest is Test {
         vm.prank(admin);
         inheritX.approveKYC(user1, KYC_DATA_HASH);
 
-        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(InheritX.KYCStatus.Approved));
+        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(KYCStatus.Approved));
         assertTrue(inheritX.isKYCApproved(user1));
     }
 
@@ -208,7 +244,7 @@ contract InheritXTest is Test {
         vm.prank(admin);
         inheritX.approveKYC(user1, bytes32(0));
 
-        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(InheritX.KYCStatus.Approved));
+        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(KYCStatus.Approved));
     }
 
     function test_ApproveKYC_RevertIf_NotAdmin() public {
@@ -219,14 +255,14 @@ contract InheritXTest is Test {
 
     function test_ApproveKYC_RevertIf_ZeroAddress() public {
         vm.prank(admin);
-        vm.expectRevert(InheritX.ZeroAddress.selector);
+        vm.expectRevert(ZeroAddress.selector);
         inheritX.approveKYC(address(0), KYC_DATA_HASH);
     }
 
     function test_ApproveKYC_RevertIf_AlreadyApproved() public {
         vm.startPrank(admin);
         inheritX.approveKYC(user1, KYC_DATA_HASH);
-        vm.expectRevert(InheritX.KYCAlreadySubmitted.selector);
+        vm.expectRevert(KYCAlreadySubmitted.selector);
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
     }
@@ -235,7 +271,7 @@ contract InheritXTest is Test {
         vm.prank(admin);
         inheritX.rejectKYC(user1);
 
-        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(InheritX.KYCStatus.Rejected));
+        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(KYCStatus.Rejected));
         assertFalse(inheritX.isKYCApproved(user1));
     }
 
@@ -246,7 +282,7 @@ contract InheritXTest is Test {
         inheritX.rejectKYC(user1);
         vm.stopPrank();
 
-        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(InheritX.KYCStatus.Rejected));
+        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(KYCStatus.Rejected));
     }
 
     function test_RejectKYC_RevertIf_NotAdmin() public {
@@ -257,12 +293,12 @@ contract InheritXTest is Test {
 
     function test_RejectKYC_RevertIf_ZeroAddress() public {
         vm.prank(admin);
-        vm.expectRevert(InheritX.ZeroAddress.selector);
+        vm.expectRevert(ZeroAddress.selector);
         inheritX.rejectKYC(address(0));
     }
 
     function test_GetKYCStatus_NotSubmitted() public {
-        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(InheritX.KYCStatus.NotSubmitted));
+        assertEq(uint8(inheritX.getKYCStatus(user1)), uint8(KYCStatus.NotSubmitted));
     }
 
     function test_IsKYCApproved_False() public {
@@ -294,7 +330,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -313,9 +349,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0, // Not used for lump sum
             CLAIM_CODE_HASH
@@ -331,7 +367,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -350,9 +386,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN2),
+            uint8(AssetType.ERC20_TOKEN2),
             amount,
-            uint8(InheritX.DistributionMethod.Monthly),
+            uint8(DistributionMethod.Monthly),
             FUTURE_DATE,
             25, // 25% per month (4 months total)
             CLAIM_CODE_HASH
@@ -366,7 +402,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -385,9 +421,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN3),
+            uint8(AssetType.ERC20_TOKEN3),
             amount,
-            uint8(InheritX.DistributionMethod.Quarterly),
+            uint8(DistributionMethod.Quarterly),
             FUTURE_DATE,
             25, // 25% per quarter
             CLAIM_CODE_HASH
@@ -401,7 +437,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -419,9 +455,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.Yearly),
+            uint8(DistributionMethod.Yearly),
             FUTURE_DATE,
             20, // 20% per year (5 years)
             CLAIM_CODE_HASH
@@ -435,7 +471,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](2);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](2);
         beneficiaries[0] = _createBeneficiaryInput("Alice", "alice@test.com", "Daughter", 6000);
         beneficiaries[1] = _createBeneficiaryInput("Bob", "bob@test.com", "Son", 4000);
 
@@ -449,16 +485,16 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
         );
 
         assertEq(userPlanId, 1);
-        InheritX.Beneficiary[] memory planBeneficiaries = inheritX.getPlanBeneficiaries(1);
+        Beneficiary[] memory planBeneficiaries = inheritX.getPlanBeneficiaries(1);
         assertEq(planBeneficiaries.length, 2);
     }
 
@@ -467,7 +503,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](10);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](10);
         uint256 percentagePerBeneficiary = 1000; // 10% each
 
         for (uint256 i = 0; i < 10; i++) {
@@ -489,15 +525,15 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
         );
 
-        InheritX.Beneficiary[] memory planBeneficiaries = inheritX.getPlanBeneficiaries(1);
+        Beneficiary[] memory planBeneficiaries = inheritX.getPlanBeneficiaries(1);
         assertEq(planBeneficiaries.length, 10);
     }
 
@@ -506,7 +542,7 @@ contract InheritXTest is Test {
     // ============================================
 
     function test_CreatePlan_RevertIf_KYCNotApproved() public {
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -520,14 +556,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.KYCNotApproved.selector);
+        vm.expectRevert(KYCNotApproved.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -539,7 +575,7 @@ contract InheritXTest is Test {
         inheritX.setKYCRequired(false);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -557,9 +593,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -573,7 +609,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -587,14 +623,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             bytes32(0),
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -606,7 +642,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -620,14 +656,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             bytes32(0),
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -639,7 +675,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -653,14 +689,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             bytes32(0)
@@ -672,7 +708,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -681,14 +717,14 @@ contract InheritXTest is Test {
         );
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             0,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -700,7 +736,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -714,14 +750,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             uint64(block.timestamp - 1),
             0,
             CLAIM_CODE_HASH
@@ -733,7 +769,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](0);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](0);
 
         uint256 creationFee = inheritX.previewPlanCreationFee(PLAN_AMOUNT);
         uint256 totalRequired = PLAN_AMOUNT + creationFee;
@@ -741,14 +777,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidBeneficiaries.selector);
+        vm.expectRevert(InvalidBeneficiaries.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -760,7 +796,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](11);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](11);
         for (uint256 i = 0; i < 11; i++) {
             beneficiaries[i] = _createBeneficiaryInput(
                 string(abi.encodePacked("Ben", i)),
@@ -781,9 +817,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -795,7 +831,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](2);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](2);
         beneficiaries[0] = _createBeneficiaryInput("Alice", "alice@test.com", "Daughter", 6000);
         beneficiaries[1] = _createBeneficiaryInput("Bob", "bob@test.com", "Son", 3000); // Only 90%
 
@@ -810,9 +846,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -824,7 +860,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -843,9 +879,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -857,7 +893,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -878,7 +914,7 @@ contract InheritXTest is Test {
             beneficiaries,
             99, // Invalid asset type
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -890,7 +926,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -911,9 +947,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -921,11 +957,7 @@ contract InheritXTest is Test {
     }
 
     function test_CreatePlan_RevertIf_InsufficientBalance() public {
-        vm.startPrank(admin);
-        inheritX.approveKYC(user1, KYC_DATA_HASH);
-        vm.stopPrank();
-
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -936,27 +968,36 @@ contract InheritXTest is Test {
         uint256 creationFee = inheritX.previewPlanCreationFee(PLAN_AMOUNT);
         uint256 totalRequired = PLAN_AMOUNT + creationFee;
 
-        // Use user2 who has less balance
-        vm.prank(user2);
-        IERC20(address(primaryToken)).approve(address(inheritX), totalRequired);
-
+        // Approve KYC for user2
         vm.startPrank(admin);
         inheritX.approveKYC(user2, KYC_DATA_HASH);
         vm.stopPrank();
 
+        // Transfer most of user2's balance away, leaving only half of what's needed
+        uint256 insufficientBalance = totalRequired / 2;
         vm.prank(user2);
+        IERC20(address(primaryToken)).transfer(address(0x999), INITIAL_BALANCE - insufficientBalance);
+
+        // Verify user2 has insufficient balance
+        uint256 user2Balance = IERC20(address(primaryToken)).balanceOf(user2);
+        assertLt(user2Balance, totalRequired, "User2 should have insufficient balance");
+
+        vm.startPrank(user2);
+        IERC20(address(primaryToken)).approve(address(inheritX), totalRequired);
+
         vm.expectRevert();
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
         );
+        vm.stopPrank();
     }
 
     function test_CreatePlan_RevertIf_InvalidDistributionMethod() public {
@@ -964,7 +1005,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -978,12 +1019,12 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
             99, // Invalid distribution method
             FUTURE_DATE,
@@ -997,7 +1038,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1016,9 +1057,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.Monthly),
+            uint8(DistributionMethod.Monthly),
             FUTURE_DATE,
             30, // 30% doesn't divide evenly into 100
             CLAIM_CODE_HASH
@@ -1030,7 +1071,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1049,9 +1090,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.Monthly),
+            uint8(DistributionMethod.Monthly),
             FUTURE_DATE,
             0, // Zero percentage for periodic
             CLAIM_CODE_HASH
@@ -1063,8 +1104,8 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
-        beneficiaries[0] = InheritX.BeneficiaryInput({
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
+        beneficiaries[0] = BeneficiaryInput({
             nameHash: bytes32(0), // Invalid
             emailHash: keccak256(bytes(BENEFICIARY_EMAIL)),
             relationshipHash: keccak256(bytes(BENEFICIARY_RELATIONSHIP)),
@@ -1077,14 +1118,14 @@ contract InheritXTest is Test {
         _approveAndFund(user1, totalRequired, address(primaryToken));
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.createInheritancePlan(
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1115,7 +1156,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1137,9 +1178,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1162,7 +1203,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1180,9 +1221,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1214,7 +1255,26 @@ contract InheritXTest is Test {
 
         assertEq(beneficiaryBalanceAfter - beneficiaryBalanceBefore, expectedAmount);
 
-        InheritX.Beneficiary memory beneficiary = inheritX.planBeneficiaries(globalPlanId, 1);
+        (
+            bytes32 nameHash,
+            bytes32 emailHash,
+            bytes32 relationshipHash,
+            bytes32 beneficiaryDataHash,
+            address claimedBy,
+            bool hasClaimed,
+            uint256 claimedAmount,
+            uint256 allocatedPercentage
+        ) = inheritX.planBeneficiaries(globalPlanId, 1);
+        Beneficiary memory beneficiary = Beneficiary({
+            nameHash: nameHash,
+            emailHash: emailHash,
+            relationshipHash: relationshipHash,
+            beneficiaryDataHash: beneficiaryDataHash,
+            claimedBy: claimedBy,
+            hasClaimed: hasClaimed,
+            claimedAmount: claimedAmount,
+            allocatedPercentage: allocatedPercentage
+        });
         assertTrue(beneficiary.hasClaimed);
         assertEq(beneficiary.claimedBy, beneficiary1);
     }
@@ -1238,7 +1298,7 @@ contract InheritXTest is Test {
         _createPlanForClaiming();
 
         vm.prank(beneficiary1);
-        vm.expectRevert(InheritX.TransferDateNotReached.selector);
+        vm.expectRevert(TransferDateNotReached.selector);
         inheritX.claimInheritance(
             1,
             CLAIM_CODE,
@@ -1254,7 +1314,7 @@ contract InheritXTest is Test {
         vm.warp(FUTURE_DATE);
 
         vm.prank(beneficiary1);
-        vm.expectRevert(InheritX.InvalidClaimCode.selector);
+        vm.expectRevert(InvalidClaimCode.selector);
         inheritX.claimInheritance(
             1,
             "WRONG_CODE",
@@ -1270,7 +1330,7 @@ contract InheritXTest is Test {
         vm.warp(FUTURE_DATE);
 
         vm.prank(beneficiary1);
-        vm.expectRevert(InheritX.InvalidBeneficiaryData.selector);
+        vm.expectRevert(InvalidBeneficiaryData.selector);
         inheritX.claimInheritance(
             1,
             CLAIM_CODE,
@@ -1286,7 +1346,7 @@ contract InheritXTest is Test {
         vm.warp(FUTURE_DATE);
 
         vm.prank(beneficiary1);
-        vm.expectRevert(InheritX.InvalidBeneficiaryData.selector);
+        vm.expectRevert(InvalidBeneficiaryData.selector);
         inheritX.claimInheritance(
             1,
             CLAIM_CODE,
@@ -1298,7 +1358,43 @@ contract InheritXTest is Test {
     }
 
     function test_ClaimInheritance_RevertIf_AlreadyClaimed() public {
-        _createPlanForClaiming();
+        // Create plan with 2 beneficiaries so plan doesn't become Executed after first claim
+        vm.startPrank(admin);
+        inheritX.approveKYC(user1, KYC_DATA_HASH);
+        vm.stopPrank();
+
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](2);
+        beneficiaries[0] = _createBeneficiaryInput(
+            BENEFICIARY_NAME,
+            BENEFICIARY_EMAIL,
+            BENEFICIARY_RELATIONSHIP,
+            5000 // 50%
+        );
+        beneficiaries[1] = _createBeneficiaryInput(
+            "Jane Doe",
+            "jane@example.com",
+            "Daughter",
+            5000 // 50%
+        );
+
+        uint256 creationFee = inheritX.previewPlanCreationFee(PLAN_AMOUNT);
+        uint256 totalRequired = PLAN_AMOUNT + creationFee;
+
+        _approveAndFund(user1, totalRequired, address(primaryToken));
+
+        vm.prank(user1);
+        inheritX.createInheritancePlan(
+            PLAN_NAME_HASH,
+            PLAN_DESC_HASH,
+            beneficiaries,
+            uint8(AssetType.ERC20_TOKEN1),
+            PLAN_AMOUNT,
+            uint8(DistributionMethod.LumpSum),
+            FUTURE_DATE,
+            0,
+            CLAIM_CODE_HASH
+        );
+
         vm.warp(FUTURE_DATE);
 
         vm.startPrank(beneficiary1);
@@ -1311,7 +1407,7 @@ contract InheritXTest is Test {
             1
         );
 
-        vm.expectRevert(InheritX.AlreadyClaimed.selector);
+        vm.expectRevert(AlreadyClaimed.selector);
         inheritX.claimInheritance(
             1,
             CLAIM_CODE,
@@ -1328,7 +1424,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](2);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](2);
         beneficiaries[0] = _createBeneficiaryInput("Alice", "alice@test.com", "Daughter", 6000);
         beneficiaries[1] = _createBeneficiaryInput("Bob", "bob@test.com", "Son", 4000);
 
@@ -1342,9 +1438,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1388,8 +1484,33 @@ contract InheritXTest is Test {
         );
 
         // Plan should be executed
-        InheritX.InheritancePlan memory plan = inheritX.inheritancePlans(1);
-        assertEq(uint8(plan.status), uint8(InheritX.PlanStatus.Executed));
+        (
+            uint256 id,
+            address owner,
+            uint8 beneficiaryCount,
+            AssetType assetType,
+            uint256 assetAmount,
+            uint64 createdAt,
+            uint64 transferDate,
+            PlanStatus status,
+            bool isClaimed,
+            bytes32 claimCodeHash,
+            uint256 escrowId
+        ) = inheritX.inheritancePlans(1);
+        InheritancePlan memory plan = InheritancePlan({
+            id: id,
+            owner: owner,
+            beneficiaryCount: beneficiaryCount,
+            assetType: assetType,
+            assetAmount: assetAmount,
+            createdAt: createdAt,
+            transferDate: transferDate,
+            status: status,
+            isClaimed: isClaimed,
+            claimCodeHash: claimCodeHash,
+            escrowId: escrowId
+        });
+        assertEq(uint8(plan.status), uint8(PlanStatus.Executed));
         assertTrue(plan.isClaimed);
     }
 
@@ -1454,15 +1575,40 @@ contract InheritXTest is Test {
         vm.prank(user1);
         inheritX.pausePlan(1);
 
-        InheritX.InheritancePlan memory plan = inheritX.inheritancePlans(1);
-        assertEq(uint8(plan.status), uint8(InheritX.PlanStatus.Paused));
+        (
+            uint256 id,
+            address owner,
+            uint8 beneficiaryCount,
+            AssetType assetType,
+            uint256 assetAmount,
+            uint64 createdAt,
+            uint64 transferDate,
+            PlanStatus status,
+            bool isClaimed,
+            bytes32 claimCodeHash,
+            uint256 escrowId
+        ) = inheritX.inheritancePlans(1);
+        InheritancePlan memory plan = InheritancePlan({
+            id: id,
+            owner: owner,
+            beneficiaryCount: beneficiaryCount,
+            assetType: assetType,
+            assetAmount: assetAmount,
+            createdAt: createdAt,
+            transferDate: transferDate,
+            status: status,
+            isClaimed: isClaimed,
+            claimCodeHash: claimCodeHash,
+            escrowId: escrowId
+        });
+        assertEq(uint8(plan.status), uint8(PlanStatus.Paused));
     }
 
     function test_PausePlan_RevertIf_NotOwner() public {
         _createPlanForClaiming();
 
         vm.prank(user2);
-        vm.expectRevert(InheritX.Unauthorized.selector);
+        vm.expectRevert(Unauthorized.selector);
         inheritX.pausePlan(1);
     }
 
@@ -1471,7 +1617,7 @@ contract InheritXTest is Test {
 
         vm.startPrank(user1);
         inheritX.pausePlan(1);
-        vm.expectRevert(InheritX.InvalidState.selector);
+        vm.expectRevert(InvalidState.selector);
         inheritX.pausePlan(1); // Already paused
         vm.stopPrank();
     }
@@ -1484,15 +1630,40 @@ contract InheritXTest is Test {
         inheritX.resumePlan(1);
         vm.stopPrank();
 
-        InheritX.InheritancePlan memory plan = inheritX.inheritancePlans(1);
-        assertEq(uint8(plan.status), uint8(InheritX.PlanStatus.Active));
+        (
+            uint256 id,
+            address owner,
+            uint8 beneficiaryCount,
+            AssetType assetType,
+            uint256 assetAmount,
+            uint64 createdAt,
+            uint64 transferDate,
+            PlanStatus status,
+            bool isClaimed,
+            bytes32 claimCodeHash,
+            uint256 escrowId
+        ) = inheritX.inheritancePlans(1);
+        InheritancePlan memory plan = InheritancePlan({
+            id: id,
+            owner: owner,
+            beneficiaryCount: beneficiaryCount,
+            assetType: assetType,
+            assetAmount: assetAmount,
+            createdAt: createdAt,
+            transferDate: transferDate,
+            status: status,
+            isClaimed: isClaimed,
+            claimCodeHash: claimCodeHash,
+            escrowId: escrowId
+        });
+        assertEq(uint8(plan.status), uint8(PlanStatus.Active));
     }
 
     function test_ResumePlan_RevertIf_NotPaused() public {
         _createPlanForClaiming();
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidState.selector);
+        vm.expectRevert(InvalidState.selector);
         inheritX.resumePlan(1);
     }
 
@@ -1510,15 +1681,40 @@ contract InheritXTest is Test {
 
         assertEq(ownerBalanceAfter - ownerBalanceBefore, netAmount);
 
-        InheritX.InheritancePlan memory plan = inheritX.inheritancePlans(1);
-        assertEq(uint8(plan.status), uint8(InheritX.PlanStatus.Cancelled));
+        (
+            uint256 id,
+            address owner,
+            uint8 beneficiaryCount,
+            AssetType assetType,
+            uint256 assetAmount,
+            uint64 createdAt,
+            uint64 transferDate,
+            PlanStatus status,
+            bool isClaimed,
+            bytes32 claimCodeHash,
+            uint256 escrowId
+        ) = inheritX.inheritancePlans(1);
+        InheritancePlan memory plan = InheritancePlan({
+            id: id,
+            owner: owner,
+            beneficiaryCount: beneficiaryCount,
+            assetType: assetType,
+            assetAmount: assetAmount,
+            createdAt: createdAt,
+            transferDate: transferDate,
+            status: status,
+            isClaimed: isClaimed,
+            claimCodeHash: claimCodeHash,
+            escrowId: escrowId
+        });
+        assertEq(uint8(plan.status), uint8(PlanStatus.Cancelled));
     }
 
     function test_CancelPlan_RevertIf_NotOwner() public {
         _createPlanForClaiming();
 
         vm.prank(user2);
-        vm.expectRevert(InheritX.Unauthorized.selector);
+        vm.expectRevert(Unauthorized.selector);
         inheritX.cancelPlan(1);
     }
 
@@ -1537,7 +1733,7 @@ contract InheritXTest is Test {
         );
 
         vm.prank(user1);
-        vm.expectRevert(InheritX.InvalidState.selector);
+        vm.expectRevert(InvalidState.selector);
         inheritX.cancelPlan(1);
     }
 
@@ -1546,7 +1742,7 @@ contract InheritXTest is Test {
 
         vm.startPrank(user1);
         inheritX.cancelPlan(1);
-        vm.expectRevert(InheritX.InvalidState.selector);
+        vm.expectRevert(InvalidState.selector);
         inheritX.cancelPlan(1);
         vm.stopPrank();
     }
@@ -1559,7 +1755,20 @@ contract InheritXTest is Test {
         vm.prank(admin);
         inheritX.updateFeeConfig(300, feeRecipient); // 3%
 
-        InheritX.FeeConfig memory config = inheritX.feeConfig();
+        (
+            uint256 feePercentage,
+            address configFeeRecipient,
+            bool isActive,
+            uint256 minFee,
+            uint256 maxFee
+        ) = inheritX.feeConfig();
+        FeeConfig memory config = FeeConfig({
+            feePercentage: feePercentage,
+            feeRecipient: configFeeRecipient,
+            isActive: isActive,
+            minFee: minFee,
+            maxFee: maxFee
+        });
         assertEq(config.feePercentage, 300);
         assertEq(config.feeRecipient, feeRecipient);
     }
@@ -1572,13 +1781,13 @@ contract InheritXTest is Test {
 
     function test_UpdateFeeConfig_RevertIf_ZeroAddress() public {
         vm.prank(admin);
-        vm.expectRevert(InheritX.ZeroAddress.selector);
+        vm.expectRevert(ZeroAddress.selector);
         inheritX.updateFeeConfig(300, address(0));
     }
 
     function test_UpdateFeeConfig_RevertIf_TooHigh() public {
         vm.prank(admin);
-        vm.expectRevert(InheritX.InvalidInput.selector);
+        vm.expectRevert(InvalidInput.selector);
         inheritX.updateFeeConfig(1001, feeRecipient); // > 10%
     }
 
@@ -1614,7 +1823,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1633,9 +1842,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1653,7 +1862,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1671,9 +1880,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1704,7 +1913,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](2);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](2);
         beneficiaries[0] = _createBeneficiaryInput("Alice", "alice@test.com", "Daughter", 6000);
         beneficiaries[1] = _createBeneficiaryInput("Bob", "bob@test.com", "Son", 4000);
 
@@ -1718,15 +1927,15 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
         );
 
-        InheritX.Beneficiary[] memory planBeneficiaries = inheritX.getPlanBeneficiaries(1);
+        Beneficiary[] memory planBeneficiaries = inheritX.getPlanBeneficiaries(1);
         assertEq(planBeneficiaries.length, 2);
     }
 
@@ -1739,7 +1948,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
         vm.stopPrank();
 
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1757,9 +1966,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1769,9 +1978,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE + 1 days,
             0,
             keccak256("DIFFERENT_CODE")
@@ -1790,9 +1999,13 @@ contract InheritXTest is Test {
         uint256 globalPlanId = inheritX.userPlanIdToGlobal(user1, 1);
         assertEq(globalPlanId, 1);
 
-        InheritX.UserPlanMapping memory mapping = inheritX.globalPlanIdToUser(1);
-        assertEq(mapping.user, user1);
-        assertEq(mapping.userPlanId, 1);
+        (address user, uint256 userPlanId) = inheritX.globalPlanIdToUser(1);
+        UserPlanMapping memory planMapping = UserPlanMapping({
+            user: user,
+            userPlanId: userPlanId
+        });
+        assertEq(planMapping.user, user1);
+        assertEq(planMapping.userPlanId, 1);
     }
 
     function test_FullLifecycle() public {
@@ -1801,7 +2014,7 @@ contract InheritXTest is Test {
         inheritX.approveKYC(user1, KYC_DATA_HASH);
 
         // 2. Create plan
-        InheritX.BeneficiaryInput[] memory beneficiaries = new InheritX.BeneficiaryInput[](1);
+        BeneficiaryInput[] memory beneficiaries = new BeneficiaryInput[](1);
         beneficiaries[0] = _createBeneficiaryInput(
             BENEFICIARY_NAME,
             BENEFICIARY_EMAIL,
@@ -1819,9 +2032,9 @@ contract InheritXTest is Test {
             PLAN_NAME_HASH,
             PLAN_DESC_HASH,
             beneficiaries,
-            uint8(InheritX.AssetType.ERC20_TOKEN1),
+            uint8(AssetType.ERC20_TOKEN1),
             PLAN_AMOUNT,
-            uint8(InheritX.DistributionMethod.LumpSum),
+            uint8(DistributionMethod.LumpSum),
             FUTURE_DATE,
             0,
             CLAIM_CODE_HASH
@@ -1857,8 +2070,33 @@ contract InheritXTest is Test {
         assertEq(balanceAfter - balanceBefore, PLAN_AMOUNT - serviceFee);
 
         // 6. Verify plan is executed
-        InheritX.InheritancePlan memory plan = inheritX.inheritancePlans(1);
-        assertEq(uint8(plan.status), uint8(InheritX.PlanStatus.Executed));
+        (
+            uint256 id,
+            address owner,
+            uint8 beneficiaryCount,
+            AssetType assetType,
+            uint256 assetAmount,
+            uint64 createdAt,
+            uint64 transferDate,
+            PlanStatus status,
+            bool isClaimed,
+            bytes32 claimCodeHash,
+            uint256 escrowId
+        ) = inheritX.inheritancePlans(1);
+        InheritancePlan memory plan = InheritancePlan({
+            id: id,
+            owner: owner,
+            beneficiaryCount: beneficiaryCount,
+            assetType: assetType,
+            assetAmount: assetAmount,
+            createdAt: createdAt,
+            transferDate: transferDate,
+            status: status,
+            isClaimed: isClaimed,
+            claimCodeHash: claimCodeHash,
+            escrowId: escrowId
+        });
+        assertEq(uint8(plan.status), uint8(PlanStatus.Executed));
         assertTrue(plan.isClaimed);
     }
 }

@@ -123,6 +123,13 @@ class ApiService {
     });
   }
 
+  async adminLogin(email: string, password: string) {
+    return this.request<{ token: string; user: User }>('/auth/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
   async getMe() {
     return this.request<User>('/auth/me');
   }
@@ -318,13 +325,23 @@ export interface KYCApplication {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   fullName: string;
   email: string;
+  dateOfBirth: string;
+  nationality: string;
   idType: string;
   idNumber: string;
   idDocumentUrl: string;
+  idExpiryDate: string;
+  address: string;
+  city: string;
+  country: string;
+  postalCode: string;
   submittedAt: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
   rejectionReason: string | null;
+  kycDataHash: string;
+  createdAt: string;
+  updatedAt: string;
   user?: {
     walletAddress: string;
     createdAt: string;

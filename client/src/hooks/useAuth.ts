@@ -1,6 +1,6 @@
 /**
  * Authentication Hook
- * Handles wallet-based authentication with backend
+ * Handles wallet-based and admin email/password authentication with backend
  */
 
 'use client';
@@ -26,6 +26,17 @@ export function useAuth() {
     isAuthenticated: false,
     error: null,
   });
+
+  // Define logout function first (used in useEffect below)
+  const logout = useCallback(() => {
+    api.setToken(null);
+    setState({
+      user: null,
+      isLoading: false,
+      isAuthenticated: false,
+      error: null,
+    });
+  }, []);
 
   // Check existing authentication on mount
   useEffect(() => {
@@ -61,13 +72,60 @@ export function useAuth() {
     checkAuth();
   }, []);
 
-  // Auto-logout when wallet disconnects
+  // Auto-logout when wallet disconnects (only for wallet-based auth, not admin email/password)
+  // Admin users can stay logged in even without wallet connection
   useEffect(() => {
-    if (!isConnected && state.isAuthenticated) {
-      logout();
+    if (!isConnected && state.isAuthenticated && state.user) {
+      // Only auto-logout if user logged in via wallet (has walletAddress matching connected address)
+      // Admin users with email/password login should not be logged out
+      const token = api.getToken();
+      if (token && state.user.role !== 'ADMIN' && state.user.role !== 'SUPER_ADMIN') {
+        // Only logout regular users, not admins
+        logout();
+      }
     }
-  }, [isConnected, state.isAuthenticated]);
+  }, [isConnected, state.isAuthenticated, state.user, logout]);
 
+  /**
+   * Admin login with email/password
+   * Sets token and updates auth state directly
+   */
+  const adminLogin = useCallback(async (email: string, password: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const { data, error } = await api.adminLogin(email, password);
+
+      if (error || !data) {
+        throw new Error(error || 'Login failed');
+      }
+
+      // Store token
+      api.setToken(data.token);
+
+      // Update state immediately with the user data
+      setState({
+        user: data.user,
+        isLoading: false,
+        isAuthenticated: true,
+        error: null,
+      });
+
+      return { success: true, user: data.user };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: message,
+      }));
+      return { success: false, error: message };
+    }
+  }, []);
+
+  /**
+   * Wallet-based login
+   */
   const login = useCallback(async () => {
     if (!address) {
       setState(prev => ({ ...prev, error: 'Wallet not connected' }));
@@ -120,16 +178,6 @@ export function useAuth() {
     }
   }, [address, signMessageAsync]);
 
-  const logout = useCallback(() => {
-    api.setToken(null);
-    setState({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      error: null,
-    });
-  }, []);
-
   const refreshUser = useCallback(async () => {
     if (!state.isAuthenticated) return;
 
@@ -166,6 +214,7 @@ export function useAuth() {
   return {
     ...state,
     login,
+    adminLogin,
     logout,
     refreshUser,
     updateProfile,

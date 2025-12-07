@@ -15,19 +15,20 @@ datasource db {
 // ============================================
 
 model User {
-  id            String    @id @default(uuid())
-  walletAddress String    @unique
-  email         String?   @unique
+  id            String   @id @default(uuid())
+  walletAddress String   @unique
+  email         String?  @unique
+  password      String? // Hashed password for admin login
   name          String?
-  role          UserRole  @default(USER)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          UserRole @default(USER)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
-  kyc           KYC?
-  plans         Plan[]
-  activities    Activity[]
+  kyc        KYC?
+  plans      Plan[]
+  activities Activity[]
 
   @@index([walletAddress])
   @@index([email])
@@ -44,40 +45,40 @@ enum UserRole {
 // ============================================
 
 model KYC {
-  id              String      @id @default(uuid())
-  userId          String      @unique
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Personal Information (stored for verification)
-  fullName        String
-  email           String
-  dateOfBirth     DateTime?
-  nationality     String?
-  
+  fullName    String
+  email       String
+  dateOfBirth DateTime?
+  nationality String?
+
   // ID Document
-  idType          IDType
-  idNumber        String
-  idDocumentUrl   String?     // Path to uploaded document
-  idExpiryDate    DateTime?
-  
+  idType        IDType
+  idNumber      String
+  idDocumentUrl String? // Path to uploaded document
+  idExpiryDate  DateTime?
+
   // Address (optional)
-  address         String?
-  city            String?
-  country         String?
-  postalCode      String?
-  
+  address    String?
+  city       String?
+  country    String?
+  postalCode String?
+
   // Verification
-  status          KYCStatus   @default(PENDING)
-  submittedAt     DateTime    @default(now())
+  status          KYCStatus @default(PENDING)
+  submittedAt     DateTime  @default(now())
   reviewedAt      DateTime?
-  reviewedBy      String?     // Admin who reviewed
+  reviewedBy      String? // Admin who reviewed
   rejectionReason String?
-  
+
   // Hash stored on-chain for verification
-  kycDataHash     String?
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  kycDataHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -102,45 +103,45 @@ enum IDType {
 // ============================================
 
 model Plan {
-  id                  String              @id @default(uuid())
-  userId              String
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // On-chain identifiers
-  globalPlanId        Int?                @unique // From smart contract
-  userPlanId          Int?                // User's local plan ID
-  txHash              String?             // Transaction hash
-  
+  globalPlanId Int?    @unique // From smart contract
+  userPlanId   Int? // User's local plan ID
+  txHash       String? // Transaction hash
+
   // Plan Details (stored unhashed)
-  planName            String
-  planDescription     String
-  
+  planName        String
+  planDescription String
+
   // Asset Information
-  assetType           AssetType
-  assetAmount         String              // Stored as string for precision
-  assetAmountWei      String              // Wei amount
-  
+  assetType      AssetType
+  assetAmount    String // Stored as string for precision
+  assetAmountWei String // Wei amount
+
   // Distribution
-  distributionMethod  DistributionMethod
-  transferDate        DateTime
-  periodicPercentage  Int?                // For non-lump sum
-  
+  distributionMethod DistributionMethod
+  transferDate       DateTime
+  periodicPercentage Int? // For non-lump sum
+
   // Claim Code (encrypted with JWT secret)
-  claimCodeEncrypted  String              // Encrypted claim code
-  claimCodeHash       String              // Keccak256 hash (same as on-chain)
-  
+  claimCodeEncrypted String // Encrypted claim code
+  claimCodeHash      String // Keccak256 hash (same as on-chain)
+
   // Status
-  status              PlanStatus          @default(ACTIVE)
-  isClaimedFully      Boolean             @default(false)
-  
+  status         PlanStatus @default(ACTIVE)
+  isClaimedFully Boolean    @default(false)
+
   // Timestamps
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  beneficiaries       Beneficiary[]
-  distributions       Distribution[]
-  activities          Activity[]
+  beneficiaries Beneficiary[]
+  distributions Distribution[]
+  activities    Activity[]
 
   @@index([userId])
   @@index([globalPlanId])
@@ -175,41 +176,41 @@ enum PlanStatus {
 // ============================================
 
 model Beneficiary {
-  id                  String    @id @default(uuid())
-  planId              String
-  plan                Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
   // Beneficiary Index (matches on-chain)
-  beneficiaryIndex    Int
-  
+  beneficiaryIndex Int
+
   // Personal Info (stored unhashed)
-  name                String
-  email               String
-  relationship        String
-  
+  name         String
+  email        String
+  relationship String
+
   // Hashes (same as on-chain)
-  nameHash            String
-  emailHash           String
-  relationshipHash    String
-  combinedHash        String
-  
+  nameHash         String
+  emailHash        String
+  relationshipHash String
+  combinedHash     String
+
   // Allocation
-  allocatedPercentage Int       // In basis points (10000 = 100%)
-  allocatedAmount     String    // Calculated amount
-  
+  allocatedPercentage Int // In basis points (10000 = 100%)
+  allocatedAmount     String // Calculated amount
+
   // Claim Status
-  hasClaimed          Boolean   @default(false)
-  claimedAt           DateTime?
-  claimedByAddress    String?
-  claimedAmount       String?
-  claimTxHash         String?
-  
+  hasClaimed       Boolean   @default(false)
+  claimedAt        DateTime?
+  claimedByAddress String?
+  claimedAmount    String?
+  claimTxHash      String?
+
   // Notification Status
-  notificationSent    Boolean   @default(false)
-  notificationSentAt  DateTime?
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  notificationSent   Boolean   @default(false)
+  notificationSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([planId, beneficiaryIndex])
   @@index([planId])
@@ -222,26 +223,26 @@ model Beneficiary {
 // ============================================
 
 model Distribution {
-  id              String              @id @default(uuid())
-  planId          String
-  plan            Plan                @relation(fields: [planId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
   // Period Info
-  periodNumber    Int
-  amount          String
-  scheduledDate   DateTime
-  
+  periodNumber  Int
+  amount        String
+  scheduledDate DateTime
+
   // Status
-  status          DistributionStatus  @default(PENDING)
-  executedAt      DateTime?
-  txHash          String?
-  
+  status     DistributionStatus @default(PENDING)
+  executedAt DateTime?
+  txHash     String?
+
   // Notification
-  notificationSent    Boolean         @default(false)
-  notificationSentAt  DateTime?
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  notificationSent   Boolean   @default(false)
+  notificationSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([planId, periodNumber])
   @@index([planId])
@@ -261,20 +262,20 @@ enum DistributionStatus {
 // ============================================
 
 model Activity {
-  id          String        @id @default(uuid())
-  userId      String?
-  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  planId      String?
-  plan        Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
-  
+  id     String  @id @default(uuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  planId String?
+  plan   Plan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
+
   type        ActivityType
   description String
   metadata    Json?
-  
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime      @default(now())
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([planId])
@@ -287,30 +288,30 @@ enum ActivityType {
   USER_REGISTERED
   USER_LOGIN
   USER_LOGOUT
-  
+
   // KYC Activities
   KYC_SUBMITTED
   KYC_APPROVED
   KYC_REJECTED
-  
+
   // Plan Activities
   PLAN_CREATED
   PLAN_UPDATED
   PLAN_PAUSED
   PLAN_RESUMED
   PLAN_CANCELLED
-  
+
   // Claim Activities
   CLAIM_INITIATED
   CLAIM_VERIFIED
   CLAIM_COMPLETED
   CLAIM_FAILED
-  
+
   // Distribution Activities
   DISTRIBUTION_SCHEDULED
   DISTRIBUTION_NOTIFIED
   DISTRIBUTION_EXECUTED
-  
+
   // Admin Activities
   ADMIN_ACTION
   SYSTEM_EVENT
@@ -321,24 +322,24 @@ enum ActivityType {
 // ============================================
 
 model EmailQueue {
-  id          String        @id @default(uuid())
-  to          String
-  subject     String
-  body        String        @db.Text
-  htmlBody    String?       @db.Text
-  
-  status      EmailStatus   @default(PENDING)
-  attempts    Int           @default(0)
-  maxAttempts Int           @default(3)
+  id       String  @id @default(uuid())
+  to       String
+  subject  String
+  body     String  @db.Text
+  htmlBody String? @db.Text
+
+  status      EmailStatus @default(PENDING)
+  attempts    Int         @default(0)
+  maxAttempts Int         @default(3)
   lastError   String?
-  
-  scheduledAt DateTime      @default(now())
+
+  scheduledAt DateTime  @default(now())
   sentAt      DateTime?
-  
-  metadata    Json?
-  
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([scheduledAt])
@@ -356,13 +357,12 @@ enum EmailStatus {
 // ============================================
 
 model Setting {
-  id        String    @id @default(uuid())
-  key       String    @unique
-  value     String    @db.Text
-  type      String    @default("string")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   @db.Text
+  type      String   @default("string")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([key])
 }
-

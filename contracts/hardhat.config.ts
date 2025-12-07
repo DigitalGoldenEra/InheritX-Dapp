@@ -33,6 +33,8 @@ const config: HardhatUserConfig = {
       viaIR: true, // Enable IR-based compilation for complex contracts
       evmVersion: "cancun", // Required for OpenZeppelin v5
     },
+    // Only compile files in the contracts directory, not node_modules
+    overrides: {},
   },
   networks: {
     // Local development network
@@ -81,12 +83,11 @@ const config: HardhatUserConfig = {
     ],
   },
   paths: {
-    sources: "../contracts",
-    tests: "../contracts/test",
+    sources: "./contracts",
+    tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
   },
 };
 
 export default config;
-

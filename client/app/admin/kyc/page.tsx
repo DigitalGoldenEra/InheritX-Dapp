@@ -17,6 +17,8 @@ import {
 } from 'react-icons/fi';
 import { api, KYCApplication, Pagination } from '@/lib/api';
 import { formatDateTime } from '@/lib/contract';
+import { useApproveKYC, useRejectKYC } from '@/hooks/useInheritXContract';
+import { useAccount } from 'wagmi';
 
 type StatusFilter = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -62,16 +64,57 @@ export default function AdminKYCPage() {
     fetchApplications();
   }, [statusFilter, page]);
 
+  const { address } = useAccount();
+  const { approveKYC: approveKYCContract, isPending: isApproving, isConfirmed: isApprovedConfirmed } = useApproveKYC();
+  const { rejectKYC: rejectKYCContract, isPending: isRejecting, isConfirmed: isRejectedConfirmed } = useRejectKYC();
+
+  // Handle contract approval confirmation
+  useEffect(() => {
+    if (isApprovedConfirmed) {
+      fetchApplications();
+      if (selectedApp) {
+        fetchApplications();
+        setSelectedApp(null);
+      }
+    }
+  }, [isApprovedConfirmed]);
+
+  // Handle contract rejection confirmation
+  useEffect(() => {
+    if (isRejectedConfirmed) {
+      fetchApplications();
+      if (selectedApp) {
+        fetchApplications();
+        setSelectedApp(null);
+      }
+      setShowRejectModal(false);
+      setRejectReason('');
+    }
+  }, [isRejectedConfirmed]);
+
   const handleApprove = async (id: string) => {
     setIsProcessing(true);
     setActionError(null);
 
     try {
-      const { data, error } = await api.approveKYC(id);
-      
-      if (error) throw new Error(error);
+      // Get KYC application details
+      const { data: kycData, error: fetchError } = await api.getAdminKYC(id);
+      if (fetchError || !kycData) {
+        throw new Error(fetchError || 'KYC not found');
+      }
 
-      // Update local state
+      if (!kycData.user?.walletAddress) {
+        throw new Error('User wallet address not found');
+      }
+
+      // Approve via contract (which also updates backend)
+      await approveKYCContract(
+        id,
+        kycData.user.walletAddress as `0x${string}`,
+        kycData.kycDataHash || undefined
+      );
+
+      // Update local state optimistically
       setApplications(prev => prev.map(app => 
         app.id === id ? { ...app, status: 'APPROVED' } : app
       ));
@@ -91,11 +134,24 @@ export default function AdminKYCPage() {
     setActionError(null);
 
     try {
-      const { data, error } = await api.rejectKYC(id, rejectReason);
-      
-      if (error) throw new Error(error);
+      // Get KYC application details
+      const { data: kycData, error: fetchError } = await api.getAdminKYC(id);
+      if (fetchError || !kycData) {
+        throw new Error(fetchError || 'KYC not found');
+      }
 
-      // Update local state
+      if (!kycData.user?.walletAddress) {
+        throw new Error('User wallet address not found');
+      }
+
+      // Reject via contract (which also updates backend)
+      await rejectKYCContract(
+        id,
+        kycData.user.walletAddress as `0x${string}`,
+        rejectReason || undefined
+      );
+
+      // Update local state optimistically
       setApplications(prev => prev.map(app => 
         app.id === id ? { ...app, status: 'REJECTED', rejectionReason: rejectReason } : app
       ));
@@ -140,7 +196,7 @@ export default function AdminKYCPage() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input pl-10 w-full"
+            className="input pl-10! w-full"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -292,7 +348,7 @@ export default function AdminKYCPage() {
                 </button>
               </div>
 
-              <div className="modal-body space-y-4">
+              <div className="modal-body space-y-4 max-h-[70vh] overflow-y-auto">
                 {actionError && (
                   <div className="alert alert-error">
                     <FiAlertCircle size={18} />
@@ -309,59 +365,143 @@ export default function AdminKYCPage() {
 
                 <div className="divider" />
 
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Full Name</span>
-                    <span className="font-medium">{selectedApp.fullName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Email</span>
-                    <span className="font-medium">{selectedApp.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">ID Type</span>
-                    <span className="font-medium">{selectedApp.idType.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">ID Number</span>
-                    <span className="font-medium">{selectedApp.idNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Wallet</span>
-                    <span className="font-mono text-sm">
-                      {selectedApp.user?.walletAddress?.slice(0, 10)}...
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Submitted</span>
-                    <span>{formatDateTime(selectedApp.submittedAt)}</span>
-                  </div>
-                  {selectedApp.reviewedAt && (
+                {/* Personal Information */}
+                <div>
+                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Personal Information</h4>
+                  <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
-                      <span className="text-[var(--text-muted)]">Reviewed</span>
-                      <span>{formatDateTime(selectedApp.reviewedAt)}</span>
+                      <span className="text-[var(--text-muted)] text-sm">Full Name</span>
+                      <span className="font-medium text-sm">{selectedApp.fullName}</span>
                     </div>
-                  )}
-                  {selectedApp.rejectionReason && (
-                    <div>
-                      <span className="text-[var(--text-muted)] block mb-1">Rejection Reason</span>
-                      <span className="text-[var(--accent-red)]">{selectedApp.rejectionReason}</span>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Email</span>
+                      <span className="font-medium text-sm">{selectedApp.email}</span>
                     </div>
-                  )}
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Date of Birth</span>
+                      <span className="font-medium text-sm">
+                        {selectedApp.dateOfBirth ? new Date(selectedApp.dateOfBirth).toLocaleDateString() : '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Nationality</span>
+                      <span className="font-medium text-sm">{selectedApp.nationality || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Wallet Address</span>
+                      <span className="font-mono text-sm">
+                        {selectedApp.user?.walletAddress 
+                          ? `${selectedApp.user.walletAddress.slice(0, 6)}...${selectedApp.user.walletAddress.slice(-4)}`
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* ID Information */}
+                <div>
+                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">ID Information</h4>
+                  <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">ID Type</span>
+                      <span className="font-medium text-sm">{selectedApp.idType.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">ID Number</span>
+                      <span className="font-medium text-sm">{selectedApp.idNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Expiry Date</span>
+                      <span className="font-medium text-sm">
+                        {selectedApp.idExpiryDate ? new Date(selectedApp.idExpiryDate).toLocaleDateString() : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address Information */}
+                <div>
+                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Address</h4>
+                  <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Street Address</span>
+                      <span className="font-medium text-sm text-right max-w-[60%]">{selectedApp.address || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">City</span>
+                      <span className="font-medium text-sm">{selectedApp.city || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Country</span>
+                      <span className="font-medium text-sm">{selectedApp.country || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Postal Code</span>
+                      <span className="font-medium text-sm">{selectedApp.postalCode || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submission Details */}
+                <div>
+                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Submission Details</h4>
+                  <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)] text-sm">Submitted At</span>
+                      <span className="font-medium text-sm">{formatDateTime(selectedApp.submittedAt)}</span>
+                    </div>
+                    {selectedApp.reviewedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-[var(--text-muted)] text-sm">Reviewed At</span>
+                        <span className="font-medium text-sm">{formatDateTime(selectedApp.reviewedAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rejection Reason */}
+                {selectedApp.rejectionReason && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Rejection Reason</h4>
+                    <div className="bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/20 rounded-lg p-3">
+                      <span className="text-[var(--accent-red)] text-sm">{selectedApp.rejectionReason}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* ID Document */}
                 <div>
-                  <span className="text-[var(--text-muted)] block mb-2">ID Document</span>
-                  <a
-                    href={selectedApp.idDocumentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-secondary w-full"
-                  >
-                    <FiDownload size={16} />
-                    View Document
-                  </a>
+                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">ID Document</h4>
+                  {selectedApp.idDocumentUrl && selectedApp.idDocumentUrl.startsWith('http') ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg overflow-hidden border border-[var(--border-subtle)]">
+                        <img 
+                          src={selectedApp.idDocumentUrl} 
+                          alt="ID Document" 
+                          className="w-full h-auto max-h-[200px] object-contain bg-[var(--bg-deep)]"
+                        />
+                      </div>
+                      <a
+                        href={selectedApp.idDocumentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-secondary w-full"
+                      >
+                        <FiDownload size={16} />
+                        Open Full Size
+                      </a>
+                    </div>
+                  ) : (
+                    <a
+                      href={selectedApp.idDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-secondary w-full"
+                    >
+                      <FiDownload size={16} />
+                      View Document
+                    </a>
+                  )}
                 </div>
               </div>
 

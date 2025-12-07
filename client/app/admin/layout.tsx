@@ -15,7 +15,8 @@ import {
   FiX,
   FiLogOut,
   FiArrowLeft,
-  FiLock
+  FiLock,
+  FiAlertTriangle
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -31,63 +32,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { isConnected } = useAccount();
-  const { user, isLoading, isAuthenticated, login, logout } = useAuth();
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isClient] = useState(() => typeof window !== 'undefined');
+  const [mounted, setMounted] = useState(false);
 
+  // Handle client-side mounting
   useEffect(() => {
-    if (isConnected && !isAuthenticated && !isLoading && isClient) {
-      login();
-    }
-  }, [isConnected, isAuthenticated, isLoading, login, isClient]);
-
-  useEffect(() => {
-    if (isClient && !isLoading && isAuthenticated && user) {
-      if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-        router.push('/dashboard');
-      }
-    }
-  }, [isClient, isLoading, isAuthenticated, user, router]);
+    setMounted(true);
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
     return pathname.startsWith(href);
   };
 
-  if (!isClient) {
+  // If on login page, render children directly without layout checks
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  // Show loading state while checking auth
+  if (!mounted || isLoading) {
     return (
       <div className="page-loader">
         <div className="spinner" />
+        <p className="mt-4 text-[#A0AEC0]">Loading...</p>
       </div>
     );
   }
 
-  if (!isConnected) {
+  // Not authenticated - redirect to login
+  if (!isAuthenticated) {
+    // Use effect for redirect to avoid render-time navigation
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0A0E12]">
-        <div className="bg-[#12181E] border border-white/6 rounded-[20px] p-12 max-w-[400px] text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[rgba(51,197,224,0.1)] flex items-center justify-center">
-            <FiLock size={28} color="#33C5E0" />
-          </div>
-          <h1 className="text-xl font-bold mb-2">Admin Access Required</h1>
-          <p className="text-[#A0AEC0] text-sm mb-6">
-            Connect your wallet to access the admin dashboard.
-          </p>
-          <ConnectButton />
-        </div>
-      </div>
+      <RedirectToLogin />
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="page-loader">
-        <div className="spinner" />
-        <p className="mt-4 text-[#A0AEC0]">Authenticating...</p>
-      </div>
-    );
-  }
-
+  // Check admin role - if not admin, redirect to user dashboard
   if (user && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[#0A0E12]">
@@ -97,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <h1 className="text-xl font-bold mb-2">Access Denied</h1>
           <p className="text-[#A0AEC0] text-sm mb-6">
-            You don't have permission to access the admin dashboard.
+            You don&apos;t have permission to access the admin dashboard.
           </p>
           <Link href="/dashboard" className="btn btn-primary">
             Go to Dashboard
@@ -106,6 +88,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
+
+  // Wallet is optional for viewing - show banner if not connected
 
   return (
     <>
@@ -125,7 +109,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Logo */}
           <div className="p-5 border-b border-white/6 flex items-center justify-between">
             <Link href="/admin" className="flex items-center gap-2.5 no-underline text-white">
-              <div className="w-9 h-9 bg-gradient-to-br from-[#33C5E0] to-[#1A8A9E] rounded-[10px] flex items-center justify-center font-extrabold text-sm">IX</div>
+              <img src="/img/logo.svg" alt="InheritX logo" width={36} height={36} />
               <div>
                 <span className="font-bold text-lg">InheritX</span>
                 <span className="badge badge-purple ml-2 text-[10px]">Admin</span>
@@ -179,7 +163,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className="flex items-center gap-3 p-3 rounded-[10px] text-[#EF4444] bg-transparent border-none cursor-pointer text-sm font-medium w-full text-left"
               >
                 <FiLogOut size={18} />
-                Disconnect
+                Sign Out
               </button>
             </div>
           </nav>
@@ -212,11 +196,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </header>
 
+          {/* Wallet connection banner - shown when wallet not connected */}
+          {!isConnected && (
+            <div className="mx-6 mt-4 p-4 bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.3)] rounded-xl flex items-center gap-3">
+              <FiAlertTriangle className="text-[#F59E0B] flex-shrink-0" size={20} />
+              <div className="flex-1">
+                <p className="text-sm text-[#F59E0B] font-medium">Wallet not connected</p>
+                <p className="text-xs text-[#A0AEC0]">Connect your wallet to perform blockchain operations like KYC approval.</p>
+              </div>
+              <ConnectButton />
+            </div>
+          )}
+
           <main className="p-6 min-h-[calc(100vh-64px)]">
             {children}
           </main>
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Component to handle redirect to login page
+ * Separated to avoid render-time navigation issues
+ */
+function RedirectToLogin() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/admin/login');
+  }, [router]);
+
+  return (
+    <div className="page-loader">
+      <div className="spinner" />
+      <p className="mt-4 text-[#A0AEC0]">Redirecting to login...</p>
+    </div>
   );
 }

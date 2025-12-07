@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
-import { 
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
+import {
   FiArrowRight,
   FiCheck,
   FiArrowUpRight,
@@ -16,8 +16,8 @@ import {
   FiClock,
   FiGlobe,
   FiMenu,
-  FiX
-} from 'react-icons/fi';
+  FiX,
+} from "react-icons/fi";
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -29,32 +29,56 @@ export default function HomePage() {
   }, []);
 
   const features = [
-    { icon: FiLock, title: 'Non-Custodial', desc: 'You maintain full control. Assets stay in your wallet until distribution.' },
-    { icon: FiShield, title: 'Privacy First', desc: 'Beneficiary data is hashed on-chain. Only verified claims succeed.' },
-    { icon: FiClock, title: 'Flexible Timing', desc: 'Lump sum or scheduled distributions — monthly, quarterly, yearly.' },
-    { icon: FiUsers, title: 'Multi-Beneficiary', desc: 'Add up to 10 beneficiaries with custom allocation percentages.' },
-    { icon: FiZap, title: 'Instant Claims', desc: 'Beneficiaries claim instantly when conditions are met.' },
-    { icon: FiGlobe, title: 'Global Access', desc: 'Access from anywhere. All you need is a Web3 wallet.' },
+    {
+      icon: FiLock,
+      title: "Non-Custodial",
+      desc: "You maintain full control. Assets stay in your wallet until distribution.",
+    },
+    {
+      icon: FiShield,
+      title: "Privacy First",
+      desc: "Beneficiary data is hashed on-chain. Only verified claims succeed.",
+    },
+    {
+      icon: FiClock,
+      title: "Flexible Timing",
+      desc: "Lump sum or scheduled distributions — monthly, quarterly, yearly.",
+    },
+    {
+      icon: FiUsers,
+      title: "Multi-Beneficiary",
+      desc: "Add up to 10 beneficiaries with custom allocation percentages.",
+    },
+    {
+      icon: FiZap,
+      title: "Instant Claims",
+      desc: "Beneficiaries claim instantly when conditions are met.",
+    },
+    {
+      icon: FiGlobe,
+      title: "Global Access",
+      desc: "Access from anywhere. All you need is a Web3 wallet.",
+    },
   ];
 
   const steps = [
-    { step: '01', title: 'Connect', desc: 'Link your Web3 wallet securely' },
-    { step: '02', title: 'Verify', desc: 'Complete KYC verification' },
-    { step: '03', title: 'Create', desc: 'Set up your inheritance plan' },
-    { step: '04', title: 'Relax', desc: 'Assets distribute automatically' },
+    { step: "01", title: "Connect", desc: "Link your Web3 wallet securely" },
+    { step: "02", title: "Verify", desc: "Complete KYC verification" },
+    { step: "03", title: "Create", desc: "Set up your inheritance plan" },
+    { step: "04", title: "Relax", desc: "Assets distribute automatically" },
   ];
 
   const stats = [
-    { value: '$2M+', label: 'Assets Secured' },
-    { value: '500+', label: 'Active Plans' },
-    { value: '24/7', label: 'Availability' },
+    { value: "$2M+", label: "Assets Secured" },
+    { value: "500+", label: "Active Plans" },
+    { value: "24/7", label: "Availability" },
   ];
 
   const securityItems = [
-    'Smart contracts audited by leading security firms',
-    'Beneficiary data hashed using keccak256',
-    'Encrypted claim codes — only beneficiaries can access',
-    'Non-custodial architecture — you control everything',
+    "Smart contracts audited by leading security firms",
+    "Beneficiary data hashed using keccak256",
+    "Encrypted claim codes — only beneficiaries can access",
+    "Non-custodial architecture — you control everything",
   ];
 
   return (
@@ -67,36 +91,59 @@ export default function HomePage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[rgba(5,6,8,0.9)] backdrop-blur-[20px]">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between border border-white/6 rounded-[15px] mt-5">
-          <Link href="/" className="flex items-center gap-3 no-underline text-white font-['Syne',sans-serif] font-bold text-xl">
-            <div className="w-9 h-9 bg-linear-to-br from-primary to-primary-dark rounded-[10px] flex items-center justify-center font-extrabold text-sm text-dark">
-              IX
-            </div>
+          <Link
+            href="/"
+            className="flex items-center gap-1 no-underline text-white font-['Syne',sans-serif] font-bold text-xl"
+          >
+            <img
+              src="/img/logo.svg"
+              alt="InheritX logo"
+              width={36}
+              height={36}
+            />
             InheritX
           </Link>
-          
+
           <div className="hidden md:flex items-center gap-10">
-            <a href="#features" className="text-[#94A3B8] no-underline text-sm font-medium">Features</a>
-            <a href="#how-it-works" className="text-[#94A3B8] no-underline text-sm font-medium">How It Works</a>
-            <a href="#security" className="text-[#94A3B8] no-underline text-sm font-medium">Security</a>
+            <a
+              href="#features"
+              className="text-[#94A3B8] no-underline text-sm font-medium"
+            >
+              Features
+            </a>
+            <a
+              href="#how-it-works"
+              className="text-[#94A3B8] no-underline text-sm font-medium"
+            >
+              How It Works
+            </a>
+            <a
+              href="#security"
+              className="text-[#94A3B8] no-underline text-sm font-medium"
+            >
+              Security
+            </a>
           </div>
 
           <div className="flex items-center gap-3">
-            {mounted && (
-              isConnected ? (
+            {mounted &&
+              (isConnected ? (
                 <Link href="/dashboard" className="btn btn-primary btn-sm">
                   Dashboard <FiArrowRight size={14} />
                 </Link>
               ) : (
                 <ConnectButton.Custom>
                   {({ openConnectModal }) => (
-                    <button onClick={openConnectModal} className="btn btn-primary">
+                    <button
+                      onClick={openConnectModal}
+                      className="btn btn-primary"
+                    >
                       Connect
                     </button>
                   )}
                 </ConnectButton.Custom>
-              )
-            )}
-            <button 
+              ))}
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 bg-transparent border-none cursor-pointer text-[#94A3B8]"
             >
@@ -128,27 +175,29 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg text-[#94A3B8] mb-12 max-w-[540px] mx-auto leading-[1.7]">
-              Create automated inheritance plans for your crypto assets. 
+              Create automated inheritance plans for your crypto assets.
               Trustless, private, and fully on-chain.
             </p>
 
             {/* CTA Buttons */}
             <div className="flex gap-4 justify-center flex-wrap mb-16">
-              {mounted && (
-                isConnected ? (
+              {mounted &&
+                (isConnected ? (
                   <Link href="/dashboard" className="btn btn-primary btn-lg">
                     Open Dashboard <FiArrowUpRight size={18} />
                   </Link>
                 ) : (
                   <ConnectButton.Custom>
                     {({ openConnectModal }) => (
-                      <button onClick={openConnectModal} className="btn btn-primary btn-lg min-w-[180px]">
+                      <button
+                        onClick={openConnectModal}
+                        className="btn btn-primary btn-lg min-w-[180px]"
+                      >
                         Get Started <FiArrowRight size={18} />
                       </button>
                     )}
                   </ConnectButton.Custom>
-                )
-              )}
+                ))}
               <a href="#how-it-works" className="btn btn-secondary btn-lg">
                 Learn More
               </a>
@@ -161,7 +210,9 @@ export default function HomePage() {
                   <div className="font-['Syne',sans-serif] text-[32px] font-extrabold text-white">
                     {stat.value}
                   </div>
-                  <div className="text-[13px] text-[#64748B] mt-1">{stat.label}</div>
+                  <div className="text-[13px] text-[#64748B] mt-1">
+                    {stat.label}
+                  </div>
                 </div>
               ))}
             </div>
@@ -172,7 +223,7 @@ export default function HomePage() {
       {/* Features Section */}
       <section id="features" className="py-[100px] px-6 bg-[#0A0D10]">
         <div className="max-w-[1200px] mx-auto">
-          <motion.div 
+          <motion.div
             className="mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -217,7 +268,7 @@ export default function HomePage() {
       {/* How It Works */}
       <section id="how-it-works" className="py-[100px] px-6">
         <div className="max-w-[1200px] mx-auto">
-          <motion.div 
+          <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -247,9 +298,7 @@ export default function HomePage() {
                 <h3 className="font-['Syne',sans-serif] text-xl font-bold mb-2 text-white">
                   {item.title}
                 </h3>
-                <p className="text-sm text-[#94A3B8]">
-                  {item.desc}
-                </p>
+                <p className="text-sm text-[#94A3B8]">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -274,24 +323,30 @@ export default function HomePage() {
                   Built for trust
                 </h2>
                 <p className="text-[15px] text-[#94A3B8] mb-7 leading-[1.7]">
-                  Your inheritance plans are protected by multiple layers of security. 
-                  We never have access to your assets.
+                  Your inheritance plans are protected by multiple layers of
+                  security. We never have access to your assets.
                 </p>
-                
+
                 <div className="flex flex-col gap-3.5">
                   {securityItems.map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center bg-[#33C5E0] shrink-0 mt-0.5">
                         <FiCheck size={12} color="#000" />
                       </div>
-                      <span className="text-sm text-[#94A3B8] leading-[1.5]">{item}</span>
+                      <span className="text-sm text-[#94A3B8] leading-[1.5]">
+                        {item}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="flex justify-center">
-                <img src="/img/hero-img.png" alt="Security" className="w-full h-full object-contain" />
+                <img
+                  src="/img/hero-img.png"
+                  alt="Security"
+                  className="w-full h-full object-contain"
+                />
               </div>
             </div>
           </motion.div>
@@ -310,23 +365,26 @@ export default function HomePage() {
             Ready to secure your legacy?
           </h2>
           <p className="text-base text-[#94A3B8] mb-9 max-w-[450px] mx-auto">
-            Join thousands who trust InheritX for their digital inheritance planning.
+            Join thousands who trust InheritX for their digital inheritance
+            planning.
           </p>
-          {mounted && (
-            isConnected ? (
+          {mounted &&
+            (isConnected ? (
               <Link href="/dashboard" className="btn btn-primary btn-lg">
                 Go to Dashboard <FiArrowUpRight size={18} />
               </Link>
             ) : (
               <ConnectButton.Custom>
                 {({ openConnectModal }) => (
-                  <button onClick={openConnectModal} className="btn btn-primary btn-lg min-w-[180px]">
+                  <button
+                    onClick={openConnectModal}
+                    className="btn btn-primary btn-lg min-w-[180px]"
+                  >
                     Start Now <FiArrowRight size={18} />
                   </button>
                 )}
               </ConnectButton.Custom>
-            )
-          )}
+            ))}
         </motion.div>
       </section>
 
@@ -343,9 +401,15 @@ export default function HomePage() {
             © 2024 InheritX. Built on Lisk.
           </div>
           <div className="flex gap-6">
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">Terms</a>
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">Privacy</a>
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">Docs</a>
+            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+              Terms
+            </a>
+            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+              Privacy
+            </a>
+            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+              Docs
+            </a>
           </div>
         </div>
       </footer>

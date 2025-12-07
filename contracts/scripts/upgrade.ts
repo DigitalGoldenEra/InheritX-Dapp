@@ -1,3 +1,5 @@
+/// <reference types="node" />
+// @ts-ignore - Hardhat is installed in client/node_modules, available at runtime
 import { ethers, upgrades } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
@@ -8,7 +10,7 @@ import * as path from "path";
  * This script upgrades the InheritX UUPS proxy to a new implementation.
  * 
  * Usage:
- *   npx hardhat run scripts/upgrade.ts --network <network-name>
+ *   npx hardhat run contracts/scripts/upgrade.ts --network <network-name>
  * 
  * Note: Make sure the deployment info exists in ./deployments/<network>.json
  */
@@ -28,6 +30,7 @@ async function main() {
   console.log(`👤 Upgrader: ${upgrader.address}\n`);
 
   // Load existing deployment info
+  // Scripts are in contracts/scripts/, deployments folder is in contracts/
   const deploymentsDir = path.join(__dirname, "..", "deployments");
   const deploymentFile = path.join(deploymentsDir, `${networkName}.json`);
 

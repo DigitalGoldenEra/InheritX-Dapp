@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { verifyWalletSignature, generateToken, authenticateToken } from '../middleware/auth';
@@ -325,6 +326,131 @@ router.put('/profile', authenticateToken, asyncHandler(async (req: Request, res:
   });
 
   res.json(user);
+}));
+
+/**
+ * @swagger
+ * /auth/admin/login:
+ *   post:
+ *     summary: Admin login with email and password
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "admin@inheritx.com"
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "admin123"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   description: JWT authentication token
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: User is not an admin
+ */
+router.post('/admin/login', asyncHandler(async (req: Request, res: Response) => {
+  const adminLoginSchema = z.object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  });
+
+  const { email, password } = adminLoginSchema.parse(req.body);
+
+  // Find user by email (explicitly select password field)
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    select: {
+      id: true,
+      walletAddress: true,
+      email: true,
+      password: true,
+      name: true,
+      role: true,
+      isActive: true,
+      kyc: {
+        select: {
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    throw new AppError('Invalid email or password', 401);
+  }
+
+  // Check if user is admin
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    throw new AppError('Access denied. Admin privileges required.', 403);
+  }
+
+  // Check if user has password set
+  if (!user.password) {
+    throw new AppError('Password not set for this account. Please contact administrator.', 401);
+  }
+
+  // Verify password
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    throw new AppError('Invalid email or password', 401);
+  }
+
+  // Check if user is active
+  if (!user.isActive) {
+    throw new AppError('Account is inactive. Please contact administrator.', 401);
+  }
+
+  // Log login activity
+  await prisma.activity.create({
+    data: {
+      userId: user.id,
+      type: 'USER_LOGIN',
+      description: `Admin logged in via email/password`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    },
+  });
+
+  // Generate token
+  const token = generateToken(user.id, user.walletAddress);
+
+  logger.info('Admin logged in:', { email: user.email, userId: user.id });
+
+  res.json({
+    token,
+    user: {
+      id: user.id,
+      walletAddress: user.walletAddress,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      kycStatus: user.kyc?.status || 'NOT_SUBMITTED',
+    },
+  });
 }));
 
 export default router;

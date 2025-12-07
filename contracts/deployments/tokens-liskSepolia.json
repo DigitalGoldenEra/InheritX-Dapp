@@ -1,0 +1,9 @@
+{
+  "network": "liskSepolia",
+  "chainId": 4202,
+  "primaryToken": "0xc0cDC6FeCd92a764968A317A81d825E5B5bc71b0",
+  "usdtToken": "0x092D935b42a1c1CE93153Fc3E1c84660AA8da82b",
+  "usdcToken": "0x7EEA48bCc948c8ae011F5a56507F876c3B25F9C0",
+  "deployer": "0x4FF814ca633fcf989359a65bc152a2FcD740b807",
+  "deployedAt": "2025-12-07T14:27:12.656Z"
+}

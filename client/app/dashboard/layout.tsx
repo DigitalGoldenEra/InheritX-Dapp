@@ -104,8 +104,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Logo */}
           <div className="p-5 border-b border-white/6 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5 no-underline text-white">
-              <div className="w-9 h-9 bg-gradient-to-br from-[#33C5E0] to-[#1A8A9E] rounded-[10px] flex items-center justify-center font-extrabold text-sm">IX</div>
-              <span className="font-bold text-lg">InheritX</span>
+                <img src="/img/logo.svg" alt="InheritX logo" width={36} height={36} />
+                <span className="font-bold text-lg">InheritX</span>
             </Link>
             <button 
               className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"

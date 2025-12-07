@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.26;
 
 /**
  * @title InheritX - Secure Digital Inheritance Platform
@@ -45,7 +45,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 enum AssetType {
     ERC20_TOKEN1,   // Primary token (e.g., wrapped ETH)
     ERC20_TOKEN2,   // USDT
-    ERC20_TOKEN3,   // USDC
+    ERC20_TOKEN3   // USDC
 }
 
 /**

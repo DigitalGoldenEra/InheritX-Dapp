@@ -11,12 +11,16 @@ import {
   FiClock,
   FiXCircle,
   FiArrowRight,
-  FiActivity
+  FiActivity,
+  FiDollarSign,
+  FiSettings
 } from 'react-icons/fi';
-import { api, AdminStats, Activity } from '@/lib/api';
+import { api, AdminStats } from '@/lib/api';
 import { formatDateTime } from '@/lib/contract';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,80 +40,81 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
+  const statCards = [
+    {
+      icon: <FiUsers size={22} />,
+      label: 'Total Users',
+      value: stats?.users.total || 0,
+      color: '#33C5E0',
+      bg: 'rgba(51, 197, 224, 0.1)',
+    },
+    {
+      icon: <FiClock size={22} />,
+      label: 'Pending KYC',
+      value: stats?.kyc.pending || 0,
+      color: '#8B5CF6',
+      bg: 'rgba(139, 92, 246, 0.1)',
+      link: '/admin/kyc?status=PENDING',
+    },
+    {
+      icon: <FiFileText size={22} />,
+      label: 'Total Plans',
+      value: stats?.plans.total || 0,
+      color: '#10B981',
+      bg: 'rgba(16, 185, 129, 0.1)',
+    },
+    {
+      icon: <FiDollarSign size={22} />,
+      label: 'Total Claims',
+      value: stats?.claims.total || 0,
+      color: '#F59E0B',
+      bg: 'rgba(245, 158, 11, 0.1)',
+    },
+  ];
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="max-w-[1400px] mx-auto">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="card p-6">
-              <div className="skeleton h-12 w-12 rounded-xl mb-4" />
-              <div className="skeleton h-8 w-24 mb-2" />
-              <div className="skeleton h-4 w-20" />
-            </div>
+            <div key={i} className="skeleton h-[140px] rounded-2xl" />
           ))}
         </div>
       </div>
     );
   }
 
-  const statCards = [
-    {
-      icon: <FiUsers size={24} />,
-      label: 'Total Users',
-      value: stats?.users.total || 0,
-      color: 'primary',
-    },
-    {
-      icon: <FiClock size={24} />,
-      label: 'Pending KYC',
-      value: stats?.kyc.pending || 0,
-      color: 'purple',
-      link: '/admin/kyc?status=PENDING',
-    },
-    {
-      icon: <FiFileText size={24} />,
-      label: 'Total Plans',
-      value: stats?.plans.total || 0,
-      color: 'green',
-    },
-    {
-      icon: <FiCheckCircle size={24} />,
-      label: 'Total Claims',
-      value: stats?.claims.total || 0,
-      color: 'amber',
-    },
-  ];
-
-  const getColorClasses = (color: string) => {
-    const colors: Record<string, { bg: string; text: string }> = {
-      primary: { bg: 'bg-[var(--primary-muted)]', text: 'text-[var(--primary)]' },
-      purple: { bg: 'bg-[var(--accent-purple)]/20', text: 'text-[var(--accent-purple)]' },
-      green: { bg: 'bg-[var(--accent-green)]/20', text: 'text-[var(--accent-green)]' },
-      amber: { bg: 'bg-[var(--accent-amber)]/20', text: 'text-[var(--accent-amber)]' },
-    };
-    return colors[color] || colors.primary;
-  };
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-[var(--text-secondary)]">
-          Overview of platform statistics and pending tasks.
-        </p>
+    <div className="max-w-[1400px] mx-auto">
+      {/* Welcome Section */}
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h1 className="text-[28px] font-bold mb-1">
+            Admin Dashboard 🛡️
+          </h1>
+          <p className="text-[#A0AEC0] text-[15px]">
+            Welcome back, {user?.name || 'Admin'}. Here&apos;s the platform overview.
+          </p>
+        </div>
+        <Link href="/admin/kyc?status=PENDING" className="btn btn-primary">
+          <FiShield size={18} />
+          Review KYC
+        </Link>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5 mb-8">
         {statCards.map((stat, index) => {
-          const colors = getColorClasses(stat.color);
           const cardContent = (
             <>
-              <div className={`stat-icon ${colors.bg} ${colors.text}`}>
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                style={{ background: stat.bg, color: stat.color }}
+              >
                 {stat.icon}
               </div>
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-label">{stat.label}</div>
+              <div className="text-[28px] font-bold mb-1">{stat.value}</div>
+              <div className="text-sm text-[#64748B]">{stat.label}</div>
             </>
           );
           
@@ -123,12 +128,12 @@ export default function AdminDashboard() {
               {stat.link ? (
                 <Link
                   href={stat.link}
-                  className="stat-card block cursor-pointer hover:border-[var(--border-hover)]"
+                  className="block bg-[#12181E] border border-white/6 rounded-2xl p-6 cursor-pointer hover:border-white/10 transition-colors"
                 >
                   {cardContent}
                 </Link>
               ) : (
-                <div className="stat-card block">
+                <div className="block bg-[#12181E] border border-white/6 rounded-2xl p-6">
                   {cardContent}
                 </div>
               )}
@@ -137,122 +142,166 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* KYC Overview */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="card">
-            <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <h2 className="text-lg font-semibold">KYC Overview</h2>
-              <Link href="/admin/kyc" className="btn btn-ghost btn-sm">
-                View All <FiArrowRight size={14} />
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+        {/* Recent Activity */}
+        <div className="bg-[#12181E] border border-white/6 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/6 flex items-center justify-between">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <FiActivity size={18} className="text-[#33C5E0]" />
+              Recent Activity
+            </h2>
+            <Link href="/admin/activity" className="flex items-center gap-1 text-[#33C5E0] text-[13px] no-underline">
+              View All <FiArrowRight size={14} />
+            </Link>
+          </div>
+          
+          {!stats?.recentActivity || stats.recentActivity.length === 0 ? (
+            <div className="py-16 px-6 text-center">
+              <FiActivity size={40} color="#64748B" className="mb-4 mx-auto" />
+              <h3 className="text-base font-semibold mb-2">No Recent Activity</h3>
+              <p className="text-[#A0AEC0] text-sm">
+                Platform activity will appear here.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {stats.recentActivity.slice(0, 5).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center px-6 py-4 border-b border-white/4 transition-colors hover:bg-white/2"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[rgba(51,197,224,0.1)] flex items-center justify-center mr-4">
+                    <FiActivity size={18} color="#33C5E0" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {activity.description}
+                    </div>
+                    <div className="text-[13px] text-[#64748B]">
+                      {activity.user?.walletAddress?.slice(0, 6)}...{activity.user?.walletAddress?.slice(-4)} • {formatDateTime(activity.createdAt)}
+                    </div>
+                  </div>
+                  <span className="badge badge-primary text-xs ml-4">
+                    {activity.type.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="flex flex-col gap-5">
+          {/* KYC Overview */}
+          <div className="bg-[#12181E] border border-white/6 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-[#A0AEC0]">KYC Overview</h3>
+              <Link href="/admin/kyc" className="text-primary text-xs">
+                View All
               </Link>
             </div>
-
-            <div className="p-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="card bg-[var(--bg-deep)] p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <FiClock className="text-[var(--accent-purple)]" size={20} />
-                    <span className="text-[var(--text-muted)]">Pending</span>
-                  </div>
-                  <div className="text-2xl font-bold">{stats?.kyc.pending || 0}</div>
-                </div>
-                <div className="card bg-[var(--bg-deep)] p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <FiCheckCircle className="text-[var(--accent-green)]" size={20} />
-                    <span className="text-[var(--text-muted)]">Approved</span>
-                  </div>
-                  <div className="text-2xl font-bold">{stats?.kyc.approved || 0}</div>
-                </div>
-                <div className="card bg-[var(--bg-deep)] p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <FiXCircle className="text-[var(--accent-red)]" size={20} />
-                    <span className="text-[var(--text-muted)]">Rejected</span>
-                  </div>
-                  <div className="text-2xl font-bold">{stats?.kyc.rejected || 0}</div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[rgba(139,92,246,0.1)]">
+                <FiClock size={18} color="#8B5CF6" />
+                <div className="flex-1">
+                  <div className="text-xs text-[#64748B]">Pending</div>
+                  <div className="font-semibold">{stats?.kyc.pending || 0}</div>
                 </div>
               </div>
-
-              {stats?.kyc.pending && stats.kyc.pending > 0 && (
-                <div className="mt-4 p-3 bg-[var(--accent-purple)]/10 border border-[var(--accent-purple)]/20 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">
-                      <strong>{stats.kyc.pending}</strong> KYC applications awaiting review
-                    </span>
-                    <Link href="/admin/kyc?status=PENDING" className="btn btn-sm btn-secondary">
-                      Review Now
-                    </Link>
-                  </div>
+              <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[rgba(16,185,129,0.1)]">
+                <FiCheckCircle size={18} color="#10B981" />
+                <div className="flex-1">
+                  <div className="text-xs text-[#64748B]">Approved</div>
+                  <div className="font-semibold">{stats?.kyc.approved || 0}</div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="card">
-          <div className="p-4 border-b border-[var(--border-subtle)]">
-            <h2 className="text-lg font-semibold">Quick Stats</h2>
-          </div>
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-muted)]">Active Plans</span>
-              <span className="font-semibold">{stats?.plans.active || 0}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-muted)]">KYC Approval Rate</span>
-              <span className="font-semibold">
-                {stats?.kyc.total 
-                  ? Math.round((stats.kyc.approved / stats.kyc.total) * 100)
-                  : 0}%
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-muted)]">Avg. Review Time</span>
-              <span className="font-semibold">~24h</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="card">
-        <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <FiActivity className="text-[var(--primary)]" />
-            Recent Activity
-          </h2>
-          <Link href="/admin/activity" className="btn btn-ghost btn-sm">
-            View All <FiArrowRight size={14} />
-          </Link>
-        </div>
-
-        {!stats?.recentActivity || stats.recentActivity.length === 0 ? (
-          <div className="p-8 text-center text-[var(--text-muted)]">
-            No recent activity
-          </div>
-        ) : (
-          <div className="divide-y divide-[var(--border-subtle)]">
-            {stats.recentActivity.slice(0, 5).map((activity) => (
-              <div key={activity.id} className="p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center">
-                  <FiActivity className="text-[var(--primary)]" size={18} />
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-[10px] bg-[rgba(239,68,68,0.1)]">
+                <FiXCircle size={18} color="#EF4444" />
+                <div className="flex-1">
+                  <div className="text-xs text-[#64748B]">Rejected</div>
+                  <div className="font-semibold">{stats?.kyc.rejected || 0}</div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {activity.description}
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {activity.user?.walletAddress?.slice(0, 6)}...{activity.user?.walletAddress?.slice(-4)} • {formatDateTime(activity.createdAt)}
-                  </p>
+              </div>
+            </div>
+            
+            {stats?.kyc.pending && stats.kyc.pending > 0 && (
+              <Link 
+                href="/admin/kyc?status=PENDING" 
+                className="mt-4 w-full btn btn-sm btn-secondary flex items-center justify-center gap-2"
+              >
+                Review {stats.kyc.pending} Pending
+                <FiArrowRight size={14} />
+              </Link>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-[#12181E] border border-white/6 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold mb-4 text-[#A0AEC0]">Quick Actions</h3>
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/admin/users"
+                className="flex items-center gap-3 p-3 rounded-[10px] no-underline text-inherit transition-colors hover:bg-white/2"
+              >
+                <div className="w-10 h-10 rounded-[10px] bg-[rgba(51,197,224,0.1)] flex items-center justify-center">
+                  <FiUsers size={18} color="#33C5E0" />
                 </div>
-                <span className="badge badge-primary text-xs">
-                  {activity.type.replace('_', ' ')}
+                <div>
+                  <div className="font-medium text-sm">Manage Users</div>
+                  <div className="text-xs text-[#64748B]">View all users</div>
+                </div>
+              </Link>
+              <Link
+                href="/admin/plans"
+                className="flex items-center gap-3 p-3 rounded-[10px] no-underline text-inherit transition-colors hover:bg-white/2"
+              >
+                <div className="w-10 h-10 rounded-[10px] bg-[rgba(139,92,246,0.1)] flex items-center justify-center">
+                  <FiFileText size={18} color="#8B5CF6" />
+                </div>
+                <div>
+                  <div className="font-medium text-sm">All Plans</div>
+                  <div className="text-xs text-[#64748B]">Monitor platform plans</div>
+                </div>
+              </Link>
+              <Link
+                href="/admin/activity"
+                className="flex items-center gap-3 p-3 rounded-[10px] no-underline text-inherit transition-colors hover:bg-white/2"
+              >
+                <div className="w-10 h-10 rounded-[10px] bg-[rgba(16,185,129,0.1)] flex items-center justify-center">
+                  <FiActivity size={18} color="#10B981" />
+                </div>
+                <div>
+                  <div className="font-medium text-sm">Activity Log</div>
+                  <div className="text-xs text-[#64748B]">View all activity</div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Platform Stats */}
+          <div className="bg-[#12181E] border border-white/6 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold mb-4 text-[#A0AEC0]">Platform Stats</h3>
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#64748B]">Active Plans</span>
+                <span className="font-semibold">{stats?.plans.active || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#64748B]">KYC Approval Rate</span>
+                <span className="font-semibold">
+                  {stats?.kyc.total 
+                    ? Math.round((stats.kyc.approved / stats.kyc.total) * 100)
+                    : 0}%
                 </span>
               </div>
-            ))}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#64748B]">Total Users</span>
+                <span className="font-semibold">{stats?.users.total || 0}</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

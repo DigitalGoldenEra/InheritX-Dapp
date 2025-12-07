@@ -13,19 +13,50 @@ async function main() {
 
   // Create super admin user
   const adminWallet = '0x0000000000000000000000000000000000000001'; // Replace with actual admin wallet
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@inheritx.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456'; // Default password
+  
+  // Hash password
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-  const admin = await prisma.user.upsert({
-    where: { walletAddress: adminWallet },
-    update: {},
-    create: {
-      walletAddress: adminWallet,
-      email: process.env.ADMIN_EMAIL || 'admin@inheritx.com',
-      name: 'Super Admin',
-      role: 'SUPER_ADMIN',
-    },
+  // Check if admin exists by email (more reliable)
+  let existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
   });
 
+  // If not found by email, try wallet address
+  if (!existingAdmin) {
+    existingAdmin = await prisma.user.findUnique({
+      where: { walletAddress: adminWallet },
+    });
+  }
+
+  const admin = existingAdmin
+    ? await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: {
+          // Always set password if it doesn't exist, or if explicitly updating
+          password: existingAdmin.password || hashedPassword,
+          email: adminEmail,
+          walletAddress: existingAdmin.walletAddress || adminWallet,
+          name: 'Super Admin',
+          role: 'SUPER_ADMIN',
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          walletAddress: adminWallet,
+          email: adminEmail,
+          password: hashedPassword,
+          name: 'Super Admin',
+          role: 'SUPER_ADMIN',
+        },
+      });
+
   console.log('✅ Created admin user:', admin.id);
+  console.log('📧 Admin Email:', adminEmail);
+  console.log('🔑 Admin Password:', adminPassword);
+  console.log('⚠️  Please change the default password after first login!');
 
   // Create default settings
   const settings = [
