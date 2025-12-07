@@ -245,10 +245,9 @@ export default function KYCPage() {
         </div>
 
         {kycStatus?.status === 'REJECTED' && (
-          <div className="alert alert-error mb-6">
-            <FiAlertCircle size={20} />
+          <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg flex gap-2 items-start mb-6">
             <div>
-              <div className="font-medium">Previous submission rejected</div>
+              <div className="font-medium text-amber-500!">Previous submission rejected</div>
               <div className="text-sm opacity-80">
                 {kycStatus.rejectionReason || 'Please resubmit with valid documents.'}
               </div>
@@ -257,14 +256,14 @@ export default function KYCPage() {
         )}
 
         {error && (
-          <div className="alert alert-error mb-6">
+          <div className="alert alert-error bg-red-500/10! border border-red-500/20! p-4 rounded-lg flex gap-2 items-center mb-6">
             <FiAlertCircle size={20} />
             {error}
           </div>
         )}
 
         {success && (
-          <div className="alert alert-success mb-6">
+          <div className="alert alert-success bg-green-500/10! border border-green-500/20! p-4 rounded-lg flex gap-2 items-center mb-6">
             <FiCheck size={20} />
             {success}
           </div>

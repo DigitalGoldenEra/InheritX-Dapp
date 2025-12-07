@@ -17,8 +17,6 @@ import {
 } from 'react-icons/fi';
 import { api, KYCApplication, Pagination } from '@/lib/api';
 import { formatDateTime } from '@/lib/contract';
-import { useApproveKYC, useRejectKYC } from '@/hooks/useInheritXContract';
-import { useAccount } from 'wagmi';
 
 type StatusFilter = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -35,10 +33,20 @@ export default function AdminKYCPage() {
   
   // Selected application for detail view
   const [selectedApp, setSelectedApp] = useState<KYCApplication | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  // Auto-hide success message after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const fetchApplications = async () => {
     setIsLoading(true);
@@ -64,108 +72,61 @@ export default function AdminKYCPage() {
     fetchApplications();
   }, [statusFilter, page]);
 
-  const { address } = useAccount();
-  const { approveKYC: approveKYCContract, isPending: isApproving, isConfirmed: isApprovedConfirmed } = useApproveKYC();
-  const { rejectKYC: rejectKYCContract, isPending: isRejecting, isConfirmed: isRejectedConfirmed } = useRejectKYC();
-
-  // Handle contract approval confirmation
-  useEffect(() => {
-    if (isApprovedConfirmed) {
-      fetchApplications();
-      if (selectedApp) {
-        fetchApplications();
-        setSelectedApp(null);
-      }
-    }
-  }, [isApprovedConfirmed]);
-
-  // Handle contract rejection confirmation
-  useEffect(() => {
-    if (isRejectedConfirmed) {
-      fetchApplications();
-      if (selectedApp) {
-        fetchApplications();
-        setSelectedApp(null);
-      }
-      setShowRejectModal(false);
-      setRejectReason('');
-    }
-  }, [isRejectedConfirmed]);
-
+  /**
+   * Handle KYC approval
+   * Backend handles both contract call and database update
+   */
   const handleApprove = async (id: string) => {
-    setIsProcessing(true);
     setActionError(null);
+    setSuccessMessage(null);
+    setIsApproving(true);
 
     try {
-      // Get KYC application details
-      const { data: kycData, error: fetchError } = await api.getAdminKYC(id);
-      if (fetchError || !kycData) {
-        throw new Error(fetchError || 'KYC not found');
-      }
-
-      if (!kycData.user?.walletAddress) {
-        throw new Error('User wallet address not found');
-      }
-
-      // Approve via contract (which also updates backend)
-      await approveKYCContract(
-        id,
-        kycData.user.walletAddress as `0x${string}`,
-        kycData.kycDataHash || undefined
-      );
-
-      // Update local state optimistically
-      setApplications(prev => prev.map(app => 
-        app.id === id ? { ...app, status: 'APPROVED' } : app
-      ));
+      const { data, error } = await api.approveKYC(id);
       
-      if (selectedApp?.id === id) {
-        setSelectedApp({ ...selectedApp, status: 'APPROVED' });
+      if (error) {
+        throw new Error(error);
       }
+
+      // Success - refresh the list and show message
+      await fetchApplications();
+      setSelectedApp(null);
+      setSuccessMessage('KYC approved successfully! Email notification sent to user.');
+      
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to approve KYC');
     } finally {
-      setIsProcessing(false);
+      setIsApproving(false);
     }
   };
 
+  /**
+   * Handle KYC rejection
+   * Backend handles both contract call and database update
+   */
   const handleReject = async (id: string) => {
-    setIsProcessing(true);
     setActionError(null);
+    setSuccessMessage(null);
+    setIsRejecting(true);
 
     try {
-      // Get KYC application details
-      const { data: kycData, error: fetchError } = await api.getAdminKYC(id);
-      if (fetchError || !kycData) {
-        throw new Error(fetchError || 'KYC not found');
-      }
-
-      if (!kycData.user?.walletAddress) {
-        throw new Error('User wallet address not found');
-      }
-
-      // Reject via contract (which also updates backend)
-      await rejectKYCContract(
-        id,
-        kycData.user.walletAddress as `0x${string}`,
-        rejectReason || undefined
-      );
-
-      // Update local state optimistically
-      setApplications(prev => prev.map(app => 
-        app.id === id ? { ...app, status: 'REJECTED', rejectionReason: rejectReason } : app
-      ));
+      const { data, error } = await api.rejectKYC(id, rejectReason || undefined);
       
+      if (error) {
+        throw new Error(error);
+      }
+
+      // Success - refresh the list, close modals, and show message
+      await fetchApplications();
+      setSelectedApp(null);
       setShowRejectModal(false);
       setRejectReason('');
+      setSuccessMessage('KYC rejected. Email notification sent to user.');
       
-      if (selectedApp?.id === id) {
-        setSelectedApp({ ...selectedApp, status: 'REJECTED', rejectionReason: rejectReason });
-      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to reject KYC');
     } finally {
-      setIsProcessing(false);
+      setIsRejecting(false);
     }
   };
 
@@ -186,6 +147,48 @@ export default function AdminKYCPage() {
           Review and manage user KYC applications.
         </p>
       </div>
+
+      {/* Success Message */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center gap-3 p-4 bg-green-500/10! border border-green-500/20! rounded-xl"
+          >
+            <FiCheck className="text-green-500! shrink-0" size={20} />
+            <span className="text-green-400! flex-1">{successMessage}</span>
+            <button 
+              onClick={() => setSuccessMessage(null)}
+              className="text-green-400! hover:text-green-300"
+            >
+              <FiX size={18} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Message */}
+      <AnimatePresence>
+        {actionError && !selectedApp && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center gap-3 p-4 bg-red-500/10! border border-red-500/20! rounded-xl"
+          >
+            <FiAlertCircle className="text-red-500! shrink-0" size={20} />
+            <span className="text-red-400! flex-1">{actionError}</span>
+            <button 
+              onClick={() => setActionError(null)}
+              className="text-red-400! hover:text-red-300"
+            >
+              <FiX size={18} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -269,7 +272,7 @@ export default function AdminKYCPage() {
                             >
                               <FiEye size={16} />
                             </button>
-                            {app.status === 'PENDING' && (
+                            {/* {app.status === 'PENDING' && (
                               <>
                                 <button
                                   onClick={() => handleApprove(app.id)}
@@ -286,7 +289,7 @@ export default function AdminKYCPage() {
                                   <FiX size={16} />
                                 </button>
                               </>
-                            )}
+                            )} */}
                           </div>
                         </td>
                       </tr>
@@ -350,7 +353,7 @@ export default function AdminKYCPage() {
 
               <div className="modal-body space-y-4 max-h-[70vh] overflow-y-auto">
                 {actionError && (
-                  <div className="alert alert-error">
+                  <div className="alert! alert-error! bg-red-500/10! border border-red-500/20! p-4 rounded-lg flex gap-3 items-center">
                     <FiAlertCircle size={18} />
                     {actionError}
                   </div>
@@ -367,7 +370,7 @@ export default function AdminKYCPage() {
 
                 {/* Personal Information */}
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Personal Information</h4>
+                  <h4 className="text-sm font-semibold text-primary! mb-3">Personal Information</h4>
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Full Name</span>
@@ -400,7 +403,7 @@ export default function AdminKYCPage() {
 
                 {/* ID Information */}
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">ID Information</h4>
+                  <h4 className="text-sm font-semibold text-primary! mb-3">ID Information</h4>
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">ID Type</span>
@@ -421,7 +424,7 @@ export default function AdminKYCPage() {
 
                 {/* Address Information */}
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Address</h4>
+                  <h4 className="text-sm font-semibold text-primary! mb-3">Address</h4>
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Street Address</span>
@@ -444,7 +447,7 @@ export default function AdminKYCPage() {
 
                 {/* Submission Details */}
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Submission Details</h4>
+                  <h4 className="text-sm font-semibold text-primary! mb-3">Submission Details</h4>
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Submitted At</span>
@@ -471,7 +474,7 @@ export default function AdminKYCPage() {
 
                 {/* ID Document */}
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">ID Document</h4>
+                  <h4 className="text-sm font-semibold text-primary! mb-3">ID Document</h4>
                   {selectedApp.idDocumentUrl && selectedApp.idDocumentUrl.startsWith('http') ? (
                     <div className="space-y-3">
                       <div className="rounded-lg overflow-hidden border border-[var(--border-subtle)]">
@@ -509,7 +512,7 @@ export default function AdminKYCPage() {
                 <div className="modal-footer">
                   <button
                     onClick={() => setShowRejectModal(true)}
-                    disabled={isProcessing}
+                    disabled={isApproving || isRejecting}
                     className="btn btn-secondary text-[var(--accent-red)]"
                   >
                     <FiX size={16} />
@@ -517,15 +520,20 @@ export default function AdminKYCPage() {
                   </button>
                   <button
                     onClick={() => handleApprove(selectedApp.id)}
-                    disabled={isProcessing}
+                    disabled={isApproving || isRejecting}
                     className="btn btn-primary"
                   >
-                    {isProcessing ? (
-                      <FiLoader className="animate-spin" size={16} />
+                    {isApproving ? (
+                      <>
+                        <FiLoader className="animate-spin" size={16} />
+                        Processing...
+                      </>
                     ) : (
-                      <FiCheck size={16} />
+                      <>
+                        <FiCheck size={16} />
+                        Approve
+                      </>
                     )}
-                    Approve
                   </button>
                 </div>
               )}
@@ -578,21 +586,27 @@ export default function AdminKYCPage() {
               <div className="modal-footer">
                 <button
                   onClick={() => setShowRejectModal(false)}
+                  disabled={isRejecting}
                   className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleReject(selectedApp.id)}
-                  disabled={isProcessing}
-                  className="btn bg-[var(--accent-red)] text-white hover:bg-[var(--accent-red)]/80"
+                  disabled={isRejecting}
+                  className="btn bg-red-500! text-white hover:bg-[var(--accent-red)]/80"
                 >
-                  {isProcessing ? (
-                    <FiLoader className="animate-spin" size={16} />
+                  {isRejecting ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      Processing...
+                    </>
                   ) : (
-                    <FiX size={16} />
+                    <>
+                      <FiX size={16} />
+                      Reject Application
+                    </>
                   )}
-                  Reject Application
                 </button>
               </div>
             </motion.div>

@@ -368,8 +368,10 @@ export interface Plan {
   planDescription: string;
   assetType: string;
   assetAmount: string;
+  assetAmountWei: string; // Amount in wei/smallest unit
   distributionMethod: string;
   transferDate: string;
+  periodicPercentage: number | null; // For non-lump sum distributions
   status: string;
   txHash: string | null;
   createdAt: string;

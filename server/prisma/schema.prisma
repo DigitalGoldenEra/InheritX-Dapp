@@ -131,7 +131,7 @@ model Plan {
   claimCodeHash      String // Keccak256 hash (same as on-chain)
 
   // Status
-  status         PlanStatus @default(ACTIVE)
+  status         PlanStatus @default(PENDING)
   isClaimedFully Boolean    @default(false)
 
   // Timestamps
@@ -164,6 +164,7 @@ enum DistributionMethod {
 }
 
 enum PlanStatus {
+  PENDING
   ACTIVE
   EXECUTED
   CANCELLED

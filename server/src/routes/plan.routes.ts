@@ -338,7 +338,7 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
       periodicPercentage: data.periodicPercentage,
       claimCodeEncrypted,
       claimCodeHash,
-      status: 'ACTIVE',
+      status: 'PENDING', // Set to PENDING until contract creation is confirmed
       beneficiaries: {
         create: beneficiaryData,
       },
@@ -498,6 +498,22 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
       globalPlanId: data.globalPlanId,
       userPlanId: data.userPlanId,
       txHash: data.txHash,
+      status: 'ACTIVE', // Update status to ACTIVE when contract creation is confirmed
+    },
+  });
+
+  // Log activity
+  await prisma.activity.create({
+    data: {
+      userId: req.user!.id,
+      planId: plan.id,
+      type: 'PLAN_CREATED',
+      description: `Plan confirmed on-chain with transaction ${data.txHash}`,
+      metadata: {
+        globalPlanId: data.globalPlanId,
+        userPlanId: data.userPlanId,
+        txHash: data.txHash,
+      },
     },
   });
 

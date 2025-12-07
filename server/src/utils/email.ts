@@ -161,56 +161,43 @@ export async function sendKYCApprovalNotification(
   email: string,
   name: string
 ): Promise<boolean> {
-  const subject = 'InheritX: Your KYC Has Been Approved';
+  const subject = 'Your KYC Has Been Approved ✓';
   
+  const text = `Hi ${name},
+
+Great news! Your KYC verification has been approved.
+
+You can now create inheritance plans on InheritX.
+
+Get started: ${FRONTEND_URL}/dashboard/plans
+
+Thanks,
+The InheritX Team`;
+
   const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #0D1A1E 0%, #1C252A 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { color: #33C5E0; margin: 0; font-size: 28px; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .success-box { background: #d4edda; border: 1px solid #28a745; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
-        .btn { display: inline-block; background: #33C5E0; color: #0D1A1E; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; }
-        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>InheritX</h1>
-        </div>
-        <div class="content">
-          <h2>Hello ${name},</h2>
-          
-          <div class="success-box">
-            <h3 style="color: #28a745; margin: 0;">✅ KYC Approved!</h3>
-            <p>Your identity verification has been successfully completed.</p>
-          </div>
-          
-          <p>You can now create inheritance plans on InheritX. Your verified status allows you to:</p>
-          <ul>
-            <li>Create unlimited inheritance plans</li>
-            <li>Add multiple beneficiaries</li>
-            <li>Set various distribution methods</li>
-          </ul>
-          
-          <p style="text-align: center; margin-top: 30px;">
-            <a href="${FRONTEND_URL}/dashboard/plans" class="btn">Create Your First Plan</a>
-          </p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} InheritX. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #10B981;">✓ KYC Approved</h2>
+      
+      <p>Hi ${name},</p>
+      
+      <p>Great news! Your KYC verification has been <strong>approved</strong>.</p>
+      
+      <p>You can now create inheritance plans on InheritX.</p>
+      
+      <p style="margin: 25px 0;">
+        <a href="${FRONTEND_URL}/dashboard/plans" style="background: #33C5E0; color: #0D1A1E; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+          Create Plan →
+        </a>
+      </p>
+      
+      <p style="color: #666; font-size: 14px;">
+        Thanks,<br>
+        The InheritX Team
+      </p>
+    </div>
   `;
 
-  return sendEmail(email, subject, '', html);
+  return sendEmail(email, subject, text, html);
 }
 
 /**
@@ -221,57 +208,57 @@ export async function sendKYCRejectionNotification(
   name: string,
   reason?: string
 ): Promise<boolean> {
-  const subject = 'InheritX: KYC Verification Update';
+  const subject = 'KYC Verification Update';
   
+  const reasonText = reason ? `\n\nReason: ${reason}` : '';
+  
+  const text = `Hi ${name},
+
+Unfortunately, your KYC verification was not approved.${reasonText}
+
+Please review your submission and try again with:
+- A clear, unexpired ID document
+- Information that matches your ID exactly
+
+Resubmit: ${FRONTEND_URL}/dashboard/kyc
+
+Thanks,
+The InheritX Team`;
+
   const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #0D1A1E 0%, #1C252A 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { color: #33C5E0; margin: 0; font-size: 28px; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .warning-box { background: #fff3cd; border: 1px solid #ffc107; padding: 20px; border-radius: 10px; margin: 20px 0; }
-        .btn { display: inline-block; background: #33C5E0; color: #0D1A1E; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; }
-        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>InheritX</h1>
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #EF4444;">KYC Not Approved</h2>
+      
+      <p>Hi ${name},</p>
+      
+      <p>Unfortunately, your KYC verification was <strong>not approved</strong>.</p>
+      
+      ${reason ? `
+        <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 12px 16px; margin: 16px 0;">
+          <strong>Reason:</strong> ${reason}
         </div>
-        <div class="content">
-          <h2>Hello ${name},</h2>
-          
-          <div class="warning-box">
-            <h3 style="color: #856404; margin: 0;">KYC Verification Requires Attention</h3>
-            <p>Unfortunately, we were unable to verify your identity with the information provided.</p>
-            ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-          </div>
-          
-          <p>Please resubmit your KYC with the following in mind:</p>
-          <ul>
-            <li>Ensure your ID document is clear and not expired</li>
-            <li>Make sure all information matches your ID exactly</li>
-            <li>Upload a high-quality image of your document</li>
-          </ul>
-          
-          <p style="text-align: center; margin-top: 30px;">
-            <a href="${FRONTEND_URL}/dashboard/kyc" class="btn">Resubmit KYC</a>
-          </p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} InheritX. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
+      ` : ''}
+      
+      <p>Please review your submission and try again with:</p>
+      <ul style="color: #666;">
+        <li>A clear, unexpired ID document</li>
+        <li>Information that matches your ID exactly</li>
+      </ul>
+      
+      <p style="margin: 25px 0;">
+        <a href="${FRONTEND_URL}/dashboard/kyc" style="background: #33C5E0; color: #0D1A1E; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+          Resubmit KYC →
+        </a>
+      </p>
+      
+      <p style="color: #666; font-size: 14px;">
+        Thanks,<br>
+        The InheritX Team
+      </p>
+    </div>
   `;
 
-  return sendEmail(email, subject, '', html);
+  return sendEmail(email, subject, text, html);
 }
 
 export default {

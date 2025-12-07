@@ -236,7 +236,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <main className="p-6 min-h-[calc(100vh-64px)] py-20">
+          <main className="p-6 min-h-[calc(100vh-64px)] py-10">
             {children}
           </main>
         </div>

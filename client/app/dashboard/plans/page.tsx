@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  FiPlus, 
+  FiPlus,
   FiSearch,
   FiFilter,
   FiMoreVertical,
@@ -12,20 +12,27 @@ import {
   FiPlay,
   FiTrash2,
   FiCopy,
-  FiExternalLink
-} from 'react-icons/fi';
-import { api, Plan, KYCStatus } from '@/lib/api';
-import { formatDate, getPlanStatusBadge, getTokenByAssetType } from '@/lib/contract';
-import CreatePlanModal from '@/components/plans/CreatePlanModal';
-import Link from 'next/link';
+  FiExternalLink,
+} from "react-icons/fi";
+import { api, Plan, KYCStatus } from "@/lib/api";
+import {
+  formatDate,
+  getPlanStatusBadge,
+  getTokenByAssetType,
+} from "@/lib/contract";
+import CreatePlanModal from "@/components/plans/CreatePlanModal";
+import CompletePendingPlanModal from "@/components/plans/CompletePendingPlanModal";
+import Link from "next/link";
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [filter, setFilter] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [pendingPlanToComplete, setPendingPlanToComplete] =
+    useState<Plan | null>(null);
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,27 +50,33 @@ export default function PlansPage() {
       if (plansRes.data) setPlans(plansRes.data);
       if (kycRes.data) setKycStatus(kycRes.data);
     } catch (error) {
-      console.error('Error fetching plans:', error);
+      console.error("Error fetching plans:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredPlans = plans.filter(plan => {
-    const matchesFilter = filter === 'ALL' || plan.status === filter;
-    const matchesSearch = plan.planName.toLowerCase().includes(search.toLowerCase()) ||
-                          plan.planDescription.toLowerCase().includes(search.toLowerCase());
+  const filteredPlans = plans.filter((plan) => {
+    const matchesFilter = filter === "ALL" || plan.status === filter;
+    const matchesSearch =
+      plan.planName.toLowerCase().includes(search.toLowerCase()) ||
+      plan.planDescription.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const handleStatusChange = async (planId: string, newStatus: 'ACTIVE' | 'PAUSED' | 'CANCELLED') => {
+  const handleStatusChange = async (
+    planId: string,
+    newStatus: "ACTIVE" | "PAUSED" | "CANCELLED"
+  ) => {
     try {
       const { data, error } = await api.updatePlanStatus(planId, newStatus);
       if (data) {
-        setPlans(prev => prev.map(p => p.id === planId ? { ...p, status: newStatus } : p));
+        setPlans((prev) =>
+          prev.map((p) => (p.id === planId ? { ...p, status: newStatus } : p))
+        );
       }
     } catch (error) {
-      console.error('Error updating plan status:', error);
+      console.error("Error updating plan status:", error);
     }
     setOpenMenu(null);
   };
@@ -73,15 +86,15 @@ export default function PlansPage() {
       const { data, error } = await api.getClaimCode(planId);
       if (data?.claimCode) {
         await navigator.clipboard.writeText(data.claimCode);
-        alert('Claim code copied to clipboard!');
+        alert("Claim code copied to clipboard!");
       }
     } catch (error) {
-      console.error('Error getting claim code:', error);
+      console.error("Error getting claim code:", error);
     }
     setOpenMenu(null);
   };
 
-  const canCreatePlan = kycStatus?.status === 'APPROVED';
+  const canCreatePlan = kycStatus?.status === "APPROVED";
 
   if (isLoading) {
     return (
@@ -99,7 +112,7 @@ export default function PlansPage() {
             </div>
           ))}
         </div>
-        </div>
+      </div>
     );
   }
 
@@ -107,7 +120,7 @@ export default function PlansPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
+        <div>
           <h1 className="text-2xl font-bold">My Plans</h1>
           <p className="text-[var(--text-secondary)]">
             Manage your inheritance plans
@@ -117,7 +130,7 @@ export default function PlansPage() {
           onClick={() => setShowCreateModal(true)}
           disabled={!canCreatePlan}
           className="btn btn-primary"
-          title={!canCreatePlan ? 'Complete KYC to create plans' : ''}
+          title={!canCreatePlan ? "Complete KYC to create plans" : ""}
         >
           <FiPlus size={18} />
           Create Plan
@@ -126,16 +139,16 @@ export default function PlansPage() {
 
       {/* KYC Warning */}
       {!canCreatePlan && (
-        <div className="alert alert-warning">
+        <div className="flex items-center gap-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
           <div className="flex-1">
-            <div className="font-medium">KYC Required</div>
-            <div className="text-sm opacity-80">
-              {kycStatus?.status === 'PENDING' 
-                ? 'Your KYC is pending review. You can create plans once approved.'
-                : 'Complete KYC verification to create inheritance plans.'}
+            <div className="font-medium text-amber-400">KYC Required</div>
+            <div className="text-sm text-amber-300/80">
+              {kycStatus?.status === "PENDING"
+                ? "Your KYC is pending review. You can create plans once approved."
+                : "Complete KYC verification to create inheritance plans."}
             </div>
           </div>
-          {kycStatus?.status !== 'PENDING' && (
+          {kycStatus?.status !== "PENDING" && (
             <Link href="/dashboard/kyc" className="btn btn-sm btn-secondary">
               Complete KYC
             </Link>
@@ -152,17 +165,21 @@ export default function PlansPage() {
             placeholder="Search plans..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input pl-10 w-full"
+            className="input pl-10! w-full"
           />
         </div>
         <div className="flex gap-2">
-          {['ALL', 'ACTIVE', 'PAUSED', 'EXECUTED'].map((status) => (
+          {["ALL", "PENDING", "ACTIVE", "PAUSED", "EXECUTED"].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`btn btn-sm ${filter === status ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-sm ${
+                filter === status ? "btn-primary" : "btn-secondary"
+              }`}
             >
-              {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
+              {status === "ALL"
+                ? "All"
+                : status.charAt(0) + status.slice(1).toLowerCase()}
             </button>
           ))}
         </div>
@@ -176,23 +193,26 @@ export default function PlansPage() {
           </div>
           <h3 className="text-lg font-semibold mb-2">No Plans Found</h3>
           <p className="text-[var(--text-secondary)] mb-4">
-            {plans.length === 0 
-              ? 'Create your first inheritance plan to get started.'
-              : 'No plans match your current filters.'}
+            {plans.length === 0
+              ? "Create your first inheritance plan to get started."
+              : "No plans match your current filters."}
           </p>
           {plans.length === 0 && canCreatePlan && (
-            <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn btn-primary"
+            >
               <FiPlus size={16} />
               Create Plan
             </button>
           )}
-          </div>
-        ) : (
+        </div>
+      ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredPlans.map((plan, index) => {
             const statusBadge = getPlanStatusBadge(plan.status);
             const token = getTokenByAssetType(plan.assetType);
-            
+
             return (
               <motion.div
                 key={plan.id}
@@ -204,15 +224,17 @@ export default function PlansPage() {
                 {/* Menu */}
                 <div className="absolute top-4 right-4">
                   <button
-                    onClick={() => setOpenMenu(openMenu === plan.id ? null : plan.id)}
-                    className="btn btn-icon btn-ghost"
+                    onClick={() =>
+                      setOpenMenu(openMenu === plan.id ? null : plan.id)
+                    }
+                    className="btn btn-icon bg-primary/5"
                   >
                     <FiMoreVertical size={18} />
                   </button>
-                  
+
                   <AnimatePresence>
                     {openMenu === plan.id && (
-          <motion.div
+                      <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: -10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -220,39 +242,45 @@ export default function PlansPage() {
                       >
                         <Link
                           href={`/dashboard/plans/${plan.id}`}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
                         >
                           <FiEye size={16} />
                           View Details
                         </Link>
                         <button
                           onClick={() => copyClaimCode(plan.id)}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors w-full"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--bg-elevated)] transition-colors w-full"
                         >
                           <FiCopy size={16} />
                           Copy Claim Code
                         </button>
-                        {plan.status === 'ACTIVE' && (
+                        {plan.status === "ACTIVE" && (
                           <button
-                            onClick={() => handleStatusChange(plan.id, 'PAUSED')}
+                            onClick={() =>
+                              handleStatusChange(plan.id, "PAUSED")
+                            }
                             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors w-full"
                           >
                             <FiPause size={16} />
                             Pause Plan
                           </button>
                         )}
-                        {plan.status === 'PAUSED' && (
+                        {plan.status === "PAUSED" && (
                           <button
-                            onClick={() => handleStatusChange(plan.id, 'ACTIVE')}
+                            onClick={() =>
+                              handleStatusChange(plan.id, "ACTIVE")
+                            }
                             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors w-full"
                           >
                             <FiPlay size={16} />
                             Resume Plan
                           </button>
                         )}
-                        {['ACTIVE', 'PAUSED'].includes(plan.status) && (
+                        {["ACTIVE", "PAUSED"].includes(plan.status) && (
                           <button
-                            onClick={() => handleStatusChange(plan.id, 'CANCELLED')}
+                            onClick={() =>
+                              handleStatusChange(plan.id, "CANCELLED")
+                            }
                             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/10 text-[var(--accent-red)] transition-colors w-full"
                           >
                             <FiTrash2 size={16} />
@@ -288,44 +316,81 @@ export default function PlansPage() {
                   </p>
                 </div>
 
+                {/* Proceed to Create Button for PENDING plans */}
+                {plan.status === "PENDING" && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setPendingPlanToComplete(plan)}
+                      className="btn btn-primary w-full"
+                    >
+                      Proceed to Create
+                    </button>
+                  </div>
+                )}
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-[var(--text-muted)]">Amount</span>
-                    <span className="font-medium">{plan.assetAmount} {token?.symbol}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Beneficiaries</span>
-                    <span className="font-medium">{plan.beneficiaries.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Distribution</span>
                     <span className="font-medium">
-                      {plan.distributionMethod.replace('_', ' ')}
+                      {plan.assetAmount} {token?.symbol}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Transfer Date</span>
-                    <span className="font-medium">{formatDate(plan.transferDate)}</span>
+                    <span className="text-[var(--text-muted)]">
+                      Beneficiaries
+                    </span>
+                    <span className="font-medium">
+                      {plan.beneficiaries.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">
+                      Distribution
+                    </span>
+                    <span className="font-medium">
+                      {plan.distributionMethod.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">
+                      Transfer Date
+                    </span>
+                    <span className="font-medium">
+                      {formatDate(plan.transferDate)}
+                    </span>
                   </div>
                 </div>
 
                 {/* Beneficiaries Preview */}
-                <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
-                  <div className="flex -space-x-2">
-                    {plan.beneficiaries.slice(0, 4).map((ben, i) => (
-                      <div
-                        key={ben.id}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--accent-purple)] border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-medium"
-                        title={ben.name}
-                      >
-                        {ben.name.charAt(0).toUpperCase()}
-                      </div>
-                    ))}
-                    {plan.beneficiaries.length > 4 && (
-                      <div className="w-8 h-8 rounded-full bg-[var(--bg-elevated)] border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-medium">
-                        +{plan.beneficiaries.length - 4}
-        </div>
-      )}
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-[var(--text-muted)]">
+                      Beneficiaries
+                    </span>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {plan.beneficiaries.length} {plan.beneficiaries.length === 1 ? 'person' : 'people'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {plan.beneficiaries.slice(0, 4).map((ben, i) => (
+                        <div
+                          key={ben.id}
+                          className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-[var(--accent-purple)] border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-semibold text-white shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                          title={`${ben.name} (${ben.relationship})`}
+                        >
+                          {ben.name.charAt(0).toUpperCase()}
+                        </div>
+                      ))}
+                      {plan.beneficiaries.length > 4 && (
+                        <div 
+                          className="w-9 h-9 rounded-full bg-[var(--bg-elevated)] border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-semibold text-[var(--text-muted)] shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                          title={`${plan.beneficiaries.length - 4} more beneficiary${plan.beneficiaries.length - 4 > 1 ? 'ies' : ''}`}
+                        >
+                          +{plan.beneficiaries.length - 4}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -337,10 +402,24 @@ export default function PlansPage() {
       {/* Create Plan Modal */}
       <AnimatePresence>
         {showCreateModal && (
-      <CreatePlanModal
+          <CreatePlanModal
             onClose={() => setShowCreateModal(false)}
-        onSuccess={() => {
+            onSuccess={() => {
               setShowCreateModal(false);
+              fetchData();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Complete Pending Plan Modal */}
+      <AnimatePresence>
+        {pendingPlanToComplete && (
+          <CompletePendingPlanModal
+            plan={pendingPlanToComplete}
+            onClose={() => setPendingPlanToComplete(null)}
+            onSuccess={() => {
+              setPendingPlanToComplete(null);
               fetchData();
             }}
           />
@@ -349,10 +428,7 @@ export default function PlansPage() {
 
       {/* Click outside to close menu */}
       {openMenu && (
-        <div 
-          className="fixed inset-0 z-0" 
-          onClick={() => setOpenMenu(null)}
-        />
+        <div className="fixed inset-0 z-0" onClick={() => setOpenMenu(null)} />
       )}
     </div>
   );

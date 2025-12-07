@@ -290,7 +290,7 @@ export function useResumePlan() {
 
 /**
  * Hook for approving KYC (admin only)
- * Integrates with backend API
+ * Flow: Contract first -> Backend after confirmation
  */
 export function useApproveKYC() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -306,15 +306,7 @@ export function useApproveKYC() {
         hashToUse = (kycData as any)?.kycDataHash || keccak256(encodePacked(['address'], [userAddress]));
       }
 
-      // Step 2: Approve in backend
-      const { data: backendData, error: apiError } = await api.approveKYC(kycId);
-
-      if (apiError || !backendData) {
-        throw new Error(apiError || 'Failed to approve KYC in backend');
-      }
-
-      // Step 3: Call smart contract
-
+      // Step 2: Call smart contract FIRST (backend update happens after confirmation)
       writeContract({
         address: INHERITX_CONTRACT_ADDRESS,
         abi: inheritXABI,
@@ -322,15 +314,31 @@ export function useApproveKYC() {
         args: [userAddress, hashToUse as `0x${string}`],
       });
 
-      return { backendData, hash };
+      return { kycId, userAddress, hash };
     } catch (err) {
       console.error('Error approving KYC:', err);
       throw err;
     }
   };
 
+  // Call this function AFTER contract transaction is confirmed
+  const updateBackendOnSuccess = async (kycId: string) => {
+    try {
+      const { data: backendData, error: apiError } = await api.approveKYC(kycId);
+      if (apiError) {
+        console.error('Backend update error:', apiError);
+        throw new Error(apiError);
+      }
+      return backendData;
+    } catch (err) {
+      console.error('Error updating backend after KYC approval:', err);
+      throw err;
+    }
+  };
+
   return {
     approveKYC,
+    updateBackendOnSuccess,
     hash,
     isPending,
     isConfirming,
@@ -341,7 +349,7 @@ export function useApproveKYC() {
 
 /**
  * Hook for rejecting KYC (admin only)
- * Integrates with backend API
+ * Flow: Contract first -> Backend after confirmation
  */
 export function useRejectKYC() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -349,14 +357,7 @@ export function useRejectKYC() {
 
   const rejectKYC = async (kycId: string, userAddress: Address, reason?: string) => {
     try {
-      // Step 1: Reject in backend
-      const { data: backendData, error: apiError } = await api.rejectKYC(kycId, reason);
-
-      if (apiError || !backendData) {
-        throw new Error(apiError || 'Failed to reject KYC in backend');
-      }
-
-      // Step 2: Call smart contract
+      // Step 1: Call smart contract FIRST (backend update happens after confirmation)
       writeContract({
         address: INHERITX_CONTRACT_ADDRESS,
         abi: inheritXABI,
@@ -364,15 +365,31 @@ export function useRejectKYC() {
         args: [userAddress],
       });
 
-      return { backendData, hash };
+      return { kycId, reason, hash };
     } catch (err) {
       console.error('Error rejecting KYC:', err);
       throw err;
     }
   };
 
+  // Call this function AFTER contract transaction is confirmed
+  const updateBackendOnSuccess = async (kycId: string, reason?: string) => {
+    try {
+      const { data: backendData, error: apiError } = await api.rejectKYC(kycId, reason);
+      if (apiError) {
+        console.error('Backend update error:', apiError);
+        throw new Error(apiError);
+      }
+      return backendData;
+    } catch (err) {
+      console.error('Error updating backend after KYC rejection:', err);
+      throw err;
+    }
+  };
+
   return {
     rejectKYC,
+    updateBackendOnSuccess,
     hash,
     isPending,
     isConfirming,

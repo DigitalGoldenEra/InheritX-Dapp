@@ -10,8 +10,8 @@ import {
   FiCheck,
   FiLoader
 } from 'react-icons/fi';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseUnits, formatUnits } from 'viem';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+import { parseUnits, formatUnits, decodeEventLog } from 'viem';
 import { api, CreatePlanData, ContractData as ApiContractData } from '@/lib/api';
 import { inheritXABI } from '@/contract/abi';
 import { 
@@ -56,6 +56,7 @@ type Step = 'details' | 'beneficiaries' | 'review' | 'approve' | 'create';
 
 export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalProps) {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [step, setStep] = useState<Step>('details');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,6 +79,26 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   // Contract data from backend
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [backendPlanId, setBackendPlanId] = useState<string | null>(null);
+  
+  // Define plan args type
+  type PlanArgs = [
+    `0x${string}`,
+    `0x${string}`,
+    readonly {
+      nameHash: `0x${string}`;
+      emailHash: `0x${string}`;
+      relationshipHash: `0x${string}`;
+      allocatedPercentage: bigint;
+    }[],
+    number,
+    bigint,
+    number,
+    bigint,
+    number,
+    `0x${string}`
+  ];
+  
+  const [pendingPlanArgs, setPendingPlanArgs] = useState<PlanArgs | null>(null);
 
   // Get selected token
   const selectedToken = TOKENS.find(t => t.id === assetType) || TOKENS[0];
@@ -118,7 +139,13 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     error: createError 
   } = useWriteContract();
   
-  const { isLoading: isCreateWaiting, isSuccess: createSuccess } = useWaitForTransactionReceipt({ 
+  const { 
+    isLoading: isCreateWaiting, 
+    isSuccess: createSuccess, 
+    isError: isCreateError,
+    error: createReceiptError,
+    data: createReceipt 
+  } = useWaitForTransactionReceipt({ 
     hash: createTxHash 
   });
 
@@ -131,30 +158,173 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   };
 
   const totalRequired = calculateTotalRequired();
-  const needsApproval = currentAllowance !== undefined && totalRequired > (currentAllowance as bigint);
+  // Check if approval is needed - use current allowance if available, otherwise assume approval needed
+  const allowanceValue = currentAllowance !== undefined 
+    ? (typeof currentAllowance === 'bigint' ? currentAllowance : BigInt(0))
+    : BigInt(0); // If allowance is still loading, assume 0 and trigger approval
+  const needsApproval = totalRequired > allowanceValue;
 
-  // Handle approval success
+  // Auto-trigger approval if needed (skip allowance check wait)
   useEffect(() => {
-    if (approveSuccess) {
-      refetchAllowance();
-      setStep('create');
+    if (
+      step === 'approve' &&
+      needsApproval &&
+      !approveTxHash &&
+      !isApprovePending &&
+      !approveSuccess &&
+      !approveError &&
+      address &&
+      pendingPlanArgs // Only trigger if we have pending plan args
+    ) {
+      // Automatically trigger approval
+      handleApprove();
     }
-  }, [approveSuccess, refetchAllowance]);
+  }, [
+    step,
+    needsApproval,
+    approveTxHash,
+    isApprovePending,
+    approveSuccess,
+    approveError,
+    address,
+    pendingPlanArgs,
+  ]);
 
-  // Handle create success
+  // Handle approval success - automatically proceed to creation
   useEffect(() => {
-    if (createSuccess && createTxHash && backendPlanId) {
-      // Update backend with transaction hash
-      // In a real app, we'd parse the event logs to get the plan IDs
+    if (approveSuccess && approveTxHash && pendingPlanArgs) {
+      // Automatically proceed to create step
+      setStep('create');
+      
+      // Refetch allowance and wait for it to update before creating
+      const checkAndCreate = async () => {
+        // Wait longer for the approval to be indexed and confirmed on-chain
+        // Retry allowance check up to 5 times with increasing delays
+        let allowanceValue = BigInt(0);
+        let retries = 0;
+        const maxRetries = 5;
+        
+        while (retries < maxRetries && allowanceValue < totalRequired) {
+          // Wait progressively longer: 2s, 3s, 4s, 5s, 6s
+          await new Promise(resolve => setTimeout(resolve, 2000 + (retries * 1000)));
+          
+          // Refetch allowance
+          const { data: updatedAllowance } = await refetchAllowance();
+          
+          // Verify allowance is sufficient before creating
+          allowanceValue = updatedAllowance !== undefined 
+            ? (typeof updatedAllowance === 'bigint' ? updatedAllowance : BigInt(0))
+            : BigInt(0);
+          
+          console.log(`Allowance check attempt ${retries + 1}:`, {
+            allowance: allowanceValue.toString(),
+            required: totalRequired.toString(),
+            allowanceFormatted: formatUnits(allowanceValue, selectedToken.decimals),
+            requiredFormatted: formatUnits(totalRequired, selectedToken.decimals),
+          });
+          
+          if (allowanceValue >= totalRequired) {
+            break; // Allowance is sufficient, proceed
+          }
+          
+          retries++;
+        }
+        
+        if (allowanceValue < totalRequired) {
+          setError(`Insufficient allowance after approval (got ${formatUnits(allowanceValue, selectedToken.decimals)} ${selectedToken.symbol}, need ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}). The approval transaction may still be processing. Please wait a moment and try again.`);
+          setStep('approve');
+          return;
+        }
+      
+        // Also verify balance
+        if (tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance) {
+          setError(`Insufficient balance. Required: ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}, but you have: ${formatUnits(tokenBalance, selectedToken.decimals)} ${selectedToken.symbol}`);
+          setStep('review');
+          return;
+        }
+        
+        // Store args locally before clearing state
+        const argsToUse = pendingPlanArgs;
+        setPendingPlanArgs(null);
+        
+        // Create the plan with stored arguments
+        if (argsToUse && !createTxHash && !isCreatePending) {
+          console.log('Creating plan with args:', {
+            totalRequired: totalRequired.toString(),
+            allowance: allowanceValue.toString(),
+            balance: tokenBalance?.toString(),
+            planArgs: argsToUse,
+          });
+          
+          try {
+            writeCreatePlan({
+              address: INHERITX_CONTRACT_ADDRESS,
+              abi: inheritXABI,
+              functionName: 'createInheritancePlan',
+              args: argsToUse as PlanArgs,
+            });
+          } catch (err) {
+            console.error('Error calling writeCreatePlan:', err);
+            setError('Failed to initiate plan creation transaction. Please try again.');
+            setStep('review');
+          }
+        }
+      };
+      
+      checkAndCreate();
+    }
+  }, [approveSuccess, approveTxHash, pendingPlanArgs, refetchAllowance, createTxHash, isCreatePending, writeCreatePlan, totalRequired, setError]);
+
+  // Handle create success - parse event logs and update backend
+  useEffect(() => {
+    if (createSuccess && createTxHash && backendPlanId && createReceipt) {
+      // Parse PlanCreated event from transaction logs
+      let globalPlanId: number | null = null;
+      let userPlanId: number | null = null;
+
+      try {
+        // Find PlanCreated event in logs
+        const planCreatedEvent = createReceipt.logs.find((log: any) => {
+          try {
+            const decoded = decodeEventLog({
+              abi: inheritXABI,
+              data: log.data,
+              topics: log.topics,
+            });
+            return decoded.eventName === 'PlanCreated';
+          } catch {
+            return false;
+          }
+        });
+
+        if (planCreatedEvent) {
+          const decoded = decodeEventLog({
+            abi: inheritXABI,
+            data: planCreatedEvent.data,
+            topics: planCreatedEvent.topics,
+          }) as { eventName: string; args: { globalPlanId: bigint; userPlanId: bigint } };
+          
+          globalPlanId = Number(decoded.args.globalPlanId);
+          userPlanId = Number(decoded.args.userPlanId);
+        }
+      } catch (error) {
+        console.error('Error parsing event logs:', error);
+      }
+
+      // Update backend with transaction hash and plan IDs
+      // This will also update status from PENDING to ACTIVE
       api.updatePlanContract(backendPlanId, {
-        globalPlanId: 1, // Would get from event
-        userPlanId: 1,   // Would get from event
+        globalPlanId: globalPlanId || 0, // Fallback to 0 if parsing fails
+        userPlanId: userPlanId || 0,
         txHash: createTxHash,
       }).then(() => {
         onSuccess();
+      }).catch((error) => {
+        console.error('Error updating plan contract:', error);
+        setError('Plan created on-chain but failed to update backend. Please contact support.');
       });
     }
-  }, [createSuccess, createTxHash, backendPlanId, onSuccess]);
+  }, [createSuccess, createTxHash, backendPlanId, createReceipt, onSuccess]);
 
   // Handle errors
   useEffect(() => {
@@ -291,11 +461,48 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       setBackendPlanId(data.plan.id);
       setClaimCode(data.plan.claimCode || claimCode);
 
+      // Prepare plan creation arguments
+      const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
+      const transferTimestamp = BigInt(Math.floor(new Date(transferDate).getTime() / 1000));
+      const planArgs: PlanArgs = [
+        extendedContractData.planNameHash as `0x${string}`,
+        extendedContractData.planDescriptionHash as `0x${string}`,
+        (extendedContractData.beneficiaries as ContractBeneficiary[]).map((b) => ({
+          nameHash: b.nameHash as `0x${string}`,
+          emailHash: b.emailHash as `0x${string}`,
+          relationshipHash: b.relationshipHash as `0x${string}`,
+          allocatedPercentage: BigInt(b.allocatedPercentage),
+        })) as readonly {
+          nameHash: `0x${string}`;
+          emailHash: `0x${string}`;
+          relationshipHash: `0x${string}`;
+          allocatedPercentage: bigint;
+        }[],
+        ASSET_TYPE_MAP[assetType],
+        amount,
+        DISTRIBUTION_METHOD_MAP[distributionMethod],
+        transferTimestamp,
+        distributionMethod !== 'LUMP_SUM' ? periodicPercentage : 0,
+        extendedContractData.claimCodeHash as `0x${string}`,
+      ];
+
       // Check if we need approval
       if (needsApproval) {
+        // Store plan args and proceed to approval step
+        setPendingPlanArgs(planArgs as PlanArgs);
         setStep('approve');
       } else {
+        // Approval already sufficient, create plan directly
         setStep('create');
+        // Auto-trigger creation after a short delay
+        setTimeout(() => {
+          writeCreatePlan({
+            address: INHERITX_CONTRACT_ADDRESS,
+            abi: inheritXABI,
+            functionName: 'createInheritancePlan',
+            args: planArgs as PlanArgs,
+          });
+        }, 500);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create plan');
@@ -305,8 +512,16 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   };
 
   const handleApprove = () => {
-    const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
-    const approvalAmount = amount * BigInt(2); // Approve 2x for safety
+    // Approve exactly the amount needed (plan amount + 5% creation fee)
+    const approvalAmount = totalRequired;
+    
+    console.log('Approving tokens:', {
+      approvalAmount: approvalAmount.toString(),
+      approvalAmountFormatted: formatUnits(approvalAmount, selectedToken.decimals),
+      tokenSymbol: selectedToken.symbol,
+      planAmount: assetAmount,
+      totalRequired: formatUnits(totalRequired, selectedToken.decimals),
+    });
     
     writeApprove({
       address: selectedToken.address,
@@ -316,34 +531,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     });
   };
 
-  const handleCreatePlan = () => {
-    if (!contractData) return;
-
-    const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
-    const transferTimestamp = BigInt(Math.floor(new Date(transferDate).getTime() / 1000));
-
-    writeCreatePlan({
-      address: INHERITX_CONTRACT_ADDRESS,
-      abi: inheritXABI,
-      functionName: 'createInheritancePlan',
-      args: [
-        contractData.planNameHash as `0x${string}`,
-        contractData.planDescriptionHash as `0x${string}`,
-        (contractData.beneficiaries as ContractBeneficiary[]).map((b) => ({
-          nameHash: b.nameHash as `0x${string}`,
-          emailHash: b.emailHash as `0x${string}`,
-          relationshipHash: b.relationshipHash as `0x${string}`,
-          allocatedPercentage: BigInt(b.allocatedPercentage),
-        })),
-        ASSET_TYPE_MAP[assetType],
-        amount,
-        DISTRIBUTION_METHOD_MAP[distributionMethod],
-        transferTimestamp,
-        distributionMethod !== 'LUMP_SUM' ? periodicPercentage : 0,
-        contractData.claimCodeHash as `0x${string}`,
-      ],
-    });
-  };
+  // handleCreatePlan is no longer needed - creation is triggered directly with planArgs
 
   return (
     <motion.div
@@ -369,10 +557,11 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         </div>
 
         {/* Steps indicator */}
-        <div className="px-6 py-3 border-b border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2">
+        <div className="px-6 py-4 border-b border-white/10">
+          <div className="flex items-center justify-between">
             {['details', 'beneficiaries', 'review', 'approve', 'create'].map((s, i) => {
               const steps: Step[] = ['details', 'beneficiaries', 'review', 'approve', 'create'];
+              const stepLabels = ['Details', 'Beneficiaries', 'Review', 'Approve', 'Create'];
               const currentIndex = steps.indexOf(step);
               const stepIndex = i;
               const isActive = stepIndex === currentIndex;
@@ -381,15 +570,28 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               if (s === 'approve' && !needsApproval && !approveSuccess) return null;
               
               return (
-                <div key={s} className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                    isCompleted ? 'bg-[var(--accent-green)] text-white' :
-                    isActive ? 'bg-[var(--primary)] text-[var(--bg-void)]' :
-                    'bg-[var(--bg-elevated)] text-[var(--text-muted)]'
-                  }`}>
-                    {isCompleted ? <FiCheck size={12} /> : stepIndex + 1}
+                <div key={s} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                      isCompleted ? 'bg-green-500 text-white' :
+                      isActive ? 'bg-primary text-[#0D1A1E]' :
+                      'bg-[#1A2028] text-gray-500 border border-white/10'
+                    }`}>
+                      {isCompleted ? <FiCheck size={14} /> : stepIndex + 1}
+                    </div>
+                    <span className={`text-xs mt-1.5 font-medium ${
+                      isActive ? 'text-primary' : 
+                      isCompleted ? 'text-green-400' : 
+                      'text-gray-500'
+                    }`}>
+                      {stepLabels[i]}
+                    </span>
                   </div>
-                  {i < 4 && <div className={`w-8 h-0.5 ${isCompleted ? 'bg-[var(--accent-green)]' : 'bg-[var(--bg-elevated)]'}`} />}
+                  {i < 4 && (
+                    <div className={`w-12 h-0.5 mx-2 mb-5 ${
+                      isCompleted ? 'bg-green-500' : 'bg-white/10'
+                    }`} />
+                  )}
                 </div>
               );
             })}
@@ -399,9 +601,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         {/* Body */}
         <div className="modal-body max-h-[60vh] overflow-y-auto">
           {error && (
-            <div className="alert alert-error mb-4">
-              <FiAlertCircle size={18} />
-              {error}
+            <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-4">
+              <FiAlertCircle className="text-red-500 shrink-0" size={18} />
+              <span className="text-red-400 text-sm">{error}</span>
             </div>
           )}
 
@@ -639,7 +841,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     <span className="text-[var(--text-muted)]">Fees (5%)</span>
                     <span>{formatUnits((totalRequired - parseTokenAmount(assetAmount, selectedToken.decimals)), selectedToken.decimals)} {selectedToken.symbol}</span>
                   </div>
-                  <div className="flex justify-between font-medium pt-2 border-t border-[var(--border-subtle)]">
+                  <div className="flex justify-between font-medium pt-2">
                     <span>Total Required</span>
                     <span>{formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}</span>
                   </div>
@@ -656,9 +858,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 ))}
               </div>
 
-              <div className="alert alert-info">
-                <FiAlertCircle size={18} />
-                <div className="text-sm">
+              <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <FiAlertCircle className="text-blue-400 shrink-0 mt-0.5" size={18} />
+                <div className="text-sm text-blue-300">
                   By creating this plan, you agree to lock your tokens in escrow until the transfer date.
                   The claim code will be generated and sent to beneficiaries.
                 </div>
@@ -669,12 +871,25 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
           {/* Step 4: Approve */}
           {step === 'approve' && (
             <div className="text-center py-8">
-              {isApprovePending || isApproveWaiting ? (
+              {isApprovePending || isApproveWaiting || pendingPlanArgs ? (
                 <>
                   <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
                   <h3 className="text-lg font-semibold mt-4">Approving Token...</h3>
                   <p className="text-[var(--text-secondary)] mt-2">
-                    Please confirm the transaction in your wallet
+                    Please confirm the approval transaction in your wallet
+                  </p>
+                  {approveTxHash && (
+                    <a
+                      href={`https://sepolia-blockscout.lisk.com/tx/${approveTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary text-sm mt-4 inline-block hover:underline"
+                    >
+                      View Transaction
+                    </a>
+                  )}
+                  <p className="text-xs text-[var(--text-muted)] mt-4">
+                    After approval, the plan creation will proceed automatically
                   </p>
                 </>
               ) : (
@@ -683,12 +898,25 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     <FiCheck className="text-[var(--primary)]" size={32} />
                   </div>
                   <h3 className="text-lg font-semibold">Approve Token Spending</h3>
-                  <p className="text-[var(--text-secondary)] mt-2 mb-6">
-                    Allow InheritX to use your {selectedToken.symbol} tokens
+                  <p className="text-[var(--text-secondary)] mt-2 mb-4">
+                    You need to approve InheritX to spend your {selectedToken.symbol} tokens
                   </p>
-                  <button onClick={handleApprove} className="btn btn-primary">
-                    Approve {selectedToken.symbol}
+                  <div className="bg-[var(--bg-deep)] p-3 rounded-lg mb-6 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--text-muted)]">Amount to approve:</span>
+                      <span className="font-medium">{formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleApprove}
+                    className="btn btn-primary w-full"
+                    disabled={!address}
+                  >
+                    Approve {selectedToken.symbol} - Confirm in Wallet
                   </button>
+                  <p className="text-xs text-[var(--text-muted)] mt-3">
+                    After approval, the plan creation will proceed automatically
+                  </p>
                 </>
               )}
             </div>
@@ -702,8 +930,18 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
                   <h3 className="text-lg font-semibold mt-4">Creating Plan...</h3>
                   <p className="text-[var(--text-secondary)] mt-2">
-                    {isCreateWaiting ? 'Confirming transaction...' : 'Please confirm the transaction in your wallet'}
+                    {isCreateWaiting ? 'Confirming transaction...' : 'Please confirm the creation transaction in your wallet'}
                   </p>
+                  {createTxHash && (
+                    <a
+                      href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary text-sm mt-4 inline-block hover:underline"
+                    >
+                      View Transaction
+                    </a>
+                  )}
                 </>
               ) : createSuccess ? (
                 <>
@@ -727,18 +965,21 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     Done
                   </button>
                 </>
+              ) : pendingPlanArgs ? (
+                <>
+                  <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
+                  <h3 className="text-lg font-semibold mt-4">Verifying Approval...</h3>
+                  <p className="text-[var(--text-secondary)] mt-2">
+                    Checking token allowance before creating plan
+                  </p>
+                </>
               ) : (
                 <>
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--primary-muted)] flex items-center justify-center">
-                    <FiCheck className="text-[var(--primary)]" size={32} />
-                  </div>
-                  <h3 className="text-lg font-semibold">Create Plan</h3>
-                  <p className="text-[var(--text-secondary)] mt-2 mb-6">
-                    Sign the transaction to create your inheritance plan
+                  <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
+                  <h3 className="text-lg font-semibold mt-4">Preparing Creation...</h3>
+                  <p className="text-[var(--text-secondary)] mt-2">
+                    Setting up plan creation transaction
                   </p>
-                  <button onClick={handleCreatePlan} className="btn btn-primary">
-                    Create Plan
-                  </button>
                 </>
               )}
             </div>

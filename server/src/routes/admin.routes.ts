@@ -10,6 +10,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { authenticateToken, requireAdmin, requireSuperAdmin } from '../middleware/auth';
 import { sendKYCApprovalNotification, sendKYCRejectionNotification } from '../utils/email';
 import { logger } from '../utils/logger';
+import { approveKYCOnContract, rejectKYCOnContract, isContractConfigured } from '../utils/contract';
 
 const router = Router();
 
@@ -337,7 +338,30 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
     throw new AppError('KYC is not pending', 400);
   }
 
-  // Update KYC status
+  if (!kyc.user?.walletAddress) {
+    throw new AppError('User wallet address not found', 400);
+  }
+
+  if (!kyc.kycDataHash) {
+    throw new AppError('KYC data hash not found', 400);
+  }
+
+  // Step 1: Call smart contract FIRST
+  logger.info('Approving KYC on blockchain...', {
+    kycId: kyc.id,
+    userAddress: kyc.user.walletAddress,
+  });
+
+  const contractResult = await approveKYCOnContract(
+    kyc.user.walletAddress,
+    kyc.kycDataHash
+  );
+
+  if (!contractResult.success) {
+    throw new AppError(contractResult.error || 'Failed to approve KYC on blockchain', 500);
+  }
+
+  // Step 2: Update database ONLY after contract success
   const updatedKYC = await prisma.kYC.update({
     where: { id: req.params.id },
     data: {
@@ -347,13 +371,16 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
     },
   });
 
-  // Log activity
+  // Log activity with transaction hash
   await prisma.activity.create({
     data: {
       userId: kyc.userId,
       type: 'KYC_APPROVED',
       description: `KYC approved by admin`,
-      metadata: { adminId: req.user!.id },
+      metadata: { 
+        adminId: req.user!.id,
+        txHash: contractResult.txHash,
+      },
     },
   });
 
@@ -364,11 +391,13 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
     kycId: kyc.id,
     userId: kyc.userId,
     adminId: req.user!.id,
+    txHash: contractResult.txHash,
   });
 
   res.json({
     message: 'KYC approved successfully',
     kyc: updatedKYC,
+    txHash: contractResult.txHash,
   });
 }));
 
@@ -414,6 +443,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
 
   const kyc = await prisma.kYC.findUnique({
     where: { id: req.params.id },
+    include: { user: true },
   });
 
   if (!kyc) {
@@ -424,7 +454,23 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     throw new AppError('KYC is not pending', 400);
   }
 
-  // Update KYC status
+  if (!kyc.user?.walletAddress) {
+    throw new AppError('User wallet address not found', 400);
+  }
+
+  // Step 1: Call smart contract FIRST
+  logger.info('Rejecting KYC on blockchain...', {
+    kycId: kyc.id,
+    userAddress: kyc.user.walletAddress,
+  });
+
+  const contractResult = await rejectKYCOnContract(kyc.user.walletAddress);
+
+  if (!contractResult.success) {
+    throw new AppError(contractResult.error || 'Failed to reject KYC on blockchain', 500);
+  }
+
+  // Step 2: Update database ONLY after contract success
   const updatedKYC = await prisma.kYC.update({
     where: { id: req.params.id },
     data: {
@@ -435,13 +481,17 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     },
   });
 
-  // Log activity
+  // Log activity with transaction hash
   await prisma.activity.create({
     data: {
       userId: kyc.userId,
       type: 'KYC_REJECTED',
       description: `KYC rejected by admin. Reason: ${reason || 'Not specified'}`,
-      metadata: { adminId: req.user!.id, reason },
+      metadata: { 
+        adminId: req.user!.id, 
+        reason,
+        txHash: contractResult.txHash,
+      },
     },
   });
 
@@ -453,11 +503,13 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     userId: kyc.userId,
     adminId: req.user!.id,
     reason,
+    txHash: contractResult.txHash,
   });
 
   res.json({
     message: 'KYC rejected',
     kyc: updatedKYC,
+    txHash: contractResult.txHash,
   });
 }));
 

@@ -8,18 +8,21 @@ import { keccak256, toHex, encodePacked } from 'viem';
 // Contract address - update with deployed address
 export const INHERITX_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000';
 
-// Token addresses - update with deployed addresses
+// Token addresses on Lisk Sepolia
+// ETH: 0x6033f7f88332b8db6ad452b7c6d5bb643990ae3f (Wrapped ETH)
+// USDC: Set in NEXT_PUBLIC_TOKEN2_ADDRESS
+// USDT: Set in NEXT_PUBLIC_TOKEN3_ADDRESS
 export const TOKEN_ADDRESSES = {
-  ERC20_TOKEN1: process.env.NEXT_PUBLIC_TOKEN1_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000',
-  ERC20_TOKEN2: process.env.NEXT_PUBLIC_TOKEN2_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000',
-  ERC20_TOKEN3: process.env.NEXT_PUBLIC_TOKEN3_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000',
+  ERC20_TOKEN1: process.env.NEXT_PUBLIC_TOKEN1_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000', // ETH
+  ERC20_TOKEN2: process.env.NEXT_PUBLIC_TOKEN2_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000', // USDC
+  ERC20_TOKEN3: process.env.NEXT_PUBLIC_TOKEN3_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000', // USDT
 };
 
 // Token metadata
 export const TOKENS = [
-  { id: 'ERC20_TOKEN1', name: 'WETH', symbol: 'WETH', decimals: 18, address: TOKEN_ADDRESSES.ERC20_TOKEN1 },
-  { id: 'ERC20_TOKEN2', name: 'USDT', symbol: 'USDT', decimals: 6, address: TOKEN_ADDRESSES.ERC20_TOKEN2 },
-  { id: 'ERC20_TOKEN3', name: 'USDC', symbol: 'USDC', decimals: 6, address: TOKEN_ADDRESSES.ERC20_TOKEN3 },
+  { id: 'ERC20_TOKEN1', name: 'Ethereum', symbol: 'ETH', decimals: 18, address: TOKEN_ADDRESSES.ERC20_TOKEN1 },
+  { id: 'ERC20_TOKEN2', name: 'USD Coin', symbol: 'USDC', decimals: 6, address: TOKEN_ADDRESSES.ERC20_TOKEN2 },
+  { id: 'ERC20_TOKEN3', name: 'Tether USD', symbol: 'USDT', decimals: 6, address: TOKEN_ADDRESSES.ERC20_TOKEN3 },
 ];
 
 // Distribution methods
