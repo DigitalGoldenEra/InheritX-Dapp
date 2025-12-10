@@ -60,6 +60,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const [step, setStep] = useState<Step>('details');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [txStep, setTxStep] = useState<'idle' | 'approving' | 'creating'>('idle');
   
   // Plan details
   const [planName, setPlanName] = useState('');
@@ -98,7 +99,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     `0x${string}`
   ];
   
-  const [pendingPlanArgs, setPendingPlanArgs] = useState<PlanArgs | null>(null);
+  const [planArgs, setPlanArgs] = useState<PlanArgs | null>(null);
 
   // Get selected token
   const selectedToken = TOKENS.find(t => t.id === assetType) || TOKENS[0];
@@ -111,23 +112,21 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     args: address ? [address] : undefined,
   });
 
-  // Check current allowance
-  const { data: currentAllowance, refetch: refetchAllowance } = useReadContract({
-    address: selectedToken.address,
-    abi: ERC20_ABI,
-    functionName: 'allowance',
-    args: address ? [address, INHERITX_CONTRACT_ADDRESS] : undefined,
-  });
-
   // Approval transaction
   const { 
     writeContract: writeApprove, 
     data: approveTxHash, 
     isPending: isApprovePending,
-    error: approveError 
+    error: approveError,
+    reset: resetApprove
   } = useWriteContract();
   
-  const { isLoading: isApproveWaiting, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ 
+  const { 
+    isLoading: isApproveWaiting, 
+    isSuccess: isApprovalConfirmed,
+    isError: isApproveError,
+    error: approveReceiptError
+  } = useWaitForTransactionReceipt({ 
     hash: approveTxHash 
   });
 
@@ -136,7 +135,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     writeContract: writeCreatePlan, 
     data: createTxHash, 
     isPending: isCreatePending,
-    error: createError 
+    error: createError,
+    reset: resetCreate
   } = useWriteContract();
   
   const { 
@@ -158,122 +158,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   };
 
   const totalRequired = calculateTotalRequired();
-  // Check if approval is needed - use current allowance if available, otherwise assume approval needed
-  const allowanceValue = currentAllowance !== undefined 
-    ? (typeof currentAllowance === 'bigint' ? currentAllowance : BigInt(0))
-    : BigInt(0); // If allowance is still loading, assume 0 and trigger approval
-  const needsApproval = totalRequired > allowanceValue;
-
-  // Auto-trigger approval if needed (skip allowance check wait)
-  useEffect(() => {
-    if (
-      step === 'approve' &&
-      needsApproval &&
-      !approveTxHash &&
-      !isApprovePending &&
-      !approveSuccess &&
-      !approveError &&
-      address &&
-      pendingPlanArgs // Only trigger if we have pending plan args
-    ) {
-      // Automatically trigger approval
-      handleApprove();
-    }
-  }, [
-    step,
-    needsApproval,
-    approveTxHash,
-    isApprovePending,
-    approveSuccess,
-    approveError,
-    address,
-    pendingPlanArgs,
-  ]);
-
-  // Handle approval success - automatically proceed to creation
-  useEffect(() => {
-    if (approveSuccess && approveTxHash && pendingPlanArgs) {
-      // Automatically proceed to create step
-      setStep('create');
-      
-      // Refetch allowance and wait for it to update before creating
-      const checkAndCreate = async () => {
-        // Wait longer for the approval to be indexed and confirmed on-chain
-        // Retry allowance check up to 5 times with increasing delays
-        let allowanceValue = BigInt(0);
-        let retries = 0;
-        const maxRetries = 5;
-        
-        while (retries < maxRetries && allowanceValue < totalRequired) {
-          // Wait progressively longer: 2s, 3s, 4s, 5s, 6s
-          await new Promise(resolve => setTimeout(resolve, 2000 + (retries * 1000)));
-          
-          // Refetch allowance
-          const { data: updatedAllowance } = await refetchAllowance();
-          
-          // Verify allowance is sufficient before creating
-          allowanceValue = updatedAllowance !== undefined 
-            ? (typeof updatedAllowance === 'bigint' ? updatedAllowance : BigInt(0))
-            : BigInt(0);
-          
-          console.log(`Allowance check attempt ${retries + 1}:`, {
-            allowance: allowanceValue.toString(),
-            required: totalRequired.toString(),
-            allowanceFormatted: formatUnits(allowanceValue, selectedToken.decimals),
-            requiredFormatted: formatUnits(totalRequired, selectedToken.decimals),
-          });
-          
-          if (allowanceValue >= totalRequired) {
-            break; // Allowance is sufficient, proceed
-          }
-          
-          retries++;
-        }
-        
-        if (allowanceValue < totalRequired) {
-          setError(`Insufficient allowance after approval (got ${formatUnits(allowanceValue, selectedToken.decimals)} ${selectedToken.symbol}, need ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}). The approval transaction may still be processing. Please wait a moment and try again.`);
-          setStep('approve');
-          return;
-        }
-      
-        // Also verify balance
-        if (tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance) {
-          setError(`Insufficient balance. Required: ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}, but you have: ${formatUnits(tokenBalance, selectedToken.decimals)} ${selectedToken.symbol}`);
-          setStep('review');
-          return;
-        }
-        
-        // Store args locally before clearing state
-        const argsToUse = pendingPlanArgs;
-        setPendingPlanArgs(null);
-        
-        // Create the plan with stored arguments
-        if (argsToUse && !createTxHash && !isCreatePending) {
-          console.log('Creating plan with args:', {
-            totalRequired: totalRequired.toString(),
-            allowance: allowanceValue.toString(),
-            balance: tokenBalance?.toString(),
-            planArgs: argsToUse,
-          });
-          
-          try {
-            writeCreatePlan({
-              address: INHERITX_CONTRACT_ADDRESS,
-              abi: inheritXABI,
-              functionName: 'createInheritancePlan',
-              args: argsToUse as PlanArgs,
-            });
-          } catch (err) {
-            console.error('Error calling writeCreatePlan:', err);
-            setError('Failed to initiate plan creation transaction. Please try again.');
-            setStep('review');
-          }
-        }
-      };
-      
-      checkAndCreate();
-    }
-  }, [approveSuccess, approveTxHash, pendingPlanArgs, refetchAllowance, createTxHash, isCreatePending, writeCreatePlan, totalRequired, setError]);
+  
+  // Check balance (needs to be calculated early)
+  const hasInsufficientBalance = tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
 
   // Handle create success - parse event logs and update backend
   useEffect(() => {
@@ -370,7 +257,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     if (new Date(transferDate) <= new Date()) return 'Transfer date must be in the future';
     
     // Check balance
-    if (tokenBalance && totalRequired > (tokenBalance as bigint)) {
+    if (hasInsufficientBalance) {
       return `Insufficient balance. Required: ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}`;
     }
     
@@ -463,8 +350,11 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
       // Prepare plan creation arguments
       const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
+
+      console.log('amount', amount);
+      
       const transferTimestamp = BigInt(Math.floor(new Date(transferDate).getTime() / 1000));
-      const planArgs: PlanArgs = [
+      const preparedPlanArgs: PlanArgs = [
         extendedContractData.planNameHash as `0x${string}`,
         extendedContractData.planDescriptionHash as `0x${string}`,
         (extendedContractData.beneficiaries as ContractBeneficiary[]).map((b) => ({
@@ -486,24 +376,10 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         extendedContractData.claimCodeHash as `0x${string}`,
       ];
 
-      // Check if we need approval
-      if (needsApproval) {
-        // Store plan args and proceed to approval step
-        setPendingPlanArgs(planArgs as PlanArgs);
-        setStep('approve');
-      } else {
-        // Approval already sufficient, create plan directly
-        setStep('create');
-        // Auto-trigger creation after a short delay
-        setTimeout(() => {
-          writeCreatePlan({
-            address: INHERITX_CONTRACT_ADDRESS,
-            abi: inheritXABI,
-            functionName: 'createInheritancePlan',
-            args: planArgs as PlanArgs,
-          });
-        }, 500);
-      }
+      // Store plan args and proceed to approval step (always start with approval)
+      setPlanArgs(preparedPlanArgs);
+      setStep('approve');
+      setTxStep('idle'); // Reset transaction step
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create plan');
     } finally {
@@ -511,27 +387,72 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     }
   };
 
-  const handleApprove = () => {
-    // Approve exactly the amount needed (plan amount + 5% creation fee)
-    const approvalAmount = totalRequired;
-    
-    console.log('Approving tokens:', {
-      approvalAmount: approvalAmount.toString(),
-      approvalAmountFormatted: formatUnits(approvalAmount, selectedToken.decimals),
-      tokenSymbol: selectedToken.symbol,
-      planAmount: assetAmount,
-      totalRequired: formatUnits(totalRequired, selectedToken.decimals),
+  // Main transaction flow handler
+  const startTransactionFlow = () => {
+    if (!address || !planArgs || hasInsufficientBalance) {
+      return;
+    }
+
+    setError(null);
+    setTxStep('approving');
+
+    // Always start with approval
+    console.log('Starting approval:', {
+      totalRequired: totalRequired.toString(),
+      totalRequiredFormatted: formatUnits(totalRequired, selectedToken.decimals),
     });
-    
-    writeApprove({
-      address: selectedToken.address,
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [INHERITX_CONTRACT_ADDRESS, approvalAmount],
-    });
+
+    try {
+      writeApprove({
+        address: selectedToken.address,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [INHERITX_CONTRACT_ADDRESS, totalRequired],
+      });
+    } catch (err) {
+      console.error('Error initiating approval:', err);
+      setError('Failed to initiate approval transaction. Please try again.');
+      setTxStep('idle');
+    }
   };
 
-  // handleCreatePlan is no longer needed - creation is triggered directly with planArgs
+  // Handle approval confirmation → trigger plan creation
+  useEffect(() => {
+    if (isApprovalConfirmed && approveTxHash && txStep === 'approving' && planArgs) {
+      console.log('Approval confirmed, creating plan...');
+      
+      setTxStep('creating');
+      setStep('create');
+      
+      // Small delay to ensure blockchain state is updated
+      setTimeout(() => {
+        try {
+          writeCreatePlan({
+            address: INHERITX_CONTRACT_ADDRESS,
+            abi: inheritXABI,
+            functionName: 'createInheritancePlan',
+            args: planArgs,
+          });
+        } catch (err) {
+          console.error('Error initiating plan creation:', err);
+          setError('Failed to initiate plan creation transaction. Please try again.');
+          setTxStep('idle');
+        }
+      }, 2000); // 2 second delay for blockchain state propagation
+    }
+  }, [isApprovalConfirmed, approveTxHash, txStep, planArgs, writeCreatePlan]);
+
+  // Retry handler
+  const handleRetry = () => {
+    setError(null);
+    resetApprove();
+    resetCreate();
+    setTxStep('idle');
+    // Small delay before restarting
+    setTimeout(() => {
+      startTransactionFlow();
+    }, 100);
+  };
 
   return (
     <motion.div
@@ -567,7 +488,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               const isActive = stepIndex === currentIndex;
               const isCompleted = stepIndex < currentIndex;
               
-              if (s === 'approve' && !needsApproval && !approveSuccess) return null;
+              if (s === 'approve' && step !== 'approve' && step !== 'create') return null;
               
               return (
                 <div key={s} className="flex items-center">
@@ -871,12 +792,16 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
           {/* Step 4: Approve */}
           {step === 'approve' && (
             <div className="text-center py-8">
-              {isApprovePending || isApproveWaiting || pendingPlanArgs ? (
+              {txStep === 'approving' && (
                 <>
                   <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
-                  <h3 className="text-lg font-semibold mt-4">Approving Token...</h3>
+                  <h3 className="text-lg font-semibold mt-4">
+                    {isApprovePending ? 'Confirm Approval' : 'Approving Tokens...'}
+                  </h3>
                   <p className="text-[var(--text-secondary)] mt-2">
-                    Please confirm the approval transaction in your wallet
+                    {isApprovePending 
+                      ? 'Please confirm the approval transaction in your wallet' 
+                      : 'Waiting for approval confirmation...'}
                   </p>
                   {approveTxHash && (
                     <a
@@ -892,14 +817,16 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     After approval, the plan creation will proceed automatically
                   </p>
                 </>
-              ) : (
+              )}
+
+              {txStep === 'idle' && !error && (
                 <>
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--primary-muted)] flex items-center justify-center">
-                    <FiCheck className="text-[var(--primary)]" size={32} />
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary flex items-center justify-center">
+                    <FiCheck className="text-black" size={32} />
                   </div>
-                  <h3 className="text-lg font-semibold">Approve Token Spending</h3>
+                  <h3 className="text-lg font-semibold">Ready to Approve Tokens</h3>
                   <p className="text-[var(--text-secondary)] mt-2 mb-4">
-                    You need to approve InheritX to spend your {selectedToken.symbol} tokens
+                    This will approve tokens and create your inheritance plan on the blockchain
                   </p>
                   <div className="bg-[var(--bg-deep)] p-3 rounded-lg mb-6 text-sm">
                     <div className="flex justify-between">
@@ -908,16 +835,55 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     </div>
                   </div>
                   <button
-                    onClick={handleApprove}
+                    onClick={startTransactionFlow}
                     className="btn btn-primary w-full"
-                    disabled={!address}
+                    disabled={hasInsufficientBalance || !planArgs || !address}
                   >
-                    Approve {selectedToken.symbol} - Confirm in Wallet
+                    Start Transaction
                   </button>
                   <p className="text-xs text-[var(--text-muted)] mt-3">
-                    After approval, the plan creation will proceed automatically
+                    You will need to confirm 2 transactions: approval and plan creation
                   </p>
                 </>
+              )}
+
+              {error && txStep === 'idle' && !createSuccess && (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <FiAlertCircle className="text-red-500" size={32} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-red-400 mb-2">
+                    Transaction Failed
+                  </h3>
+                  <p className="text-[var(--text-secondary)] mb-2">
+                    Please check the error message above and try again.
+                  </p>
+                  {(createTxHash || approveTxHash) && (
+                    <a
+                      href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary text-sm mb-4 inline-block hover:underline"
+                    >
+                      View Transaction on Explorer
+                    </a>
+                  )}
+                  <div className="flex gap-3 justify-center mt-6">
+                    <button 
+                      onClick={() => setError(null)} 
+                      className="btn btn-secondary"
+                    >
+                      Dismiss
+                    </button>
+                    <button 
+                      onClick={handleRetry} 
+                      className="btn btn-primary"
+                      disabled={hasInsufficientBalance || !planArgs}
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -925,12 +891,16 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
           {/* Step 5: Create */}
           {step === 'create' && (
             <div className="text-center py-8">
-              {isCreatePending || isCreateWaiting ? (
+              {txStep === 'creating' && (
                 <>
                   <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
-                  <h3 className="text-lg font-semibold mt-4">Creating Plan...</h3>
+                  <h3 className="text-lg font-semibold mt-4">
+                    {isCreatePending ? 'Confirm Transaction' : 'Creating Plan...'}
+                  </h3>
                   <p className="text-[var(--text-secondary)] mt-2">
-                    {isCreateWaiting ? 'Confirming transaction...' : 'Please confirm the creation transaction in your wallet'}
+                    {isCreatePending 
+                      ? 'Please confirm the plan creation in your wallet' 
+                      : 'Waiting for transaction confirmation...'}
                   </p>
                   {createTxHash && (
                     <a
@@ -943,7 +913,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     </a>
                   )}
                 </>
-              ) : createSuccess ? (
+              )}
+
+              {createSuccess ? (
                 <>
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--accent-green)]/20 flex items-center justify-center">
                     <FiCheck className="text-[var(--accent-green)]" size={32} />
@@ -965,23 +937,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     Done
                   </button>
                 </>
-              ) : pendingPlanArgs ? (
-                <>
-                  <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
-                  <h3 className="text-lg font-semibold mt-4">Verifying Approval...</h3>
-                  <p className="text-[var(--text-secondary)] mt-2">
-                    Checking token allowance before creating plan
-                  </p>
-                </>
-              ) : (
-                <>
-                  <FiLoader className="animate-spin mx-auto text-[var(--primary)]" size={48} />
-                  <h3 className="text-lg font-semibold mt-4">Preparing Creation...</h3>
-                  <p className="text-[var(--text-secondary)] mt-2">
-                    Setting up plan creation transaction
-                  </p>
-                </>
-              )}
+              ) : null}
             </div>
           )}
         </div>
