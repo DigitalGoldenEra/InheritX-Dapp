@@ -2,17 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiCheck, 
-  FiClock, 
+import {
+  FiCheck,
+  FiClock,
   FiShield,
   FiAlertCircle
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { api, KYCStatus } from '@/lib/api';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { inheritXABI } from '@/contract/abi';
-import { INHERITX_CONTRACT_ADDRESS } from '@/lib/contract';
 import Input from '@/components/Input';
 
 const ID_TYPES = [
@@ -46,9 +43,7 @@ export default function KYCPage() {
   });
   const [idDocument, setIdDocument] = useState<File | null>(null);
 
-  // Contract interaction
-  const { writeContract, data: txHash, isPending: isContractPending, error: contractError } = useWriteContract();
-  const { isLoading: isWaiting, isSuccess: txSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+
 
   useEffect(() => {
     const fetchKYCStatus = async () => {
@@ -70,17 +65,7 @@ export default function KYCPage() {
     fetchKYCStatus();
   }, []);
 
-  // Handle transaction success
-  useEffect(() => {
-    if (txSuccess) {
-      setSuccess('KYC submitted successfully! Your verification is now pending review.');
-      refreshUser();
-      // Refetch KYC status
-      api.getKYCStatus().then(({ data }) => {
-        if (data) setKycStatus(data);
-      });
-    }
-  }, [txSuccess, refreshUser]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -113,9 +98,9 @@ export default function KYCPage() {
 
     try {
       // Validate required fields
-      if (!formData.fullName || !formData.email || !formData.dateOfBirth || !formData.nationality || 
-          !formData.idType || !formData.idNumber || !formData.idExpiryDate || 
-          !formData.address || !formData.city || !formData.country || !formData.postalCode) {
+      if (!formData.fullName || !formData.email || !formData.dateOfBirth || !formData.nationality ||
+        !formData.idType || !formData.idNumber || !formData.idExpiryDate ||
+        !formData.address || !formData.city || !formData.country || !formData.postalCode) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -137,28 +122,21 @@ export default function KYCPage() {
         throw new Error(submitError || 'Failed to submit KYC');
       }
 
-      // Submit hash to smart contract
-      const kycDataHash = data.kycDataHash as `0x${string}`;
-      
-      writeContract({
-        address: INHERITX_CONTRACT_ADDRESS,
-        abi: inheritXABI,
-        functionName: 'submitKYC',
-        args: [kycDataHash],
-      });
+      setSuccess('KYC submitted successfully! Your verification is now pending review.');
+      refreshUser();
+
+      // Refetch KYC status
+      const { data: statusData } = await api.getKYCStatus();
+      if (statusData) setKycStatus(statusData);
+
+      // Clear sensitive form data if needed, or just leave it as user sees success message
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit KYC');
+    } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Update submitting state based on contract state
-  useEffect(() => {
-    if (!isContractPending && !isWaiting) {
-      setIsSubmitting(false);
-    }
-  }, [isContractPending, isWaiting]);
 
   if (isLoading) {
     return (
@@ -181,11 +159,10 @@ export default function KYCPage() {
           animate={{ opacity: 1, y: 0 }}
           className="card p-8 text-center"
         >
-          <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
-            kycStatus.status === 'APPROVED' 
-              ? 'bg-[var(--accent-green)]/20' 
-              : 'bg-[var(--accent-purple)]/20'
-          }`}>
+          <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${kycStatus.status === 'APPROVED'
+            ? 'bg-[var(--accent-green)]/20'
+            : 'bg-[var(--accent-purple)]/20'
+            }`}>
             {kycStatus.status === 'APPROVED' ? (
               <FiCheck className="text-[var(--accent-green)]" size={40} />
             ) : (
@@ -197,7 +174,7 @@ export default function KYCPage() {
             {kycStatus.status === 'APPROVED' ? 'KYC Verified' : 'KYC Pending Review'}
           </h1>
           <p className="text-[var(--text-secondary)] mb-6">
-            {kycStatus.status === 'APPROVED' 
+            {kycStatus.status === 'APPROVED'
               ? 'Your identity has been verified. You can now create inheritance plans.'
               : 'Your KYC submission is being reviewed. This usually takes 24-48 hours.'}
           </p>
@@ -414,13 +391,13 @@ export default function KYCPage() {
           <div className="flex justify-end gap-4 pt-4">
             <button
               type="submit"
-              disabled={isSubmitting || isContractPending || isWaiting}
+              disabled={isSubmitting}
               className="btn btn-primary"
             >
-              {isSubmitting || isContractPending || isWaiting ? (
+              {isSubmitting ? (
                 <>
                   <span className="spinner" />
-                  {isWaiting ? 'Confirming...' : 'Submitting...'}
+                  Submitting...
                 </>
               ) : (
                 <>
