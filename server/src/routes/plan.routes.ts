@@ -15,6 +15,7 @@ import {
   generateClaimCode,
 } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { sendPlanCreationNotification } from '../utils/email';
 
 const router = Router();
 
@@ -289,10 +290,10 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
 
   // Generate or use provided claim code
   const claimCode = data.claimCode || generateClaimCode(6);
-  
+
   // Encrypt claim code for secure storage
   const claimCodeEncrypted = encryptClaimCode(claimCode);
-  
+
   // Hash claim code (same as on-chain)
   const claimCodeHash = keccak256(claimCode);
 
@@ -500,6 +501,9 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
       txHash: data.txHash,
       status: 'ACTIVE', // Update status to ACTIVE when contract creation is confirmed
     },
+    include: {
+      user: true, // Include user to get email
+    },
   });
 
   // Log activity
@@ -516,6 +520,26 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
       },
     },
   });
+
+  // Send confirmation email
+  if (updatedPlan.user?.email && updatedPlan.user?.name) {
+    // Determine asset symbol based on type
+    let assetSymbol = 'Tokens';
+    switch (updatedPlan.assetType) {
+      case 'ERC20_TOKEN1': assetSymbol = 'WETH (Mock)'; break;
+      case 'ERC20_TOKEN2': assetSymbol = 'USDT (Mock)'; break;
+      case 'ERC20_TOKEN3': assetSymbol = 'USDC (Mock)'; break;
+    }
+
+    await sendPlanCreationNotification(
+      updatedPlan.user.email,
+      updatedPlan.user.name,
+      updatedPlan.planName,
+      updatedPlan.assetAmount,
+      assetSymbol,
+      data.txHash
+    );
+  }
 
   res.json(updatedPlan);
 }));

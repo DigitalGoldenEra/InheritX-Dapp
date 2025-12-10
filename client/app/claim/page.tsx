@@ -26,28 +26,19 @@ export default function ClaimLandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <nav className="nav">
-        <div className="nav-content">
-          <Link href="/" className="nav-brand">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="url(#claim-logo)" />
-              <path d="M10 22V10H14V22H10Z" fill="#05080A" />
-              <path d="M18 22V10H22V22H18Z" fill="#05080A" />
-              <path d="M10 14H22V18H10V14Z" fill="#05080A" />
-              <defs>
-                <linearGradient id="claim-logo" x1="0" y1="0" x2="32" y2="32">
-                  <stop stopColor="#33C5E0" />
-                  <stop offset="1" stopColor="#2098AB" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <span>InheritX</span>
-          </Link>
+      <nav className="border-b border-white/5 bg-[#0D1A1E]/20 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link href="/" className="flex items-center gap-2 group">
+              <img src="/img/logo.svg" alt="InheritX" className="w-10 h-10" />
+              <span className="text-lg font-bold text-[#E2E8F0]">InheritX</span>
+            </Link>
 
-          <Link href="/" className="btn btn-ghost btn-sm">
-            <FiArrowLeft size={16} />
-            Back to Home
-          </Link>
+            <Link href="/" className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-lg transition-colors">
+              <FiArrowLeft size={16} />
+              Back to Home
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -76,7 +67,7 @@ export default function ClaimLandingPage() {
                   type="text"
                   value={planId}
                   onChange={(e) => setPlanId(e.target.value)}
-                  className={`input pl-10 ${error ? 'input-error' : ''}`}
+                  className={`input pl-10! ${error ? 'input-error' : ''}`}
                   placeholder="Enter plan ID (e.g., 1)"
                 />
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />

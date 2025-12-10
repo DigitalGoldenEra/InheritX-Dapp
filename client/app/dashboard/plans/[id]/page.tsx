@@ -23,13 +23,14 @@ import {
   getPlanStatusBadge,
   getTokenByAssetType,
   formatTokenAmount,
+
 } from '@/lib/contract';
 import Link from 'next/link';
 
 export default function PlanDetailsPage() {
   const params = useParams();
   const planId = params.id as string;
-  
+
   const [plan, setPlan] = useState<Plan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export default function PlanDetailsPage() {
 
   const handleStatusChange = async (newStatus: 'ACTIVE' | 'PAUSED' | 'CANCELLED') => {
     if (!plan) return;
-    
+
     setIsUpdating(true);
     try {
       const { data, error: apiError } = await api.updatePlanStatus(plan.id, newStatus);
@@ -125,10 +126,10 @@ export default function PlanDetailsPage() {
 
   const statusBadge = getPlanStatusBadge(plan.status);
   const token = getTokenByAssetType(plan.assetType);
-  const creationFee = plan.assetAmountWei 
+  const creationFee = plan.assetAmountWei
     ? (BigInt(plan.assetAmountWei) * BigInt(500)) / BigInt(10000)
     : BigInt(0);
-  const totalAmount = plan.assetAmountWei 
+  const totalAmount = plan.assetAmountWei
     ? BigInt(plan.assetAmountWei) + creationFee
     : BigInt(0);
 
@@ -357,42 +358,6 @@ export default function PlanDetailsPage() {
                 <p className="text-sm text-[var(--text-muted)]">Click to reveal claim code</p>
               )}
             </div>
-
-            {/* Status Actions */}
-            {plan.status === 'ACTIVE' && (
-              <button
-                onClick={() => handleStatusChange('PAUSED')}
-                disabled={isUpdating}
-                className="btn btn-secondary w-full flex items-center justify-center gap-2"
-              >
-                <FiPause size={16} />
-                Pause Plan
-              </button>
-            )}
-            {plan.status === 'PAUSED' && (
-              <button
-                onClick={() => handleStatusChange('ACTIVE')}
-                disabled={isUpdating}
-                className="btn btn-secondary w-full flex items-center justify-center gap-2"
-              >
-                <FiPlay size={16} />
-                Resume Plan
-              </button>
-            )}
-            {['ACTIVE', 'PAUSED'].includes(plan.status) && (
-              <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to cancel this plan? This action cannot be undone.')) {
-                    handleStatusChange('CANCELLED');
-                  }
-                }}
-                disabled={isUpdating}
-                className="btn w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20"
-              >
-                <FiTrash2 size={16} />
-                Cancel Plan
-              </button>
-            )}
 
             {/* Distribution Schedule */}
             {plan.distributions && plan.distributions.length > 0 && (

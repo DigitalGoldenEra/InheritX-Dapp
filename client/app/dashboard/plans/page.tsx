@@ -169,7 +169,7 @@ export default function PlansPage() {
           />
         </div>
         <div className="flex gap-2">
-          {["ALL", "PENDING", "ACTIVE", "PAUSED", "EXECUTED"].map((status) => (
+          {["ALL", "PENDING", "ACTIVE", "EXECUTED"].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}

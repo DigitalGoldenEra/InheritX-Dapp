@@ -56,73 +56,42 @@ export async function sendClaimNotification(
   claimCode: string,
   amount: string,
   assetType: string,
-  claimUrl: string
+  claimUrl: string,
+  globalPlanId?: number
 ): Promise<boolean> {
   const subject = `InheritX: You Have an Inheritance to Claim - ${planName}`;
-  
+  const planIdDisplay = globalPlanId ? `Plan ID: ${globalPlanId}` : '';
+
   const html = `
     <!DOCTYPE html>
     <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #0D1A1E 0%, #1C252A 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { color: #33C5E0; margin: 0; font-size: 28px; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .claim-box { background: #fff; border: 2px solid #33C5E0; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: center; }
-        .claim-code { font-size: 32px; font-weight: bold; color: #33C5E0; letter-spacing: 5px; margin: 15px 0; }
-        .amount { font-size: 24px; color: #0D1A1E; font-weight: bold; }
-        .btn { display: inline-block; background: #33C5E0; color: #0D1A1E; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
-        .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 15px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>InheritX</h1>
-          <p style="color: #a0aec0; margin: 10px 0 0 0;">Secure Digital Inheritance</p>
-        </div>
-        <div class="content">
-          <h2>Hello ${beneficiaryName},</h2>
-          <p>You have been designated as a beneficiary in an inheritance plan. The assets are now ready for you to claim.</p>
-          
-          <div class="claim-box">
-            <p style="margin: 0; color: #666;">Plan Name</p>
-            <h3 style="margin: 5px 0 20px 0;">${planName}</h3>
-            
-            <p style="margin: 0; color: #666;">Your Inheritance Amount</p>
-            <p class="amount">${amount} ${assetType}</p>
-            
-            <p style="margin: 20px 0 5px 0; color: #666;">Your Claim Code</p>
-            <p class="claim-code">${claimCode}</p>
-          </div>
-          
-          <div class="warning">
-            <strong>⚠️ Important:</strong> Keep this claim code secure. Anyone with this code and your personal details can claim the inheritance.
-          </div>
-          
-          <p style="text-align: center;">
-            <a href="${claimUrl}" class="btn">Claim Your Inheritance</a>
-          </p>
-          
-          <h3>How to Claim:</h3>
-          <ol>
-            <li>Click the "Claim Your Inheritance" button above</li>
-            <li>Connect your cryptocurrency wallet</li>
-            <li>Enter the claim code shown above</li>
-            <li>Verify your identity details</li>
-            <li>Confirm the transaction to receive your assets</li>
-          </ol>
-          
-          <p>If you have any questions or need assistance, please contact our support team.</p>
-        </div>
-        <div class="footer">
-          <p>This email was sent by InheritX - Secure Digital Inheritance Platform</p>
-          <p>© ${new Date().getFullYear()} InheritX. All rights reserved.</p>
-        </div>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      
+      <h2 style="color: #0D1A1E;">Inheritance Claim Ready</h2>
+      
+      <p>Hello ${beneficiaryName},</p>
+      
+      <p>You have been designated as a beneficiary for the plan <strong>"${planName}"</strong> ${planIdDisplay ? `(${planIdDisplay})` : ''}.</p>
+      
+      <div style="background: #f4f4f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0;"><strong>Amount:</strong> ${amount} ${assetType}</p>
+        ${globalPlanId ? `<p style="margin: 0 0 10px 0;"><strong>Plan ID:</strong> ${globalPlanId}</p>` : ''}
+        <p style="margin: 0;"><strong>Claim Code:</strong> <span style="font-family: monospace; font-size: 18px; letter-spacing: 2px; background: #fff; padding: 2px 6px; border-radius: 4px;">${claimCode}</span></p>
       </div>
+
+      <p>To claim your inheritance:</p>
+      <ol>
+        <li>Click the link below</li>
+        <li>Connect your wallet</li>
+        <li>Enter your claim code</li>
+      </ol>
+      
+      <p style="margin: 30px 0;">
+        <a href="${claimUrl}" style="background: #0D1A1E; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Claim Inheritance</a>
+      </p>
+      
+      <p style="color: #666; font-size: 14px;">If the button doesn't work, copy this link: ${claimUrl}</p>
+      
     </body>
     </html>
   `;
@@ -133,6 +102,7 @@ Hello ${beneficiaryName},
 You have been designated as a beneficiary in an inheritance plan. The assets are now ready for you to claim.
 
 Plan Name: ${planName}
+${planIdDisplay}
 Your Inheritance Amount: ${amount} ${assetType}
 
 YOUR CLAIM CODE: ${claimCode}
@@ -162,7 +132,7 @@ export async function sendKYCApprovalNotification(
   name: string
 ): Promise<boolean> {
   const subject = 'Your KYC Has Been Approved ✓';
-  
+
   const text = `Hi ${name},
 
 Great news! Your KYC verification has been approved.
@@ -209,9 +179,9 @@ export async function sendKYCRejectionNotification(
   reason?: string
 ): Promise<boolean> {
   const subject = 'KYC Verification Update';
-  
+
   const reasonText = reason ? `\n\nReason: ${reason}` : '';
-  
+
   const text = `Hi ${name},
 
 Unfortunately, your KYC verification was not approved.${reasonText}
@@ -261,10 +231,77 @@ The InheritX Team`;
   return sendEmail(email, subject, text, html);
 }
 
+
+/**
+ * Send Plan Creation Notification to Creator
+ */
+export async function sendPlanCreationNotification(
+  email: string,
+  name: string,
+  planName: string,
+  assetAmount: string,
+  assetType: string,
+  txHash: string
+): Promise<boolean> {
+  const subject = 'Your Inheritance Plan Has Been Created Successfully ✓';
+
+  const explorerUrl = `https://sepolia-blockscout.lisk.com/tx/${txHash}`; // Adjust based on network
+
+  const text = `Hi ${name},
+
+Your inheritance plan "${planName}" has been successfully created and secured on the blockchain.
+
+Plan Details:
+- Name: ${planName}
+- Assets: ${assetAmount} ${assetType}
+- Transaction Hash: ${txHash}
+
+You can view your transaction here: ${explorerUrl}
+
+You can manage your plan at: ${FRONTEND_URL}/dashboard/plans
+
+Thanks,
+The InheritX Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #10B981;">✓ Plan Created Successfully</h2>
+      
+      <p>Hi ${name},</p>
+      
+      <p>Your inheritance plan <strong>"${planName}"</strong> has been successfully created and secured on the blockchain.</p>
+      
+      <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin-top: 0; font-size: 16px;">Plan Details</h3>
+        <ul style="padding-left: 20px; color: #4B5563;">
+          <li><strong>Name:</strong> ${planName}</li>
+          <li><strong>Assets:</strong> ${assetAmount} ${assetType}</li>
+          <li><strong>Transaction:</strong> <a href="${explorerUrl}" style="color: #33C5E0;">View on Explorer</a></li>
+        </ul>
+      </div>
+      
+      <p style="margin: 25px 0;">
+        <a href="${FRONTEND_URL}/dashboard/plans" style="background: #33C5E0; color: #0D1A1E; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+          Manage My Plans →
+        </a>
+      </p>
+      
+      <p style="color: #666; font-size: 14px;">
+        Thanks,<br>
+        The InheritX Team
+      </p>
+    </div>
+  `;
+
+  return sendEmail(email, subject, text, html);
+}
+
 export default {
   sendEmail,
   sendClaimNotification,
   sendKYCApprovalNotification,
   sendKYCRejectionNotification,
+  sendPlanCreationNotification,
 };
+
 

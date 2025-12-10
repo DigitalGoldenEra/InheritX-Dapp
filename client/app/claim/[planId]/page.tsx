@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { 
-  FiArrowLeft, 
-  FiCheck, 
-  FiClock, 
+import {
+  FiArrowLeft,
+  FiCheck,
+  FiClock,
   FiAlertCircle,
   FiLock,
   FiGift,
@@ -17,7 +17,7 @@ import {
 } from 'react-icons/fi';
 import { api, ClaimPlanInfo, VerifyClaimResponse } from '@/lib/api';
 import { inheritXABI } from '@/contract/abi';
-import { INHERITX_CONTRACT_ADDRESS, formatDate, getTimeUntil, getTokenByAssetType } from '@/lib/contract';
+import { INHERITX_CONTRACT_ADDRESS, formatDate, getTimeUntil, getTokenByAssetType, formatTokenAmount } from '@/lib/contract';
 
 export default function ClaimPage() {
   const params = useParams();
@@ -35,21 +35,23 @@ export default function ClaimPage() {
   const [beneficiaryName, setBeneficiaryName] = useState('');
   const [beneficiaryEmail, setBeneficiaryEmail] = useState('');
   const [beneficiaryRelationship, setBeneficiaryRelationship] = useState('');
-  
+
   // Verification response
   const [verificationData, setVerificationData] = useState<VerifyClaimResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
   // Contract interaction
-  const { 
-    writeContract, 
-    data: txHash, 
+  const {
+    writeContractAsync,
+    data: txHash,
     isPending: isClaimPending,
-    error: claimError 
+    error: claimError
   } = useWriteContract();
-  
-  const { isLoading: isClaimWaiting, isSuccess: claimSuccess } = useWaitForTransactionReceipt({ 
-    hash: txHash 
+
+  // ... (keep existing useEffects, but maybe they become redundant for error, but good to keep as backup)
+
+  const { isLoading: isClaimWaiting, isSuccess: claimSuccess } = useWaitForTransactionReceipt({
+    hash: txHash
   });
 
   // Fetch plan info
@@ -58,11 +60,17 @@ export default function ClaimPage() {
       setIsLoading(true);
       setError(null);
 
+      if (!planId || isNaN(parseInt(planId))) {
+        setError('Invalid Plan ID');
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const { data, error: fetchError } = await api.getPlanForClaim(parseInt(planId));
-        
+
         if (fetchError || !data) {
-          setError(fetchError || 'Plan not found');
+          setError(fetchError || 'Plan not found. Please check the link and try again.');
           return;
         }
 
@@ -135,22 +143,30 @@ export default function ClaimPage() {
     }
   };
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
     if (!verificationData) return;
+    setError(null);
 
-    writeContract({
-      address: INHERITX_CONTRACT_ADDRESS,
-      abi: inheritXABI,
-      functionName: 'claimInheritance',
-      args: [
-        BigInt(verificationData.contractCallData.planId),
-        claimCode,
-        beneficiaryName,
-        beneficiaryEmail,
-        beneficiaryRelationship,
-        BigInt(verificationData.contractCallData.beneficiaryIndex),
-      ],
-    });
+    try {
+      await writeContractAsync({
+        address: INHERITX_CONTRACT_ADDRESS,
+        abi: inheritXABI,
+        functionName: 'claimInheritance',
+        args: [
+          BigInt(verificationData.contractCallData.planId),
+          claimCode,
+          beneficiaryName,
+          beneficiaryEmail,
+          beneficiaryRelationship,
+          BigInt(verificationData.contractCallData.beneficiaryIndex),
+        ],
+      });
+    } catch (err: any) {
+      console.error('Claim error:', err);
+      // Try to extract a readable message
+      const message = err.shortMessage || err.message || 'Transaction failed';
+      setError(`Claim failed: ${message}`);
+    }
   };
 
   const timeUntil = plan ? getTimeUntil(plan.transferDate) : null;
@@ -180,6 +196,9 @@ export default function ClaimPage() {
             <FiArrowLeft size={16} />
             Try Another Plan
           </Link>
+          <Link href="/" className="btn btn-ghost mt-2">
+            Return Home
+          </Link>
         </div>
       </div>
     );
@@ -187,26 +206,16 @@ export default function ClaimPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <nav className="nav">
-        <div className="nav-content">
-          <Link href="/" className="nav-brand">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="url(#claim-nav-logo)" />
-              <path d="M10 22V10H14V22H10Z" fill="#05080A" />
-              <path d="M18 22V10H22V22H18Z" fill="#05080A" />
-              <path d="M10 14H22V18H10V14Z" fill="#05080A" />
-              <defs>
-                <linearGradient id="claim-nav-logo" x1="0" y1="0" x2="32" y2="32">
-                  <stop stopColor="#33C5E0" />
-                  <stop offset="1" stopColor="#2098AB" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <span>InheritX</span>
-          </Link>
+      <nav className="border-b border-white/5 bg-[#0D1A1E]/20 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link href="/" className="flex items-center gap-2 group">
+              <img src="/img/logo.svg" alt="InheritX" className="w-10 h-10" />
+              <span className="text-lg font-bold text-[#E2E8F0]">InheritX</span>
+            </Link>
 
-          <ConnectButton />
+            <ConnectButton />
+          </div>
         </div>
       </nav>
 
@@ -249,8 +258,8 @@ export default function ClaimPage() {
           </div>
 
           {!plan?.isClaimable && timeUntil && (
-            <div className="mt-4 p-4 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/20 rounded-xl">
-              <div className="flex items-center gap-2 text-[var(--accent-amber)]">
+            <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+              <div className="flex items-center gap-2 text-yellow-500">
                 <FiClock size={18} />
                 <span className="font-medium">Claim available in:</span>
               </div>
@@ -331,7 +340,7 @@ export default function ClaimPage() {
               <div className="flex justify-between mb-2">
                 <span className="text-[var(--text-muted)]">Your Allocation</span>
                 <span className="font-bold text-[var(--primary)]">
-                  {verificationData?.allocatedAmount} {token?.symbol}
+                  {verificationData && formatTokenAmount(verificationData.allocatedAmount, token?.decimals || 18)} {token?.symbol}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -377,7 +386,7 @@ export default function ClaimPage() {
             </p>
 
             {error && (
-              <div className="alert alert-error mb-4">
+              <div className="bg-red-500/10! flex gap-2 items-center border border-red-500/20! p-4 rounded-lg mb-4">
                 <FiAlertCircle size={18} />
                 {error}
               </div>
@@ -390,7 +399,7 @@ export default function ClaimPage() {
                   type="text"
                   value={claimCode}
                   onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
-                  className="input font-mono text-center text-xl tracking-wider"
+                  className="input text-xl tracking-wider"
                   placeholder="XXXXXX"
                   maxLength={6}
                 />
