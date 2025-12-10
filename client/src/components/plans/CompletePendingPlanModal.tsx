@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiX, 
+import {
+  FiX,
   FiAlertCircle,
   FiCheck,
   FiLoader
@@ -12,9 +12,9 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadCont
 import { formatUnits, decodeEventLog } from 'viem';
 import { api, Plan } from '@/lib/api';
 import { inheritXABI } from '@/contract/abi';
-import { 
-  INHERITX_CONTRACT_ADDRESS, 
-  TOKENS, 
+import {
+  INHERITX_CONTRACT_ADDRESS,
+  TOKENS,
   ASSET_TYPE_MAP,
   DISTRIBUTION_METHOD_MAP,
   ERC20_ABI,
@@ -34,13 +34,13 @@ function createBeneficiaryHashes(name: string, email: string, relationship: stri
   const nameHash = hashString(name);
   const emailHash = hashString(email);
   const relationshipHash = hashString(relationship);
-  
+
   // Combined hash: keccak256(abi.encodePacked(nameHash, emailHash, relationshipHash))
   const combinedHash = keccak256(encodePacked(
     ['bytes32', 'bytes32', 'bytes32'],
     [nameHash, emailHash, relationshipHash]
   ));
-  
+
   return {
     nameHash,
     emailHash,
@@ -56,7 +56,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [isLoadingClaimCode, setIsLoadingClaimCode] = useState(true);
   const [txStep, setTxStep] = useState<'idle' | 'approving' | 'creating'>('idle');
-  
+
   // Define plan args type
   type PlanArgs = [
     `0x${string}`,
@@ -74,12 +74,12 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     number,
     `0x${string}`
   ];
-  
+
   const [planArgs, setPlanArgs] = useState<PlanArgs | null>(null);
 
   // Get selected token
   const selectedToken = TOKENS.find(t => t.id === plan.assetType) || TOKENS[0];
-  
+
   if (!selectedToken) {
     return (
       <motion.div
@@ -119,50 +119,67 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     args: address ? [address] : undefined,
   });
 
+  // Check KYC status
+  const { data: kycRequired } = useReadContract({
+    address: INHERITX_CONTRACT_ADDRESS,
+    abi: inheritXABI,
+    functionName: 'kycRequired',
+  });
+
+  const { data: isKYCApproved } = useReadContract({
+    address: INHERITX_CONTRACT_ADDRESS,
+    abi: inheritXABI,
+    functionName: 'isKYCApproved',
+    args: address ? [address] : undefined,
+  });
+
+  // Determine if KYC check fails (required but not approved)
+  const isKYCBlocked = kycRequired && !isKYCApproved;
+
   // Calculate required amount with fees (5% creation fee)
   const assetAmountWei = BigInt(plan.assetAmountWei || '0');
   const creationFee = (assetAmountWei * BigInt(500)) / BigInt(10000); // 5%
   const totalRequired = assetAmountWei + creationFee;
-  
+
   // Check balance
   const hasInsufficientBalance = tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
 
   // Separate hooks for approval and plan creation
-  const { 
-    writeContract: writeApprove, 
-    data: approveTxHash, 
+  const {
+    writeContract: writeApprove,
+    data: approveTxHash,
     isPending: isApprovePending,
     error: approveError,
     reset: resetApprove
   } = useWriteContract();
-  
-  const { 
-    writeContract: writeCreatePlan, 
-    data: createTxHash, 
+
+  const {
+    writeContract: writeCreatePlan,
+    data: createTxHash,
     isPending: isCreatePending,
     error: createError,
     reset: resetCreate
   } = useWriteContract();
 
   // Track approval transaction confirmation
-  const { 
-    isLoading: isApproveWaiting, 
+  const {
+    isLoading: isApproveWaiting,
     isSuccess: isApprovalConfirmed,
     isError: isApproveError,
     error: approveReceiptError
-  } = useWaitForTransactionReceipt({ 
-    hash: approveTxHash 
+  } = useWaitForTransactionReceipt({
+    hash: approveTxHash
   });
 
   // Track plan creation transaction confirmation
-  const { 
-    isLoading: isCreateWaiting, 
-    isSuccess: createSuccess, 
+  const {
+    isLoading: isCreateWaiting,
+    isSuccess: createSuccess,
     isError: isCreateError,
     error: createReceiptError,
-    data: createReceipt 
-  } = useWaitForTransactionReceipt({ 
-    hash: createTxHash 
+    data: createReceipt
+  } = useWaitForTransactionReceipt({
+    hash: createTxHash
   });
 
   // Fetch claim code on mount
@@ -234,7 +251,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
 
   // Main transaction flow handler
   const startTransactionFlow = useCallback(() => {
-    if (!address || !planArgs || hasInsufficientBalance) {
+    if (!address || !planArgs || hasInsufficientBalance || isKYCBlocked) {
       return;
     }
 
@@ -265,9 +282,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   useEffect(() => {
     if (isApprovalConfirmed && approveTxHash && txStep === 'approving' && planArgs) {
       console.log('Approval confirmed, creating plan...');
-      
+
       setTxStep('creating');
-      
+
       // Small delay to ensure blockchain state is updated
       setTimeout(() => {
         try {
@@ -320,7 +337,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
             data: planCreatedEvent.data,
             topics: planCreatedEvent.topics,
           }) as { eventName: string; args: { globalPlanId: bigint; userPlanId: bigint } };
-          
+
           globalPlanId = Number(decoded.args.globalPlanId);
           userPlanId = Number(decoded.args.userPlanId);
         }
@@ -346,9 +363,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   useEffect(() => {
     if (approveError) {
       console.error('Approval error:', approveError);
-      const errorMessage = approveError instanceof Error ? approveError.message : 
-        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError) 
-          ? String((approveError as { shortMessage: string }).shortMessage) 
+      const errorMessage = approveError instanceof Error ? approveError.message :
+        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError)
+          ? String((approveError as { shortMessage: string }).shortMessage)
           : 'Unknown error';
       setError('Approval failed: ' + errorMessage);
       setTxStep('idle');
@@ -368,13 +385,13 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     }
     if (createError) {
       let errorMessage = 'Transaction failed';
-      
+
       if (createError instanceof Error) {
         errorMessage = createError.message;
       } else if (typeof createError === 'object' && createError !== null) {
         const err = createError as { shortMessage?: string; message?: string; cause?: any; data?: any };
         errorMessage = err.shortMessage || err.message || errorMessage;
-        
+
         const errorStr = JSON.stringify(err).toLowerCase();
         if (errorStr.includes('insufficient allowance') || errorStr.includes('allowance')) {
           errorMessage = 'Insufficient token allowance. Please approve more tokens.';
@@ -388,7 +405,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
           errorMessage = err.shortMessage || err.message || 'Invalid transaction parameters. Please check your plan details.';
         }
       }
-      
+
       setError('Plan creation failed: ' + errorMessage);
       setTxStep('idle');
     }
@@ -500,19 +517,36 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
                 <span className="text-[var(--text-muted)]">Amount</span>
                 <span>{plan.assetAmount} {selectedToken.symbol}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Fees (5%)</span>
-                <span>{formatUnits(creationFee, selectedToken.decimals)} {selectedToken.symbol}</span>
+              <div className="flex gap-2 text-sm">
+                <div className="flex justify-between w-full">
+                  <span className="text-[var(--text-muted)]">Fees (5%)</span>
+                  <span>{formatUnits(creationFee, selectedToken.decimals)} {selectedToken.symbol}</span>
+                </div>
               </div>
-              <div className="flex justify-between font-medium pt-2">
+              <div className="flex justify-between font-medium pt-2 border-t border-[var(--border-color)]">
                 <span>Total Required</span>
                 <span>{formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}</span>
               </div>
             </div>
           </div>
 
+          {/* KYC Warning */}
+          {isKYCBlocked && (
+            <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+              <FiAlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+              <div className="flex-1">
+                <h4 className="text-amber-400 font-medium text-sm">KYC Verification Required</h4>
+                <p className="text-amber-400/80 text-xs mt-1">
+                  The smart contract requires KYC verification before you can create a plan.
+                  Please complete the KYC process in your profile settings or wait for approval.
+                  Only an admin can approve your on-chain KYC status.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Balance Check */}
-          {hasInsufficientBalance && (
+          {hasInsufficientBalance && !isKYCBlocked && (
             <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
               <FiAlertCircle className="text-amber-500 shrink-0" size={18} />
               <span className="text-amber-400 text-sm">
@@ -529,8 +563,8 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
                 {isApprovePending ? 'Confirm Approval' : 'Approving Tokens...'}
               </h3>
               <p className="text-[var(--text-secondary)] mt-2">
-                {isApprovePending 
-                  ? 'Please confirm the approval transaction in your wallet' 
+                {isApprovePending
+                  ? 'Please confirm the approval transaction in your wallet'
                   : 'Waiting for approval confirmation...'}
               </p>
               {approveTxHash && (
@@ -556,8 +590,8 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
                 {isCreatePending ? 'Confirm Transaction' : 'Creating Plan...'}
               </h3>
               <p className="text-[var(--text-secondary)] mt-2">
-                {isCreatePending 
-                  ? 'Please confirm the plan creation in your wallet' 
+                {isCreatePending
+                  ? 'Please confirm the plan creation in your wallet'
                   : 'Waiting for transaction confirmation...'}
               </p>
               {createTxHash && (
@@ -583,12 +617,12 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               <p className="text-[var(--text-secondary)] mt-2 mb-6">
                 This will approve tokens and create your inheritance plan on the blockchain
               </p>
-              <button 
-                onClick={startTransactionFlow} 
+              <button
+                onClick={startTransactionFlow}
                 className="btn btn-primary"
-                disabled={hasInsufficientBalance || !planArgs || !address}
+                disabled={hasInsufficientBalance || !planArgs || !address || isKYCBlocked}
               >
-                Start Transaction
+                {isKYCBlocked ? 'KYC Required' : 'Start Transaction'}
               </button>
               <p className="text-xs text-[var(--text-muted)] mt-3">
                 You will need to confirm 2 transactions: approval and plan creation
@@ -619,14 +653,14 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
                 </a>
               )}
               <div className="flex gap-3 justify-center mt-6">
-                <button 
-                  onClick={() => setError(null)} 
+                <button
+                  onClick={() => setError(null)}
                   className="btn btn-secondary"
                 >
                   Dismiss
                 </button>
-                <button 
-                  onClick={handleRetry} 
+                <button
+                  onClick={handleRetry}
                   className="btn btn-primary"
                   disabled={hasInsufficientBalance || !planArgs}
                 >
