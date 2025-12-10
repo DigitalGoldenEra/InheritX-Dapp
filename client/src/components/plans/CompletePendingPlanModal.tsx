@@ -136,10 +136,26 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   // Determine if KYC check fails (required but not approved)
   const isKYCBlocked = kycRequired && !isKYCApproved;
 
+  // Validate Transfer Date
+  const transferDate = new Date(plan.transferDate);
+  const isTransferDatePast = transferDate.getTime() <= Date.now();
+
+  // Validate Periodic Percentage (if not Lump Sum)
+  // Distribution Method: 0 = Lump Sum
+  const isPeriodic = plan.distributionMethod !== 'LUMP_SUM';
+  const periodicPercentage = plan.periodicPercentage || 0;
+  const isPercentageInvalid = isPeriodic && (
+    periodicPercentage <= 0 ||
+    periodicPercentage > 100 ||
+    100 % periodicPercentage !== 0
+  );
+
+  // Parse amount from plan data to ensure consistency with contract args
+  const amount = parseTokenAmount(plan.assetAmount, selectedToken.decimals);
+
   // Calculate required amount with fees (5% creation fee)
-  const assetAmountWei = BigInt(plan.assetAmountWei || '0');
-  const creationFee = (assetAmountWei * BigInt(500)) / BigInt(10000); // 5%
-  const totalRequired = assetAmountWei + creationFee;
+  const creationFee = (amount * BigInt(500)) / BigInt(10000); // 5%
+  const totalRequired = amount + creationFee;
 
   // Check balance
   const hasInsufficientBalance = tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
@@ -212,17 +228,26 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     const claimCodeHash = hashString(claimCode);
 
     // Create beneficiary hashes
+    // IMPORTANT: Check if percentages are in basis points (sum ~10000) or regular % (sum ~100)
+    // The contract expects basis points (100% = 10000)
+    const totalPercentageRaw = plan.beneficiaries.reduce((sum, b) => sum + Number(b.allocatedPercentage), 0);
+    const needsScaling = totalPercentageRaw <= 100;
+
     const beneficiaryHashes = plan.beneficiaries.map(ben => {
       const hashes = createBeneficiaryHashes(ben.name, ben.email, ben.relationship);
+
+      let percentage = BigInt(ben.allocatedPercentage);
+      if (needsScaling) {
+        percentage = percentage * BigInt(100);
+      }
+
       return {
         nameHash: hashes.nameHash as `0x${string}`,
         emailHash: hashes.emailHash as `0x${string}`,
         relationshipHash: hashes.relationshipHash as `0x${string}`,
-        allocatedPercentage: BigInt(ben.allocatedPercentage),
+        allocatedPercentage: percentage,
       };
     });
-
-    const amount = parseTokenAmount(plan.assetAmount, selectedToken.decimals);
 
     const transferTimestamp = BigInt(Math.floor(new Date(plan.transferDate).getTime() / 1000));
     const periodicPercentage = plan.periodicPercentage ?? 0;
@@ -251,7 +276,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
 
   // Main transaction flow handler
   const startTransactionFlow = useCallback(() => {
-    if (!address || !planArgs || hasInsufficientBalance || isKYCBlocked) {
+    if (!address || !planArgs || hasInsufficientBalance || isKYCBlocked || isTransferDatePast || isPercentageInvalid) {
       return;
     }
 
@@ -276,7 +301,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       setError('Failed to initiate approval transaction. Please try again.');
       setTxStep('idle');
     }
-  }, [address, planArgs, hasInsufficientBalance, totalRequired, selectedToken.address, selectedToken.decimals, writeApprove]);
+  }, [address, planArgs, hasInsufficientBalance, totalRequired, selectedToken.address, selectedToken.decimals, writeApprove, isKYCBlocked, isTransferDatePast, isPercentageInvalid]);
 
   // Handle approval confirmation → trigger plan creation
   useEffect(() => {
@@ -545,6 +570,24 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
             </div>
           )}
 
+          {/* Validation Errors */}
+          {(isTransferDatePast || isPercentageInvalid) && (
+            <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-4">
+              <FiAlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
+              <div className="flex-1">
+                <h4 className="text-red-400 font-medium text-sm">Invalid Plan Configuration</h4>
+                <ul className="list-disc list-inside text-red-400/80 text-xs mt-1 space-y-1">
+                  {isTransferDatePast && (
+                    <li>Transfer date must be in the future. Current date: {new Date().toLocaleDateString()}</li>
+                  )}
+                  {isPercentageInvalid && (
+                    <li>Periodic percentage ({periodicPercentage}%) must be a divisor of 100 (e.g., 10, 20, 25, 50).</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
+
           {/* Balance Check */}
           {hasInsufficientBalance && !isKYCBlocked && (
             <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
@@ -620,9 +663,15 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               <button
                 onClick={startTransactionFlow}
                 className="btn btn-primary"
-                disabled={hasInsufficientBalance || !planArgs || !address || isKYCBlocked}
+                disabled={hasInsufficientBalance || !planArgs || !address || isKYCBlocked || isTransferDatePast || isPercentageInvalid}
               >
-                {isKYCBlocked ? 'KYC Required' : 'Start Transaction'}
+                {isKYCBlocked
+                  ? 'KYC Required'
+                  : isTransferDatePast
+                    ? 'Invalid Date'
+                    : isPercentageInvalid
+                      ? 'Invalid Percentage'
+                      : 'Start Transaction'}
               </button>
               <p className="text-xs text-[var(--text-muted)] mt-3">
                 You will need to confirm 2 transactions: approval and plan creation

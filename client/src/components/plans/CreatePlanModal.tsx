@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiX, 
-  FiPlus, 
-  FiTrash2, 
+import {
+  FiX,
+  FiPlus,
+  FiTrash2,
   FiAlertCircle,
   FiCheck,
   FiLoader
@@ -14,9 +14,9 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadCont
 import { parseUnits, formatUnits, decodeEventLog } from 'viem';
 import { api, CreatePlanData, ContractData as ApiContractData } from '@/lib/api';
 import { inheritXABI } from '@/contract/abi';
-import { 
-  INHERITX_CONTRACT_ADDRESS, 
-  TOKENS, 
+import {
+  INHERITX_CONTRACT_ADDRESS,
+  TOKENS,
   DISTRIBUTION_METHODS,
   ASSET_TYPE_MAP,
   DISTRIBUTION_METHOD_MAP,
@@ -61,7 +61,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [txStep, setTxStep] = useState<'idle' | 'approving' | 'creating'>('idle');
-  
+
   // Plan details
   const [planName, setPlanName] = useState('');
   const [planDescription, setPlanDescription] = useState('');
@@ -71,7 +71,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const [transferDate, setTransferDate] = useState('');
   const [periodicPercentage, setPeriodicPercentage] = useState(25);
   const [claimCode, setClaimCode] = useState('');
-  
+
   // Beneficiaries
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([
     { name: '', email: '', relationship: '', allocatedPercentage: 100 }
@@ -80,7 +80,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   // Contract data from backend
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [backendPlanId, setBackendPlanId] = useState<string | null>(null);
-  
+
   // Define plan args type
   type PlanArgs = [
     `0x${string}`,
@@ -98,7 +98,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     number,
     `0x${string}`
   ];
-  
+
   const [planArgs, setPlanArgs] = useState<PlanArgs | null>(null);
 
   // Get selected token
@@ -112,41 +112,58 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     args: address ? [address] : undefined,
   });
 
+  // Check KYC status
+  const { data: kycRequired } = useReadContract({
+    address: INHERITX_CONTRACT_ADDRESS,
+    abi: inheritXABI,
+    functionName: 'kycRequired',
+  });
+
+  const { data: isKYCApproved } = useReadContract({
+    address: INHERITX_CONTRACT_ADDRESS,
+    abi: inheritXABI,
+    functionName: 'isKYCApproved',
+    args: address ? [address] : undefined,
+  });
+
+  // Determine if KYC check fails (required but not approved)
+  const isKYCBlocked = kycRequired && !isKYCApproved;
+
   // Approval transaction
-  const { 
-    writeContract: writeApprove, 
-    data: approveTxHash, 
+  const {
+    writeContract: writeApprove,
+    data: approveTxHash,
     isPending: isApprovePending,
     error: approveError,
     reset: resetApprove
   } = useWriteContract();
-  
-  const { 
-    isLoading: isApproveWaiting, 
+
+  const {
+    isLoading: isApproveWaiting,
     isSuccess: isApprovalConfirmed,
     isError: isApproveError,
     error: approveReceiptError
-  } = useWaitForTransactionReceipt({ 
-    hash: approveTxHash 
+  } = useWaitForTransactionReceipt({
+    hash: approveTxHash
   });
 
   // Create plan transaction
-  const { 
-    writeContract: writeCreatePlan, 
-    data: createTxHash, 
+  const {
+    writeContract: writeCreatePlan,
+    data: createTxHash,
     isPending: isCreatePending,
     error: createError,
     reset: resetCreate
   } = useWriteContract();
-  
-  const { 
-    isLoading: isCreateWaiting, 
-    isSuccess: createSuccess, 
+
+  const {
+    isLoading: isCreateWaiting,
+    isSuccess: createSuccess,
     isError: isCreateError,
     error: createReceiptError,
-    data: createReceipt 
-  } = useWaitForTransactionReceipt({ 
-    hash: createTxHash 
+    data: createReceipt
+  } = useWaitForTransactionReceipt({
+    hash: createTxHash
   });
 
   // Calculate required amount with fees (5% creation fee + 2% service fee)
@@ -158,7 +175,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   };
 
   const totalRequired = calculateTotalRequired();
-  
+
   // Check balance (needs to be calculated early)
   const hasInsufficientBalance = tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
 
@@ -190,7 +207,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
             data: planCreatedEvent.data,
             topics: planCreatedEvent.topics,
           }) as { eventName: string; args: { globalPlanId: bigint; userPlanId: bigint } };
-          
+
           globalPlanId = Number(decoded.args.globalPlanId);
           userPlanId = Number(decoded.args.userPlanId);
         }
@@ -216,17 +233,17 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   // Handle errors
   useEffect(() => {
     if (approveError) {
-      const errorMessage = approveError instanceof Error ? approveError.message : 
-        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError) 
-          ? String(approveError.shortMessage) 
+      const errorMessage = approveError instanceof Error ? approveError.message :
+        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError)
+          ? String(approveError.shortMessage)
           : 'Unknown error';
       setError('Approval failed: ' + errorMessage);
       setStep('review');
     }
     if (createError) {
-      const errorMessage = createError instanceof Error ? createError.message : 
-        (typeof createError === 'object' && createError !== null && 'shortMessage' in createError) 
-          ? String(createError.shortMessage) 
+      const errorMessage = createError instanceof Error ? createError.message :
+        (typeof createError === 'object' && createError !== null && 'shortMessage' in createError)
+          ? String(createError.shortMessage)
           : 'Unknown error';
       setError('Transaction failed: ' + errorMessage);
       setStep('review');
@@ -244,7 +261,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   };
 
   const updateBeneficiary = (index: number, field: keyof Beneficiary, value: string | number) => {
-    setBeneficiaries(beneficiaries.map((b, i) => 
+    setBeneficiaries(beneficiaries.map((b, i) =>
       i === index ? { ...b, [field]: value } : b
     ));
   };
@@ -255,12 +272,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     if (!assetAmount || parseFloat(assetAmount) <= 0) return 'Amount must be greater than 0';
     if (!transferDate) return 'Transfer date is required';
     if (new Date(transferDate) <= new Date()) return 'Transfer date must be in the future';
-    
+
     // Check balance
     if (hasInsufficientBalance) {
       return `Insufficient balance. Required: ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}`;
     }
-    
+
     return null;
   };
 
@@ -271,16 +288,16 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       if (!ben.relationship) return 'All beneficiary relationships are required';
       if (ben.allocatedPercentage <= 0) return 'All beneficiaries must have an allocation';
     }
-    
+
     const totalPercentage = beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0);
     if (totalPercentage !== 100) return `Total allocation must be 100% (currently ${totalPercentage}%)`;
-    
+
     return null;
   };
 
   const handleNext = () => {
     setError(null);
-    
+
     if (step === 'details') {
       const error = validateDetails();
       if (error) {
@@ -315,13 +332,13 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         periodicPercentage: distributionMethod !== 'LUMP_SUM' ? periodicPercentage : undefined,
         beneficiaries: beneficiaries.map(b => ({
           ...b,
-          allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points
+          allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points (always x100 when creating new)
         })),
         claimCode: claimCode || undefined,
       };
 
       const { data, error: apiError } = await api.createPlan(planData);
-      
+
       if (apiError || !data) {
         throw new Error(apiError || 'Failed to create plan');
       }
@@ -352,7 +369,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
 
       console.log('amount', amount);
-      
+
       const transferTimestamp = BigInt(Math.floor(new Date(transferDate).getTime() / 1000));
       const preparedPlanArgs: PlanArgs = [
         extendedContractData.planNameHash as `0x${string}`,
@@ -389,7 +406,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
   // Main transaction flow handler
   const startTransactionFlow = () => {
-    if (!address || !planArgs || hasInsufficientBalance) {
+    if (!address || !planArgs || hasInsufficientBalance || isKYCBlocked) {
       return;
     }
 
@@ -420,10 +437,10 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   useEffect(() => {
     if (isApprovalConfirmed && approveTxHash && txStep === 'approving' && planArgs) {
       console.log('Approval confirmed, creating plan...');
-      
+
       setTxStep('creating');
       setStep('create');
-      
+
       // Small delay to ensure blockchain state is updated
       setTimeout(() => {
         try {
@@ -487,31 +504,28 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               const stepIndex = i;
               const isActive = stepIndex === currentIndex;
               const isCompleted = stepIndex < currentIndex;
-              
+
               if (s === 'approve' && step !== 'approve' && step !== 'create') return null;
-              
+
               return (
                 <div key={s} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
-                      isCompleted ? 'bg-green-500 text-white' :
-                      isActive ? 'bg-primary text-[#0D1A1E]' :
-                      'bg-[#1A2028] text-gray-500 border border-white/10'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${isCompleted ? 'bg-green-500 text-white' :
+                        isActive ? 'bg-primary text-[#0D1A1E]' :
+                          'bg-[#1A2028] text-gray-500 border border-white/10'
+                      }`}>
                       {isCompleted ? <FiCheck size={14} /> : stepIndex + 1}
                     </div>
-                    <span className={`text-xs mt-1.5 font-medium ${
-                      isActive ? 'text-primary' : 
-                      isCompleted ? 'text-green-400' : 
-                      'text-gray-500'
-                    }`}>
+                    <span className={`text-xs mt-1.5 font-medium ${isActive ? 'text-primary' :
+                        isCompleted ? 'text-green-400' :
+                          'text-gray-500'
+                      }`}>
                       {stepLabels[i]}
                     </span>
                   </div>
                   {i < 4 && (
-                    <div className={`w-12 h-0.5 mx-2 mb-5 ${
-                      isCompleted ? 'bg-green-500' : 'bg-white/10'
-                    }`} />
+                    <div className={`w-12 h-0.5 mx-2 mb-5 ${isCompleted ? 'bg-green-500' : 'bg-white/10'
+                      }`} />
                   )}
                 </div>
               );
@@ -725,11 +739,10 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
               <div className="flex items-center justify-between p-3 bg-[var(--bg-elevated)] rounded-lg">
                 <span className="font-medium">Total Allocation</span>
-                <span className={`font-bold ${
-                  beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0) === 100
+                <span className={`font-bold ${beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0) === 100
                     ? 'text-[var(--accent-green)]'
                     : 'text-[var(--accent-red)]'
-                }`}>
+                  }`}>
                   {beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0)}%
                 </span>
               </div>
@@ -799,8 +812,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     {isApprovePending ? 'Confirm Approval' : 'Approving Tokens...'}
                   </h3>
                   <p className="text-[var(--text-secondary)] mt-2">
-                    {isApprovePending 
-                      ? 'Please confirm the approval transaction in your wallet' 
+                    {isApprovePending
+                      ? 'Please confirm the approval transaction in your wallet'
                       : 'Waiting for approval confirmation...'}
                   </p>
                   {approveTxHash && (
@@ -817,6 +830,21 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     After approval, the plan creation will proceed automatically
                   </p>
                 </>
+              )}
+
+              {/* KYC Warning in Approve Step */}
+              {isKYCBlocked && txStep === 'idle' && (
+                <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-6 text-left">
+                  <FiAlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+                  <div className="flex-1">
+                    <h4 className="text-amber-400 font-medium text-sm">KYC Verification Required</h4>
+                    <p className="text-amber-400/80 text-xs mt-1">
+                      The smart contract requires KYC verification before you can create a plan.
+                      Please complete the KYC process in your profile settings or wait for approval.
+                      Only an admin can approve your on-chain KYC status.
+                    </p>
+                  </div>
+                </div>
               )}
 
               {txStep === 'idle' && !error && (
@@ -837,9 +865,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <button
                     onClick={startTransactionFlow}
                     className="btn btn-primary w-full"
-                    disabled={hasInsufficientBalance || !planArgs || !address}
+                    disabled={isKYCBlocked || hasInsufficientBalance || !planArgs || !address}
                   >
-                    Start Transaction
+                    {isKYCBlocked ? 'KYC Required' : 'Start Transaction'}
                   </button>
                   <p className="text-xs text-[var(--text-muted)] mt-3">
                     You will need to confirm 2 transactions: approval and plan creation
@@ -869,14 +897,14 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     </a>
                   )}
                   <div className="flex gap-3 justify-center mt-6">
-                    <button 
-                      onClick={() => setError(null)} 
+                    <button
+                      onClick={() => setError(null)}
                       className="btn btn-secondary"
                     >
                       Dismiss
                     </button>
-                    <button 
-                      onClick={handleRetry} 
+                    <button
+                      onClick={handleRetry}
                       className="btn btn-primary"
                       disabled={hasInsufficientBalance || !planArgs}
                     >
@@ -898,8 +926,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     {isCreatePending ? 'Confirm Transaction' : 'Creating Plan...'}
                   </h3>
                   <p className="text-[var(--text-secondary)] mt-2">
-                    {isCreatePending 
-                      ? 'Please confirm the plan creation in your wallet' 
+                    {isCreatePending
+                      ? 'Please confirm the plan creation in your wallet'
                       : 'Waiting for transaction confirmation...'}
                   </p>
                   {createTxHash && (
@@ -954,7 +982,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 Back
               </button>
             )}
-            
+
             {step === 'review' ? (
               <button
                 onClick={handleSubmit}

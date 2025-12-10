@@ -173,9 +173,8 @@ export default function PlansPage() {
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`btn btn-sm ${
-                filter === status ? "btn-primary" : "btn-secondary"
-              }`}
+              className={`btn btn-sm ${filter === status ? "btn-primary" : "btn-secondary"
+                }`}
             >
               {status === "ALL"
                 ? "All"
@@ -254,45 +253,13 @@ export default function PlansPage() {
                           <FiCopy size={16} />
                           Copy Claim Code
                         </button>
-                        {plan.status === "ACTIVE" && (
-                          <button
-                            onClick={() =>
-                              handleStatusChange(plan.id, "PAUSED")
-                            }
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors w-full"
-                          >
-                            <FiPause size={16} />
-                            Pause Plan
-                          </button>
-                        )}
-                        {plan.status === "PAUSED" && (
-                          <button
-                            onClick={() =>
-                              handleStatusChange(plan.id, "ACTIVE")
-                            }
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors w-full"
-                          >
-                            <FiPlay size={16} />
-                            Resume Plan
-                          </button>
-                        )}
-                        {["ACTIVE", "PAUSED"].includes(plan.status) && (
-                          <button
-                            onClick={() =>
-                              handleStatusChange(plan.id, "CANCELLED")
-                            }
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-500/10 text-[var(--accent-red)] transition-colors w-full"
-                          >
-                            <FiTrash2 size={16} />
-                            Cancel Plan
-                          </button>
-                        )}
+
                         {plan.txHash && (
                           <a
                             href={`https://sepolia-blockscout.lisk.com/tx/${plan.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
                           >
                             <FiExternalLink size={16} />
                             View on Explorer
@@ -376,14 +343,14 @@ export default function PlansPage() {
                       {plan.beneficiaries.slice(0, 4).map((ben, i) => (
                         <div
                           key={ben.id}
-                          className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-[var(--accent-purple)] border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-semibold text-white shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                          className="w-9 h-9 rounded-full bg-primary border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-semibold text-black shadow-lg hover:scale-110 transition-transform cursor-pointer"
                           title={`${ben.name} (${ben.relationship})`}
                         >
                           {ben.name.charAt(0).toUpperCase()}
                         </div>
                       ))}
                       {plan.beneficiaries.length > 4 && (
-                        <div 
+                        <div
                           className="w-9 h-9 rounded-full bg-[var(--bg-elevated)] border-2 border-[var(--bg-card)] flex items-center justify-center text-xs font-semibold text-[var(--text-muted)] shadow-lg hover:scale-110 transition-transform cursor-pointer"
                           title={`${plan.beneficiaries.length - 4} more beneficiary${plan.beneficiaries.length - 4 > 1 ? 'ies' : ''}`}
                         >
