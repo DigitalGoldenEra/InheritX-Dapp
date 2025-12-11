@@ -3,21 +3,13 @@
  * Handles sending emails for notifications, claims, etc.
  */
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { logger } from './logger';
 
 // Email configuration
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.SMTP_FROM || 'InheritX <noreply@inheritx.com>';
+const FROM_EMAIL = process.env.SMTP_FROM || 'onboarding@resend.dev';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 /**
@@ -30,7 +22,7 @@ export async function sendEmail(
   html?: string
 ): Promise<boolean> {
   try {
-    const info = await transporter.sendMail({
+    const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
@@ -38,7 +30,12 @@ export async function sendEmail(
       html: html || text,
     });
 
-    logger.info(`Email sent: ${info.messageId}`, { to, subject });
+    if (error) {
+      logger.error('Failed to send email:', error);
+      return false;
+    }
+
+    logger.info(`Email sent: ${data?.id}`, { to, subject });
     return true;
   } catch (error) {
     logger.error('Failed to send email:', error);
