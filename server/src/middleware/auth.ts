@@ -89,7 +89,7 @@ export async function verifyWalletSignature(
 }
 
 /**
- * Generate JWT token for user
+ * Generate JWT token for user base
  */
 export function generateToken(userId: string, walletAddress: string): string {
   const options: jwt.SignOptions = {
