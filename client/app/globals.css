@@ -11,6 +11,13 @@
   --color-dark-elevated: #141820;
   --color-dark-section: #0A0D10;
   
+  --accent-green: #10B981;
+  --accent-red: #EF4444;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --bg-deep: #0A0D10;
+  --primary-muted: rgba(51, 197, 224, 0.15);
+  
   --font-family-heading: var(--font-syne), sans-serif;
   --font-family-body: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }

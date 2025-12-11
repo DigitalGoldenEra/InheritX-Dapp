@@ -313,7 +313,7 @@ export default function ClaimPage() {
             <div className="card bg-[var(--bg-deep)] p-4 mb-6">
               <div className="text-sm text-[var(--text-muted)] mb-1">Amount Received</div>
               <div className="text-2xl font-bold text-[var(--primary)]">
-                {verificationData?.allocatedAmount} {token?.symbol}
+                {verificationData && formatTokenAmount(verificationData.allocatedAmount, token?.decimals || 18)} {token?.symbol}
               </div>
             </div>
             <Link href="/" className="btn btn-primary">
