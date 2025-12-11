@@ -92,10 +92,13 @@ export async function verifyWalletSignature(
  * Generate JWT token for user
  */
 export function generateToken(userId: string, walletAddress: string): string {
+  const options: jwt.SignOptions = {
+    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any
+  };
   return jwt.sign(
     { userId, walletAddress },
     JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    options
   );
 }
 

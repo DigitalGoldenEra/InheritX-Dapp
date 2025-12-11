@@ -159,7 +159,11 @@ async function handleKYCStatusChanged(data: any) {
     3: 'REJECTED',
   };
 
-  const dbStatus = statusMap[status] as 'PENDING' | 'APPROVED' | 'REJECTED';
+  const dbStatus = statusMap[status] as
+    | 'NOT_SUBMITTED'
+    | 'PENDING'
+    | 'APPROVED'
+    | 'REJECTED';
 
   if (dbStatus && dbStatus !== 'NOT_SUBMITTED') {
     await prisma.kYC.updateMany({
