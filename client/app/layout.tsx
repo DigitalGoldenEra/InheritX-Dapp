@@ -3,6 +3,8 @@ import { Inter, Syne } from 'next/font/google';
 import { Providers } from './providers';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
+
 
 // Configure Inter font for body text
 const inter = Inter({
@@ -47,7 +49,9 @@ export default function RootLayout({
           speed={200}
           shadow="0 0 10px #33C5E0,0 0 5px #33C5E0"
         />
-        <Providers>{children}</Providers>
+        <Providers>{children}         <Analytics />
+
+        </Providers>
       </body>
     </html>
   );

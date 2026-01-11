@@ -18,6 +18,9 @@ import {
   FiMenu,
   FiX,
 } from "react-icons/fi";
+import { FaTelegram, FaXTwitter } from "react-icons/fa6";
+import Image from "next/image";
+
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -391,16 +394,40 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="py-7 px-6 border-t border-white/6">
         <div className="max-w-[1200px] mx-auto flex items-center justify-between flex-wrap gap-5">
-          <div className="flex items-center gap-2.5 font-['Syne',sans-serif]">
-            <div className="w-6 h-6 bg-[#33C5E0] rounded-md flex items-center justify-center font-bold text-[10px] text-[#050608]">
-              IX
-            </div>
-            <span className="font-semibold text-sm text-white">InheritX</span>
-          </div>
+          <Link
+            href="#hero"
+            className="flex items-center gap-3 transition-opacity hover:opacity-90"
+          >
+            <Image
+              src="/img/logo.svg"
+              alt="InheritX logo"
+              width={48}
+              height={48}
+              priority
+            />
+          </Link>
           <div className="text-[13px] text-[#64748B]">
-            © 2024 InheritX. Built on Lisk.
+            © 2026 InheritX. Built on Lisk.
           </div>
-          <div className="flex gap-6">
+          <div className="flex gap-6 items-center">
+            <a
+              href="https://t.me/+sUOXda22kXsyMzI0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#64748B] hover:text-[#33C5E0] transition-colors"
+              aria-label="Join us on Telegram"
+            >
+              <FaTelegram size={20} />
+            </a>
+            <a
+              href="https://x.com/projectInheritX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#64748B] hover:text-[#33C5E0] transition-colors"
+              aria-label="Follow us on X"
+            >
+              <FaXTwitter size={18} />
+            </a>
             <a href="#" className="text-[13px] text-[#64748B] no-underline">
               Terms
             </a>

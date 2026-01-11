@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:prod": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "create:admin": "ts-node scripts/createAdmin.ts",
     "set:admin:password": "ts-node scripts/setAdminPassword.ts",
     "check:admin": "ts-node scripts/checkAdmin.ts",
     "test:admin:login": "ts-node scripts/testAdminLogin.ts",
