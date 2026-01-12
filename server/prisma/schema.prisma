@@ -210,6 +210,9 @@ model Beneficiary {
   notificationSent   Boolean   @default(false)
   notificationSentAt DateTime?
 
+  // Relations
+  beneficiaryKYC BeneficiaryKYC?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -217,6 +220,51 @@ model Beneficiary {
   @@index([planId])
   @@index([email])
   @@index([hasClaimed])
+}
+
+// ============================================
+// BENEFICIARY KYC
+// ============================================
+
+model BeneficiaryKYC {
+  id            String      @id @default(uuid())
+  beneficiaryId String      @unique
+  beneficiary   Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+
+  // Personal Information (for verification)
+  fullName    String
+  email       String
+  dateOfBirth DateTime?
+  nationality String?
+
+  // ID Document
+  idType        IDType
+  idNumber      String
+  idDocumentUrl String?
+  idExpiryDate  DateTime?
+
+  // Address (optional)
+  address    String?
+  city       String?
+  country    String?
+  postalCode String?
+
+  // Verification
+  status          KYCStatus @default(PENDING)
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+
+  // Optional hash if needed for on-chain verification later
+  kycDataHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([beneficiaryId])
+  @@index([status])
+  @@index([email])
 }
 
 // ============================================
@@ -312,10 +360,16 @@ enum ActivityType {
   DISTRIBUTION_SCHEDULED
   DISTRIBUTION_NOTIFIED
   DISTRIBUTION_EXECUTED
+  DISTRIBUTION_CANCELLED
 
   // Admin Activities
   ADMIN_ACTION
   SYSTEM_EVENT
+
+  // Beneficiary KYC Activities
+  BENEFICIARY_KYC_SUBMITTED
+  BENEFICIARY_KYC_APPROVED
+  BENEFICIARY_KYC_REJECTED
 }
 
 // ============================================
