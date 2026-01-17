@@ -1,7 +1,7 @@
 'use client';
 
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { inheritXABI } from '@/contract/abi';
+import inheritXABI from '@/contract/abi';
 import { INHERITX_CONTRACT_ADDRESS, ASSET_TYPE_MAP, DISTRIBUTION_METHOD_MAP } from '@/lib/contract';
 import { Address, parseUnits } from 'viem';
 

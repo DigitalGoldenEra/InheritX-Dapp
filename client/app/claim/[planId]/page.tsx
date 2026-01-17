@@ -16,7 +16,7 @@ import {
   FiLoader,
 } from 'react-icons/fi';
 import { api, ClaimPlanInfo, VerifyClaimResponse } from '@/lib/api';
-import { inheritXABI } from '@/contract/abi';
+import inheritXABI from '@/contract/abi';
 import {
   INHERITX_CONTRACT_ADDRESS,
   formatDate,

@@ -7,7 +7,7 @@
 
 import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from 'wagmi';
 import { Address, keccak256, encodePacked } from 'viem';
-import { inheritXABI } from '@/contract/abi';
+import inheritXABI from '@/contract/abi';
 import {
   INHERITX_CONTRACT_ADDRESS,
   ASSET_TYPE_MAP,
@@ -49,13 +49,13 @@ export function useCreateInheritancePlan() {
       email: string;
       relationship: string;
       allocatedPercentage: number;
+      claimCode?: string;
     }>;
     assetType: string;
     assetAmount: string;
     distributionMethod: string;
     transferDate: string;
     periodicPercentage?: number;
-    claimCode?: string;
   }) => {
     try {
       // Step 1: Create plan in backend (gets contract data with hashes)
@@ -75,8 +75,8 @@ export function useCreateInheritancePlan() {
         beneficiaries: planData.beneficiaries.map((b) => ({
           ...b,
           allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points
+          claimCode: b.claimCode,
         })),
-        claimCode: planData.claimCode,
       });
 
       if (apiError || !backendData) {
@@ -100,8 +100,8 @@ export function useCreateInheritancePlan() {
         args: [
           contractData.planNameHash as `0x${string}`,
           contractData.planDescriptionHash as `0x${string}`,
-          contractData.beneficiaries.map((b: any) => ({
-            nameHash: b.nameHash as `0x${string}`,
+          contractData.beneficiaries.map((b: any, i: number) => ({
+            nameHash: (b.nameHash || hashString(planData.beneficiaries[i].name)) as `0x${string}`,
             emailHash: b.emailHash as `0x${string}`,
             relationshipHash: b.relationshipHash as `0x${string}`,
             allocatedPercentage: BigInt(b.allocatedPercentage),
