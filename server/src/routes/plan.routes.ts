@@ -129,7 +129,7 @@ router.get('/', authenticateToken, asyncHandler(async (req: Request, res: Respon
 router.get('/:id', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
     include: {
@@ -506,7 +506,7 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
 
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
   });
@@ -613,7 +613,7 @@ router.put('/:id/status', authenticateToken, asyncHandler(async (req: Request, r
 
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
   });
@@ -690,7 +690,7 @@ router.put('/:id/status', authenticateToken, asyncHandler(async (req: Request, r
 router.get('/:id/claim-codes', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
     select: {
@@ -715,7 +715,7 @@ router.get('/:id/claim-codes', authenticateToken, asyncHandler(async (req: Reque
 
   // Decrypt claim codes for each beneficiary
   const { decryptClaimCode } = await import('../utils/crypto');
-  const beneficiaries = plan.beneficiaries.map(b => ({
+  const beneficiaries = (plan as any).beneficiaries.map((b: any) => ({
     beneficiaryIndex: b.beneficiaryIndex,
     name: b.name,
     email: b.email,

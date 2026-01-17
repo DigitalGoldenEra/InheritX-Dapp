@@ -143,7 +143,7 @@ const beneficiaryKYCSchema = z.object({
  *         description: Plan not found
  */
 router.get('/plan/:globalPlanId', asyncHandler(async (req: Request, res: Response) => {
-  const globalPlanId = parseInt(req.params.globalPlanId);
+  const globalPlanId = parseInt(req.params.globalPlanId as string);
 
   const plan = await prisma.plan.findFirst({
     where: { globalPlanId },

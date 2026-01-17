@@ -185,7 +185,7 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
  *         description: Admin access required
  */
 router.get('/kyc', asyncHandler(async (req: Request, res: Response) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = '1', limit = '20' } = req.query as { status?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (status && status !== 'all') {
@@ -338,7 +338,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
     throw new AppError('KYC is not pending', 400);
   }
 
-  if (!kyc.user?.walletAddress) {
+  if (!(kyc as any).user?.walletAddress) {
     throw new AppError('User wallet address not found', 400);
   }
 
@@ -353,7 +353,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
   });
 
   const contractResult = await approveKYCOnContract(
-    kyc.user.walletAddress,
+    (kyc as any).user.walletAddress,
     kyc.kycDataHash
   );
 
@@ -377,7 +377,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
       userId: kyc.userId,
       type: 'KYC_APPROVED',
       description: `KYC approved by admin`,
-      metadata: { 
+      metadata: {
         adminId: req.user!.id,
         txHash: contractResult.txHash,
       },
@@ -454,7 +454,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     throw new AppError('KYC is not pending', 400);
   }
 
-  if (!kyc.user?.walletAddress) {
+  if (!(kyc as any).user?.walletAddress) {
     throw new AppError('User wallet address not found', 400);
   }
 
@@ -464,7 +464,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     userAddress: kyc.user.walletAddress,
   });
 
-  const contractResult = await rejectKYCOnContract(kyc.user.walletAddress);
+  const contractResult = await rejectKYCOnContract((kyc as any).user.walletAddress);
 
   if (!contractResult.success) {
     throw new AppError(contractResult.error || 'Failed to reject KYC on blockchain', 500);
@@ -487,8 +487,8 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
       userId: kyc.userId,
       type: 'KYC_REJECTED',
       description: `KYC rejected by admin. Reason: ${reason || 'Not specified'}`,
-      metadata: { 
-        adminId: req.user!.id, 
+      metadata: {
+        adminId: req.user!.id,
         reason,
         txHash: contractResult.txHash,
       },
@@ -548,7 +548,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
  *         description: Admin access required
  */
 router.get('/users', asyncHandler(async (req: Request, res: Response) => {
-  const { role, page = 1, limit = 20 } = req.query;
+  const { role, page = '1', limit = '20' } = req.query as { role?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (role) {
@@ -671,7 +671,7 @@ router.put('/users/:id/role', requireSuperAdmin, asyncHandler(async (req: Reques
  *         description: Admin access required
  */
 router.get('/plans', asyncHandler(async (req: Request, res: Response) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = '1', limit = '20' } = req.query as { status?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (status) {
@@ -748,7 +748,7 @@ router.get('/plans', asyncHandler(async (req: Request, res: Response) => {
  *         description: Admin access required
  */
 router.get('/activity', asyncHandler(async (req: Request, res: Response) => {
-  const { type, userId, page = 1, limit = 50 } = req.query;
+  const { type, userId, page = '1', limit = '50' } = req.query as { type?: string; userId?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (type) where.type = type;
