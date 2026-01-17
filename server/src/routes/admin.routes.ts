@@ -269,7 +269,7 @@ router.get('/kyc', asyncHandler(async (req: Request, res: Response) => {
  */
 router.get('/kyc/:id', asyncHandler(async (req: Request, res: Response) => {
   const kyc = await prisma.kYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       user: {
         select: {
@@ -326,7 +326,7 @@ router.get('/kyc/:id', asyncHandler(async (req: Request, res: Response) => {
  */
 router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response) => {
   const kyc = await prisma.kYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: { user: true },
   });
 
@@ -349,7 +349,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
   // Step 1: Call smart contract FIRST
   logger.info('Approving KYC on blockchain...', {
     kycId: kyc.id,
-    userAddress: kyc.user.walletAddress,
+    userAddress: (kyc as any).user.walletAddress,
   });
 
   const contractResult = await approveKYCOnContract(
@@ -363,7 +363,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
 
   // Step 2: Update database ONLY after contract success
   const updatedKYC = await prisma.kYC.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       status: 'APPROVED',
       reviewedAt: new Date(),
@@ -442,7 +442,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
   }).parse(req.body);
 
   const kyc = await prisma.kYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: { user: true },
   });
 
@@ -461,7 +461,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
   // Step 1: Call smart contract FIRST
   logger.info('Rejecting KYC on blockchain...', {
     kycId: kyc.id,
-    userAddress: kyc.user.walletAddress,
+    userAddress: (kyc as any).user.walletAddress,
   });
 
   const contractResult = await rejectKYCOnContract((kyc as any).user.walletAddress);
@@ -472,7 +472,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
 
   // Step 2: Update database ONLY after contract success
   const updatedKYC = await prisma.kYC.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       status: 'REJECTED',
       reviewedAt: new Date(),
@@ -622,14 +622,14 @@ router.put('/users/:id/role', requireSuperAdmin, asyncHandler(async (req: Reques
   }).parse(req.body);
 
   const user = await prisma.user.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: { role },
   });
 
   // Log activity
   await prisma.activity.create({
     data: {
-      userId: req.params.id,
+      userId: req.params.id as string,
       type: 'ADMIN_ACTION',
       description: `User role changed to ${role}`,
       metadata: { adminId: req.user!.id, newRole: role },
