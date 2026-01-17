@@ -66,7 +66,7 @@ export default function HomePage() {
   const steps = [
     { step: '01', title: 'Connect', desc: 'Link your Web3 wallet securely' },
     { step: '02', title: 'Verify', desc: 'Complete KYC verification' },
-    { step: '03', title: 'Create', desc: 'Set up your inheritance plan' },
+    { step: '03', title: 'Create', desc: 'Set up your future plan' },
     { step: '04', title: 'Relax', desc: 'Assets distribute automatically' },
   ];
 
@@ -156,12 +156,12 @@ export default function HomePage() {
             <h1 className="font-['Syne',sans-serif] text-[clamp(42px,4vw,80px)] font-extrabold leading-none mb-6 tracking-[-0.03em]">
               <span className="text-white">SECURE YOUR</span>
               <br />
-              <span className="text-[#33C5E0]">DIGITAL LEGACY</span>
+              <span className="text-[#33C5E0]">FUTURE GOALS</span>
             </h1>
 
             <p className="text-lg text-[#94A3B8] mb-12 max-w-[540px] mx-auto leading-[1.7]">
-              Create automated inheritance plans for your crypto assets. Trustless, private, and
-              fully on-chain.
+              Create automated crypto plans for tuition, weddings, travel, or inheritance.
+              Trustless, private, and fully on-chain.
             </p>
 
             {/* CTA Buttons */}
@@ -216,7 +216,7 @@ export default function HomePage() {
               Features
             </p>
             <h2 className="font-['Syne',sans-serif] text-[clamp(32px,5vw,48px)] font-bold max-w-[600px] leading-[1.1] text-white">
-              Everything you need for digital estate planning
+              Everything you need for digital asset planning
             </h2>
           </motion.div>
 
@@ -304,7 +304,7 @@ export default function HomePage() {
                   Built for trust
                 </h2>
                 <p className="text-[15px] text-[#94A3B8] mb-7 leading-[1.7]">
-                  Your inheritance plans are protected by multiple layers of security. We never have
+                  Your future plans are protected by multiple layers of security. We never have
                   access to your assets.
                 </p>
 
@@ -344,7 +344,7 @@ export default function HomePage() {
             Ready to secure your legacy?
           </h2>
           <p className="text-base text-[#94A3B8] mb-9 max-w-[450px] mx-auto">
-            Join thousands who trust InheritX for their digital inheritance planning.
+            Join thousands who trust InheritX for their digital future planning.
           </p>
           {mounted &&
             (isConnected ? (
@@ -395,12 +395,12 @@ export default function HomePage() {
             >
               <FaXTwitter size={18} />
             </a>
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+            <Link href="/guidelines" className="text-[13px] text-[#64748B] no-underline hover:text-[#33C5E0] transition-colors">
               Terms
-            </a>
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+            </Link>
+            <Link href="/guidelines" className="text-[13px] text-[#64748B] no-underline hover:text-[#33C5E0] transition-colors">
               Privacy
-            </a>
+            </Link>
             <a href="#" className="text-[13px] text-[#64748B] no-underline">
               Docs
             </a>

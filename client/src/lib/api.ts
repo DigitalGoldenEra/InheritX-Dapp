@@ -418,8 +418,8 @@ export interface CreatePlanData {
     email: string;
     relationship: string;
     allocatedPercentage: number;
+    claimCode?: string;
   }[];
-  claimCode?: string;
   // Proof of Life option (LUMP_SUM only)
   proofOfLifeEnabled?: boolean;
   // Beneficiary notification option
@@ -429,12 +429,11 @@ export interface CreatePlanData {
 export interface ContractData {
   planNameHash: string;
   planDescriptionHash: string;
-  claimCodeHash: string;
   beneficiaries: {
-    nameHash: string;
     emailHash: string;
     relationshipHash: string;
     allocatedPercentage: number;
+    claimCodeHash: string;
   }[];
 }
 

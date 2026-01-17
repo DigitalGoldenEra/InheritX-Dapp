@@ -6,6 +6,7 @@ import { liskSepolia, sepolia, mainnet } from 'wagmi/chains';
 import { RainbowKitProvider, getDefaultConfig, darkTheme } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 import { useState, useEffect } from 'react';
+import { AuthProvider } from '@/context/AuthContext';
 
 const config = getDefaultConfig({
   appName: 'InheritX',
@@ -50,7 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           modalSize="compact"
         >
           {mounted ? (
-            children
+            <AuthProvider>{children}</AuthProvider>
           ) : (
             <div className="page-loader">
               <div className="spinner" />

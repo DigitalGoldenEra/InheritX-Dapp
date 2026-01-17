@@ -21,6 +21,7 @@ import {
   DISTRIBUTION_METHOD_MAP,
   ERC20_ABI,
   parseTokenAmount,
+  hashString,
 } from '@/lib/contract';
 
 interface CreatePlanModalProps {
@@ -33,6 +34,7 @@ interface Beneficiary {
   email: string;
   relationship: string;
   allocatedPercentage: number;
+  claimCode?: string;
 }
 
 interface ContractBeneficiary {
@@ -43,12 +45,14 @@ interface ContractBeneficiary {
 }
 
 // Extended ContractData for contract calls (includes additional fields needed for blockchain)
-interface ContractData extends ApiContractData {
+interface ContractData extends Omit<ApiContractData, 'beneficiaries'> {
   assetType: number;
   assetAmount: string;
   distributionMethod: number;
   transferDate: string;
   periodicPercentage?: number;
+  claimCodeHash?: undefined; // Removed from top level in favor of per-beneficiary
+  beneficiaries: ContractBeneficiary[];
 }
 
 type Step = 'details' | 'beneficiaries' | 'review' | 'approve' | 'create';
@@ -69,7 +73,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const [distributionMethod, setDistributionMethod] = useState('LUMP_SUM');
   const [transferDate, setTransferDate] = useState('');
   const [periodicPercentage, setPeriodicPercentage] = useState(25);
-  const [claimCode, setClaimCode] = useState('');
+  // claimCode state removed - moved to beneficiaries
 
   // Proof of Life and Notification options
   const [proofOfLifeEnabled, setProofOfLifeEnabled] = useState(false);
@@ -77,7 +81,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
   // Beneficiaries
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([
-    { name: '', email: '', relationship: '', allocatedPercentage: 100 },
+    { name: '', email: '', relationship: '', allocatedPercentage: 100, claimCode: '' },
   ]);
 
   // Contract data from backend
@@ -270,7 +274,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     if (beneficiaries.length >= 10) return;
     setBeneficiaries([
       ...beneficiaries,
-      { name: '', email: '', relationship: '', allocatedPercentage: 0 },
+      { name: '', email: '', relationship: '', allocatedPercentage: 0, claimCode: '' },
     ]);
   };
 
@@ -306,6 +310,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       if (!ben.email || !ben.email.includes('@')) return 'All beneficiary emails must be valid';
       if (!ben.relationship) return 'All beneficiary relationships are required';
       if (ben.allocatedPercentage <= 0) return 'All beneficiaries must have an allocation';
+      if (ben.claimCode && ben.claimCode.length !== 6) return 'Claim code must be exactly 6 characters';
     }
 
     const totalPercentage = beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0);
@@ -353,8 +358,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         beneficiaries: beneficiaries.map((b) => ({
           ...b,
           allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points (always x100 when creating new)
+          claimCode: b.claimCode || undefined,
         })),
-        claimCode: claimCode || undefined,
         // Proof of Life option (LUMP_SUM only)
         proofOfLifeEnabled: distributionMethod === 'LUMP_SUM' ? proofOfLifeEnabled : false,
         // Beneficiary notification option
@@ -372,12 +377,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       const extendedContractData: ContractData = {
         planNameHash: data.contractData.planNameHash as `0x${string}`,
         planDescriptionHash: data.contractData.planDescriptionHash as `0x${string}`,
-        claimCodeHash: data.contractData.claimCodeHash as `0x${string}`,
-        beneficiaries: data.contractData.beneficiaries.map((b) => ({
-          nameHash: b.nameHash as `0x${string}`,
+        beneficiaries: data.contractData.beneficiaries.map((b, i) => ({
+          nameHash: hashString(beneficiaries[i].name) as `0x${string}`,
           emailHash: b.emailHash as `0x${string}`,
           relationshipHash: b.relationshipHash as `0x${string}`,
           allocatedPercentage: b.allocatedPercentage,
+          claimCodeHash: b.claimCodeHash as `0x${string}`,
         })),
         assetType: ASSET_TYPE_MAP[assetType] ?? 0,
         assetAmount,
@@ -385,25 +390,45 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         transferDate: new Date(transferDate).toISOString(),
         periodicPercentage: distributionMethod !== 'LUMP_SUM' ? periodicPercentage : undefined,
       };
+
+      // We need to type cast or fix interface if nameHash is missing.
+      // Based on previous code, nameHash IS required by contract.
+      // Make sure we pass it. If backend doesn't return it, we might need to hash it here or ensure backend does.
+      // Re-reading api.ts ContractData (Lines 430+ in Step 369/374/376):
+      // I removed `claimCodeHash` from `ContractData` top level.
+      // `beneficiaries` in `ContractData` has `emailHash`, `relationshipHash`, `allocatedPercentage`, `claimCodeHash`.
+      // It DOES NOT HAVE `nameHash` in the interface I saw in Step 376?
+      // Wait, in Step 376, I removed `claimCodeHash` from top level.
+      // The `beneficiaries` object in `ContractData` (Step 376) has `emailHash`, `relationshipHash`, `allocatedPercentage`, `claimCodeHash`.
+      // It does NOT show `nameHash`.
+      // BUT `PlanArgs` REQUIRES `nameHash`.
+      // Use `hashString` from utils if backend doesn't provide it, or fix api.ts.
+      // Use `hashString(b.name)`
+
       setContractData(extendedContractData);
       setBackendPlanId(data.plan.id);
-      setClaimCode(data.plan.claimCode || claimCode);
 
       // Prepare plan creation arguments
       const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
 
-      console.log('amount', amount);
-
       const transferTimestamp = BigInt(Math.floor(new Date(transferDate).getTime() / 1000));
+
+      // Need to re-map beneficiaries to match PlanArgs structure
+      // PlanArgs expects { nameHash, emailHash, relationshipHash, allocatedPercentage, claimCodeHash }
+
+      // Map original beneficiaries to get names for hashing if needed, or rely on backend.
+      // Since `ContractData` from API seems to lack `nameHash` (need to verify this assumption or just hash it here to be safe),
+      // let's use the local beneficiary name to generate hash.
+
       const preparedPlanArgs: PlanArgs = [
         extendedContractData.planNameHash as `0x${string}`,
         extendedContractData.planDescriptionHash as `0x${string}`,
-        (extendedContractData.beneficiaries as ContractBeneficiary[]).map((b) => ({
-          nameHash: b.nameHash as `0x${string}`,
+        data.contractData.beneficiaries.map((b, i) => ({
+          nameHash: hashString(beneficiaries[i].name) as `0x${string}`, // Hash name locally
           emailHash: b.emailHash as `0x${string}`,
           relationshipHash: b.relationshipHash as `0x${string}`,
           allocatedPercentage: BigInt(b.allocatedPercentage),
-          claimCodeHash: extendedContractData.claimCodeHash as `0x${string}`,
+          claimCodeHash: b.claimCodeHash as `0x${string}`,
         })) as readonly {
           nameHash: `0x${string}`;
           emailHash: `0x${string}`;
@@ -421,7 +446,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       // Store plan args and proceed to approval step (always start with approval)
       setPlanArgs(preparedPlanArgs);
       setStep('approve');
-      setTxStep('idle'); // Reset transaction step
+      setTxStep('idle');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create plan');
     } finally {
@@ -513,7 +538,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       >
         {/* Header */}
         <div className="modal-header">
-          <h2 className="text-xl font-bold">Create Inheritance Plan</h2>
+          <h2 className="text-xl font-bold">Create Future Plan</h2>
           <button onClick={onClose} className="btn btn-icon btn-ghost">
             <FiX size={20} />
           </button>
@@ -583,7 +608,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
                   className="input"
-                  placeholder="e.g., Family Inheritance Plan"
+                  placeholder="e.g., Wedding Fund, Tuition, or Inheritance"
                 />
               </div>
 
@@ -593,7 +618,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   value={planDescription}
                   onChange={(e) => setPlanDescription(e.target.value)}
                   className="input"
-                  placeholder="Describe your inheritance plan..."
+                  placeholder="Describe your plan (e.g., Funds for my daughter's wedding)..."
                   rows={3}
                   maxLength={500}
                 />
@@ -636,7 +661,13 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   />
                   {tokenBalance !== undefined && (
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      Balance: {formatUnits(tokenBalance as bigint, selectedToken.decimals)}{' '}
+                      Balance: {(() => {
+                        const formatted = formatUnits(tokenBalance as bigint, selectedToken.decimals);
+                        return parseFloat(formatted).toLocaleString('en-US', {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 3,
+                        });
+                      })()}{' '}
                       {selectedToken.symbol}
                     </p>
                   )}
@@ -690,20 +721,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 </div>
               )}
 
-              <div className="input-group">
-                <label className="input-label">Claim Code (Optional)</label>
-                <input
-                  type="text"
-                  value={claimCode}
-                  onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
-                  className="input"
-                  placeholder="Leave empty to auto-generate"
-                  maxLength={6}
-                />
-                <p className="text-xs text-[var(--text-muted)] mt-1">
-                  6-character code for beneficiaries to claim their inheritance
-                </p>
-              </div>
+
 
               {/* Options Section */}
               <div className="pt-4 border-t border-white/10 space-y-4">
@@ -817,6 +835,20 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                         %
                       </span>
                     </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="text-xs text-[var(--text-secondary)] mb-1 block">
+                      Claim Code (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={ben.claimCode || ''}
+                      onChange={(e) => updateBeneficiary(index, 'claimCode', e.target.value.toUpperCase())}
+                      className="input text-sm py-2"
+                      placeholder="6-char code (leave empty to auto-generate)"
+                      maxLength={6}
+                    />
                   </div>
                 </div>
               ))}
@@ -1056,17 +1088,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <p className="text-[var(--text-secondary)] mt-2 mb-4">
                     Your inheritance plan has been created successfully.
                   </p>
-                  {claimCode && (
-                    <div className="card bg-[var(--bg-deep)] p-4 mb-6">
-                      <p className="text-sm text-[var(--text-muted)] mb-2">Claim Code</p>
-                      <p className="text-2xl font-mono font-bold text-[var(--primary)]">
-                        {claimCode}
-                      </p>
-                      <p className="text-xs text-[var(--text-muted)] mt-2">
-                        Save this code! Beneficiaries will need it to claim.
-                      </p>
-                    </div>
-                  )}
+                  {/* Claim codes are distributed per beneficiary */}
+                  <div className="card bg-[var(--bg-deep)] p-4 mb-6">
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Claim codes have been generated for each beneficiary. If you enabled notifications, they will be sent automatically.
+                    </p>
+                  </div>
                   <button onClick={onSuccess} className="btn btn-primary">
                     Done
                   </button>
@@ -1077,36 +1104,38 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         </div>
 
         {/* Footer */}
-        {['details', 'beneficiaries', 'review'].includes(step) && (
-          <div className="modal-footer">
-            {step !== 'details' && (
-              <button
-                type="button"
-                onClick={() => setStep(step === 'review' ? 'beneficiaries' : 'details')}
-                className="btn btn-secondary"
-              >
-                Back
-              </button>
-            )}
+        {
+          ['details', 'beneficiaries', 'review'].includes(step) && (
+            <div className="modal-footer">
+              {step !== 'details' && (
+                <button
+                  type="button"
+                  onClick={() => setStep(step === 'review' ? 'beneficiaries' : 'details')}
+                  className="btn btn-secondary"
+                >
+                  Back
+                </button>
+              )}
 
-            {step === 'review' ? (
-              <button onClick={handleSubmit} disabled={isProcessing} className="btn btn-primary">
-                {isProcessing ? (
-                  <>
-                    <FiLoader className="animate-spin" size={16} />
-                    Processing...
-                  </>
-                ) : (
-                  'Create Plan'
-                )}
-              </button>
-            ) : (
-              <button onClick={handleNext} className="btn btn-primary">
-                Next
-              </button>
-            )}
-          </div>
-        )}
+              {step === 'review' ? (
+                <button onClick={handleSubmit} disabled={isProcessing} className="btn btn-primary">
+                  {isProcessing ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      Processing...
+                    </>
+                  ) : (
+                    'Create Plan'
+                  )}
+                </button>
+              ) : (
+                <button onClick={handleNext} className="btn btn-primary">
+                  Next
+                </button>
+              )}
+            </div>
+          )
+        }
       </motion.div>
     </motion.div>
   );

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 const stats = [
   { label: 'Total Verified Users', value: 0 },
-  { label: 'Total Inheritance Plans', value: 0 },
+  { label: 'Total Active Plans', value: 0 },
   { label: 'Open Disputes', value: 0 },
 ];
 
