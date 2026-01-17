@@ -2,7 +2,7 @@
   "network": "liskSepolia",
   "chainId": 4202,
   "proxyAddress": "0x0FA905659BaFe6FC8f57862Fe52eDEd8587Bc74A",
-  "implementationAddress": "0x679bB4F77A3e1b7938B0722F832e678C221c29af",
+  "implementationAddress": "0x3e876801b58C84dcC49faf368868A7A62d1585F5",
   "deployer": "0x4FF814ca633fcf989359a65bc152a2FcD740b807",
   "admin": "0x4ff814ca633fcf989359a65bc152a2fcd740b807",
   "tokens": {
@@ -10,7 +10,17 @@
     "usdtToken": "0x092D935b42a1c1CE93153Fc3E1c84660AA8da82b",
     "usdcToken": "0x7EEA48bCc948c8ae011F5a56507F876c3B25F9C0"
   },
-  "deployedAt": "2025-12-07T14:28:06.037Z",
-  "blockNumber": 29902346,
-  "verified": true
+  "deployedAt": "2026-01-12T10:32:19.810Z",
+  "blockNumber": 31450473,
+  "verified": true,
+  "previousImplementations": [
+    {
+      "address": "0x679bB4F77A3e1b7938B0722F832e678C221c29af",
+      "upgradedAt": "2025-12-07T14:28:06.037Z"
+    },
+    {
+      "address": "0x679bB4F77A3e1b7938B0722F832e678C221c29af",
+      "upgradedAt": "2026-01-11T15:31:18.646Z"
+    }
+  ]
 }

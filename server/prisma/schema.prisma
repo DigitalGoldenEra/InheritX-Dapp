@@ -99,6 +99,45 @@ enum IDType {
 }
 
 // ============================================
+// BENEFICIARY KYC (for claim verification)
+// ============================================
+
+model BeneficiaryKYC {
+  id    String @id @default(uuid())
+  email String @unique // Link to beneficiary by email
+
+  // Personal Information
+  fullName    String
+  dateOfBirth DateTime?
+  nationality String?
+
+  // ID Document
+  idType        IDType
+  idNumber      String
+  idDocumentUrl String?
+  idExpiryDate  DateTime?
+
+  // Address
+  address    String?
+  city       String?
+  country    String?
+  postalCode String?
+
+  // Verification
+  status          KYCStatus @default(PENDING)
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
+// ============================================
 // INHERITANCE PLANS
 // ============================================
 
@@ -126,13 +165,20 @@ model Plan {
   transferDate       DateTime
   periodicPercentage Int? // For non-lump sum
 
-  // Claim Code (encrypted with JWT secret)
-  claimCodeEncrypted String // Encrypted claim code
-  claimCodeHash      String // Keccak256 hash (same as on-chain)
-
   // Status
   status         PlanStatus @default(PENDING)
   isClaimedFully Boolean    @default(false)
+
+  // Proof of Life settings (for LUMP_SUM only)
+  proofOfLifeEnabled     Boolean   @default(false)
+  lastVerificationSent   DateTime?
+  lastVerificationAt     DateTime? // When user last confirmed alive
+  verificationToken      String?   @unique // Token for verification links
+  verificationFailCount  Int       @default(0)
+  earlyClaimEnabled      Boolean   @default(false) // Set by admin when POL fails
+
+  // Beneficiary notification preference
+  notifyBeneficiaries Boolean @default(false) // Send email when plan created
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -147,6 +193,7 @@ model Plan {
   @@index([globalPlanId])
   @@index([status])
   @@index([transferDate])
+  @@index([proofOfLifeEnabled])
 }
 
 enum AssetType {
@@ -194,6 +241,10 @@ model Beneficiary {
   emailHash        String
   relationshipHash String
   combinedHash     String
+
+  // Claim Code (per-beneficiary)
+  claimCodeEncrypted String // Encrypted claim code
+  claimCodeHash      String // Keccak256 hash (same as on-chain)
 
   // Allocation
   allocatedPercentage Int // In basis points (10000 = 100%)

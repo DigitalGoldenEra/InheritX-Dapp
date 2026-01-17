@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
+import {
   FiActivity,
   FiFileText,
   FiUserCheck,
   FiDollarSign,
   FiPause,
   FiPlay,
-  FiXCircle
+  FiXCircle,
 } from 'react-icons/fi';
 import { api, Activity as ActivityType } from '@/lib/api';
 import { formatDateTime } from '@/lib/contract';
@@ -70,18 +70,14 @@ export default function ActivityPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Activity</h1>
-        <p className="text-[var(--text-secondary)]">
-          Track your recent actions and events.
-        </p>
+        <p className="text-[var(--text-secondary)]">Track your recent actions and events.</p>
       </div>
 
       {activities.length === 0 ? (
         <div className="card p-12 text-center">
           <FiActivity className="mx-auto text-[var(--text-muted)]" size={48} />
           <h3 className="mt-4 font-semibold">No Activity Yet</h3>
-          <p className="text-[var(--text-secondary)]">
-            Your recent actions will appear here.
-          </p>
+          <p className="text-[var(--text-secondary)]">Your recent actions will appear here.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -98,7 +94,9 @@ export default function ActivityPage() {
                 transition={{ delay: index * 0.05 }}
               >
                 <div className="flex items-start gap-4">
-                  <div className={`w-10 h-10 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center ${colorClass}`}>
+                  <div
+                    className={`w-10 h-10 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center ${colorClass}`}
+                  >
                     <Icon size={18} />
                   </div>
                   <div className="flex-1 min-w-0">

@@ -34,7 +34,10 @@ export default function ClaimLandingPage() {
               <span className="text-lg font-bold text-[#E2E8F0]">InheritX</span>
             </Link>
 
-            <Link href="/" className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-lg transition-colors">
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-lg transition-colors"
+            >
               <FiArrowLeft size={16} />
               Back to Home
             </Link>
@@ -72,9 +75,7 @@ export default function ClaimLandingPage() {
                 />
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
               </div>
-              {error && (
-                <p className="text-sm text-[var(--accent-red)] mt-1">{error}</p>
-              )}
+              {error && <p className="text-sm text-[var(--accent-red)] mt-1">{error}</p>}
             </div>
 
             <button type="submit" className="btn btn-primary w-full">
@@ -84,11 +85,11 @@ export default function ClaimLandingPage() {
           </form>
 
           <p className="text-center text-sm text-[var(--text-muted)] mt-6">
-            Don&apos;t have a plan ID? Check your email from the plan creator for claim instructions.
+            Don&apos;t have a plan ID? Check your email from the plan creator for claim
+            instructions.
           </p>
         </motion.div>
       </main>
     </div>
   );
 }
-

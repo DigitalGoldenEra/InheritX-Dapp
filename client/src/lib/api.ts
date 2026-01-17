@@ -31,10 +31,7 @@ class ApiService {
     return this.token;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = this.getToken();
 
@@ -71,10 +68,7 @@ class ApiService {
     }
   }
 
-  private async requestFormData<T>(
-    endpoint: string,
-    formData: FormData
-  ): Promise<ApiResponse<T>> {
+  private async requestFormData<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = this.getToken();
 
@@ -152,7 +146,7 @@ class ApiService {
   async submitKYC(formData: FormData) {
     return this.requestFormData<{ message: string; status: string; kycDataHash: string }>(
       '/kyc/submit',
-      formData
+      formData,
     );
   }
 
@@ -179,7 +173,10 @@ class ApiService {
     });
   }
 
-  async updatePlanContract(id: string, data: { globalPlanId: number; userPlanId: number; txHash: string }) {
+  async updatePlanContract(
+    id: string,
+    data: { globalPlanId: number; userPlanId: number; txHash: string },
+  ) {
     return this.request<Plan>(`/plans/${id}/contract`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -218,12 +215,22 @@ class ApiService {
       {
         method: 'POST',
         body: JSON.stringify(data),
-      }
+      },
     );
   }
 
   async getMyClaims(email: string) {
     return this.request<ClaimInfo[]>(`/claim/my-claims?email=${encodeURIComponent(email)}`);
+  }
+
+  async getBeneficiaryKYCStatus(email: string) {
+    return this.request<BeneficiaryKYCStatus>(
+      `/claim/kyc/status?email=${encodeURIComponent(email)}`,
+    );
+  }
+
+  async submitBeneficiaryKYC(formData: FormData) {
+    return this.requestFormData<{ message: string; status: string }>('/claim/kyc/submit', formData);
   }
 
   // ============================================
@@ -282,7 +289,9 @@ class ApiService {
     return this.request<{ data: Plan[]; pagination: Pagination }>(`/admin/plans?${query}`);
   }
 
-  async getAdminActivity(params: { type?: string; userId?: string; page?: number; limit?: number } = {}) {
+  async getAdminActivity(
+    params: { type?: string; userId?: string; page?: number; limit?: number } = {},
+  ) {
     const query = new URLSearchParams();
     if (params.type) query.set('type', params.type);
     if (params.userId) query.set('userId', params.userId);
@@ -317,6 +326,14 @@ export interface KYCStatus {
   fullName: string | null;
   email: string | null;
   idType: string | null;
+}
+
+export interface BeneficiaryKYCStatus {
+  status: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  fullName: string | null;
 }
 
 export interface KYCApplication {
@@ -403,6 +420,10 @@ export interface CreatePlanData {
     allocatedPercentage: number;
   }[];
   claimCode?: string;
+  // Proof of Life option (LUMP_SUM only)
+  proofOfLifeEnabled?: boolean;
+  // Beneficiary notification option
+  notifyBeneficiaries?: boolean;
 }
 
 export interface ContractData {

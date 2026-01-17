@@ -62,17 +62,17 @@ async function processDueDistributions() {
 async function processLumpSumDistribution(plan: any) {
   logger.info(`Processing lump sum distribution for plan ${plan.id}`);
 
-  // Decrypt claim code
-  let claimCode: string;
-  try {
-    claimCode = decryptClaimCode(plan.claimCodeEncrypted);
-  } catch (error) {
-    logger.error(`Failed to decrypt claim code for plan ${plan.id}:`, error);
-    return;
-  }
-
   // Send notifications to each beneficiary
   for (const beneficiary of plan.beneficiaries) {
+    // Decrypt beneficiary's unique claim code
+    let claimCode: string;
+    try {
+      claimCode = decryptClaimCode(beneficiary.claimCodeEncrypted);
+    } catch (error) {
+      logger.error(`Failed to decrypt claim code for beneficiary ${beneficiary.id}:`, error);
+      continue;
+    }
+
     const claimUrl = `${FRONTEND_URL}/claim/${plan.globalPlanId}`;
 
     const sent = await sendClaimNotification(
@@ -82,7 +82,8 @@ async function processLumpSumDistribution(plan: any) {
       claimCode,
       beneficiary.allocatedAmount,
       getAssetTypeName(plan.assetType),
-      claimUrl
+      claimUrl,
+      plan.globalPlanId
     );
 
     if (sent) {
@@ -133,19 +134,19 @@ async function processPeriodicDistribution(plan: any) {
     return;
   }
 
-  // Decrypt claim code
-  let claimCode: string;
-  try {
-    claimCode = decryptClaimCode(plan.claimCodeEncrypted);
-  } catch (error) {
-    logger.error(`Failed to decrypt claim code for plan ${plan.id}:`, error);
-    return;
-  }
-
   // Process each due distribution
   for (const distribution of dueDistributions) {
     // Send notifications to beneficiaries who haven't been notified for this period
     for (const beneficiary of plan.beneficiaries) {
+      // Decrypt beneficiary's unique claim code
+      let claimCode: string;
+      try {
+        claimCode = decryptClaimCode(beneficiary.claimCodeEncrypted);
+      } catch (error) {
+        logger.error(`Failed to decrypt claim code for beneficiary ${beneficiary.id}:`, error);
+        continue;
+      }
+
       const claimUrl = `${FRONTEND_URL}/claim/${plan.globalPlanId}?period=${distribution.periodNumber}`;
 
       const periodName = getPeriodName(plan.distributionMethod);
@@ -158,7 +159,8 @@ async function processPeriodicDistribution(plan: any) {
         claimCode,
         amount,
         getAssetTypeName(plan.assetType),
-        claimUrl
+        claimUrl,
+        plan.globalPlanId
       );
 
       if (sent) {

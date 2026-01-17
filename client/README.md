@@ -6,12 +6,12 @@ InheritX is a next-generation inheritance planning dApp that guides wealth trans
 
 ## Tech Stack
 
-| Layer        | Details                                                                 |
-| ------------ | ------------------------------------------------------------------------ |
-| Framework    | [Next.js 16 (App Router)](https://nextjs.org/)                          |
-| Language     | [TypeScript 5](https://www.typescriptlang.org/)                         |
-| Styling      | [Tailwind CSS v4 (experimental `@import` API)](https://tailwindcss.com/) |
-| Icons        | [react-icons 5](https://react-icons.github.io/react-icons/)             |
+| Layer     | Details                                                                  |
+| --------- | ------------------------------------------------------------------------ |
+| Framework | [Next.js 16 (App Router)](https://nextjs.org/)                           |
+| Language  | [TypeScript 5](https://www.typescriptlang.org/)                          |
+| Styling   | [Tailwind CSS v4 (experimental `@import` API)](https://tailwindcss.com/) |
+| Icons     | [react-icons 5](https://react-icons.github.io/react-icons/)              |
 
 ---
 
@@ -45,12 +45,12 @@ Visit `http://localhost:3000` to preview the landing page. The server provides h
 
 ## Available Scripts
 
-| Script        | Purpose                                           |
-| ------------- | ------------------------------------------------- |
-| `npm run dev` | Starts the dev server on `http://localhost:3000`. |
-| `npm run build` | Generates an optimized production build.       |
-| `npm run start` | Serves the production build locally.           |
-| `npm run lint` | Runs ESLint with the Next.js configuration.     |
+| Script          | Purpose                                           |
+| --------------- | ------------------------------------------------- |
+| `npm run dev`   | Starts the dev server on `http://localhost:3000`. |
+| `npm run build` | Generates an optimized production build.          |
+| `npm run start` | Serves the production build locally.              |
+| `npm run lint`  | Runs ESLint with the Next.js configuration.       |
 
 ---
 

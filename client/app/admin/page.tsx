@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  FiUsers, 
-  FiShield, 
-  FiFileText, 
+import {
+  FiUsers,
+  FiShield,
+  FiFileText,
   FiCheckCircle,
   FiClock,
   FiXCircle,
   FiArrowRight,
   FiActivity,
   FiDollarSign,
-  FiSettings
+  FiSettings,
 } from 'react-icons/fi';
 import { api, AdminStats } from '@/lib/api';
 import { formatDateTime } from '@/lib/contract';
@@ -89,9 +89,7 @@ export default function AdminDashboard() {
       {/* Welcome Section */}
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div>
-          <h1 className="text-[28px] font-bold mb-1">
-            Admin Dashboard 🛡️
-          </h1>
+          <h1 className="text-[28px] font-bold mb-1">Admin Dashboard 🛡️</h1>
           <p className="text-[#A0AEC0] text-[15px]">
             Welcome back, {user?.name || 'Admin'}. Here&apos;s the platform overview.
           </p>
@@ -107,7 +105,7 @@ export default function AdminDashboard() {
         {statCards.map((stat, index) => {
           const cardContent = (
             <>
-              <div 
+              <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
                 style={{ background: stat.bg, color: stat.color }}
               >
@@ -117,7 +115,7 @@ export default function AdminDashboard() {
               <div className="text-sm text-[#64748B]">{stat.label}</div>
             </>
           );
-          
+
           return (
             <motion.div
               key={index}
@@ -151,18 +149,19 @@ export default function AdminDashboard() {
               <FiActivity size={18} className="text-[#33C5E0]" />
               Recent Activity
             </h2>
-            <Link href="/admin/activity" className="flex items-center gap-1 text-[#33C5E0] text-[13px] no-underline">
+            <Link
+              href="/admin/activity"
+              className="flex items-center gap-1 text-[#33C5E0] text-[13px] no-underline"
+            >
               View All <FiArrowRight size={14} />
             </Link>
           </div>
-          
+
           {!stats?.recentActivity || stats.recentActivity.length === 0 ? (
             <div className="py-16 px-6 text-center">
               <FiActivity size={40} color="#64748B" className="mb-4 mx-auto" />
               <h3 className="text-base font-semibold mb-2">No Recent Activity</h3>
-              <p className="text-[#A0AEC0] text-sm">
-                Platform activity will appear here.
-              </p>
+              <p className="text-[#A0AEC0] text-sm">Platform activity will appear here.</p>
             </div>
           ) : (
             <div>
@@ -179,7 +178,9 @@ export default function AdminDashboard() {
                       {activity.description}
                     </div>
                     <div className="text-[13px] text-[#64748B]">
-                      {activity.user?.walletAddress?.slice(0, 6)}...{activity.user?.walletAddress?.slice(-4)} • {formatDateTime(activity.createdAt)}
+                      {activity.user?.walletAddress?.slice(0, 6)}...
+                      {activity.user?.walletAddress?.slice(-4)} •{' '}
+                      {formatDateTime(activity.createdAt)}
                     </div>
                   </div>
                   <span className="badge badge-primary text-xs ml-4">
@@ -224,10 +225,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {stats?.kyc.pending && stats.kyc.pending > 0 && (
-              <Link 
-                href="/admin/kyc?status=PENDING" 
+              <Link
+                href="/admin/kyc?status=PENDING"
                 className="mt-4 w-full btn btn-sm btn-secondary flex items-center justify-center gap-2"
               >
                 Review {stats.kyc.pending} Pending
@@ -290,9 +291,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[#64748B]">KYC Approval Rate</span>
                 <span className="font-semibold">
-                  {stats?.kyc.total 
-                    ? Math.round((stats.kyc.approved / stats.kyc.total) * 100)
-                    : 0}%
+                  {stats?.kyc.total ? Math.round((stats.kyc.approved / stats.kyc.total) * 100) : 0}%
                 </span>
               </div>
               <div className="flex justify-between items-center">

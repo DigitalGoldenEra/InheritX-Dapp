@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
-import { Address } from "viem";
-import { INHERITX_CONTRACT_ADDRESS, ERC20_ABI } from "@/lib/contract";
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { Address } from 'viem';
+import { INHERITX_CONTRACT_ADDRESS, ERC20_ABI } from '@/lib/contract';
 
 // Hook to check token allowance
 export function useTokenAllowance(
   tokenAddress: Address | undefined,
   owner: Address | undefined,
-  spender: Address | undefined
+  spender: Address | undefined,
 ) {
   return useReadContract({
     address: tokenAddress,
     abi: ERC20_ABI,
-    functionName: "allowance",
+    functionName: 'allowance',
     args: owner && spender ? [owner, spender] : undefined,
     query: {
       enabled: !!tokenAddress && !!owner && !!spender,
@@ -33,11 +33,11 @@ export function useApproveToken() {
       writeContract({
         address: tokenAddress,
         abi: ERC20_ABI,
-        functionName: "approve",
+        functionName: 'approve',
         args: [INHERITX_CONTRACT_ADDRESS, amount],
       });
     } catch (err) {
-      console.error("Error approving token:", err);
+      console.error('Error approving token:', err);
       throw err;
     }
   };

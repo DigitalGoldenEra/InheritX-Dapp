@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useAccount } from "wagmi";
-import { useUserPlanCount } from "./useInheritX";
-import { useMemo } from "react";
+import { useAccount } from 'wagmi';
+import { useUserPlanCount } from './useInheritX';
+import { useMemo } from 'react';
 
 export interface UserPlan {
   userPlanId: number;

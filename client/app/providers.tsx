@@ -49,7 +49,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           }}
           modalSize="compact"
         >
-          {mounted ? children : (
+          {mounted ? (
+            children
+          ) : (
             <div className="page-loader">
               <div className="spinner" />
             </div>

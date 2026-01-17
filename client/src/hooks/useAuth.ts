@@ -19,7 +19,7 @@ interface AuthState {
 export function useAuth() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
-  
+
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
@@ -42,18 +42,18 @@ export function useAuth() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = api.getToken();
-      
+
       if (!token) {
-        setState(prev => ({ ...prev, isLoading: false }));
+        setState((prev) => ({ ...prev, isLoading: false }));
         return;
       }
 
       try {
         const { data, error } = await api.getMe();
-        
+
         if (error || !data) {
           api.setToken(null);
-          setState(prev => ({ ...prev, isLoading: false }));
+          setState((prev) => ({ ...prev, isLoading: false }));
           return;
         }
 
@@ -65,7 +65,7 @@ export function useAuth() {
         });
       } catch {
         api.setToken(null);
-        setState(prev => ({ ...prev, isLoading: false }));
+        setState((prev) => ({ ...prev, isLoading: false }));
       }
     };
 
@@ -91,7 +91,7 @@ export function useAuth() {
    * Sets token and updates auth state directly
    */
   const adminLogin = useCallback(async (email: string, password: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
       const { data, error } = await api.adminLogin(email, password);
@@ -114,7 +114,7 @@ export function useAuth() {
       return { success: true, user: data.user };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isLoading: false,
         error: message,
@@ -128,16 +128,16 @@ export function useAuth() {
    */
   const login = useCallback(async () => {
     if (!address) {
-      setState(prev => ({ ...prev, error: 'Wallet not connected' }));
+      setState((prev) => ({ ...prev, error: 'Wallet not connected' }));
       return { success: false, error: 'Wallet not connected' };
     }
 
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
       // Get nonce from server
       const { data: nonceData, error: nonceError } = await api.getNonce(address);
-      
+
       if (nonceError || !nonceData) {
         throw new Error(nonceError || 'Failed to get nonce');
       }
@@ -149,7 +149,7 @@ export function useAuth() {
       const { data: loginData, error: loginError } = await api.login(
         address,
         signature,
-        nonceData.nonce
+        nonceData.nonce,
       );
 
       if (loginError || !loginData) {
@@ -158,7 +158,7 @@ export function useAuth() {
 
       // Store token and update state
       api.setToken(loginData.token);
-      
+
       setState({
         user: loginData.user,
         isLoading: false,
@@ -169,7 +169,7 @@ export function useAuth() {
       return { success: true, user: loginData.user, isNewUser: loginData.isNewUser };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isLoading: false,
         error: message,
@@ -183,13 +183,13 @@ export function useAuth() {
 
     try {
       const { data, error } = await api.getMe();
-      
+
       if (error || !data) {
         logout();
         return;
       }
 
-      setState(prev => ({ ...prev, user: data }));
+      setState((prev) => ({ ...prev, user: data }));
     } catch {
       logout();
     }
@@ -198,12 +198,12 @@ export function useAuth() {
   const updateProfile = useCallback(async (data: { email?: string; name?: string }) => {
     try {
       const { data: updatedUser, error } = await api.updateProfile(data);
-      
+
       if (error || !updatedUser) {
         throw new Error(error || 'Failed to update profile');
       }
 
-      setState(prev => ({ ...prev, user: updatedUser }));
+      setState((prev) => ({ ...prev, user: updatedUser }));
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Update failed';

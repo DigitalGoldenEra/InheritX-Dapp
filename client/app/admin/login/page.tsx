@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { FiMail, FiLock, FiAlertCircle, FiLoader } from "react-icons/fi";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { FiMail, FiLock, FiAlertCircle, FiLoader } from 'react-icons/fi';
+import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { adminLogin, isAuthenticated, user, isLoading: authLoading } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
       if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-        router.replace("/admin");
+        router.replace('/admin');
       }
     }
   }, [authLoading, isAuthenticated, user, router]);
@@ -33,15 +33,13 @@ export default function AdminLoginPage() {
       const result = await adminLogin(email, password);
 
       if (!result.success) {
-        throw new Error(result.error || "Login failed");
+        throw new Error(result.error || 'Login failed');
       }
 
       // Auth state is now updated, redirect to admin
-      router.replace("/admin");
+      router.replace('/admin');
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Login failed. Please try again."
-      );
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
       setIsLoading(false);
     }
   };
@@ -57,9 +55,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <img src="/img/logo.svg" className="mx-auto mb-5" />
           <h1 className="text-2xl font-bold mb-2">Admin Login</h1>
-          <p className="text-[#A0AEC0] text-sm">
-            Sign in to access the admin dashboard
-          </p>
+          <p className="text-[#A0AEC0] text-sm">Sign in to access the admin dashboard</p>
         </div>
 
         {/* Error Message */}
@@ -69,10 +65,7 @@ export default function AdminLoginPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 p-4 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-xl flex items-start gap-3"
           >
-            <FiAlertCircle
-              className="text-[#EF4444] flex-shrink-0 mt-0.5"
-              size={18}
-            />
+            <FiAlertCircle className="text-[#EF4444] flex-shrink-0 mt-0.5" size={18} />
             <p className="text-sm text-[#EF4444]">{error}</p>
           </motion.div>
         )}
@@ -80,10 +73,7 @@ export default function AdminLoginPage() {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-[#A0AEC0] mb-2"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-[#A0AEC0] mb-2">
               Email Address
             </label>
             <div className="relative">
@@ -105,10 +95,7 @@ export default function AdminLoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-[#A0AEC0] mb-2"
-            >
+            <label htmlFor="password" className="block text-sm font-medium text-[#A0AEC0] mb-2">
               Password
             </label>
             <div className="relative">
@@ -130,28 +117,21 @@ export default function AdminLoginPage() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn btn-primary w-full"
-          >
+          <button type="submit" disabled={isLoading} className="btn btn-primary w-full">
             {isLoading ? (
               <>
                 <FiLoader className="animate-spin" size={18} />
                 Signing in...
               </>
             ) : (
-              "Sign In"
+              'Sign In'
             )}
           </button>
         </form>
 
         {/* Footer */}
         <div className="mt-6 pt-6 border-t border-white/6 text-center">
-          <Link
-            href="/"
-            className="text-sm text-[#64748B] hover:text-[#33C5E0] transition-colors"
-          >
+          <Link href="/" className="text-sm text-[#64748B] hover:text-[#33C5E0] transition-colors">
             ← Back to Home
           </Link>
         </div>

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
   FiSearch,
@@ -13,26 +13,21 @@ import {
   FiTrash2,
   FiCopy,
   FiExternalLink,
-} from "react-icons/fi";
-import { api, Plan, KYCStatus } from "@/lib/api";
-import {
-  formatDate,
-  getPlanStatusBadge,
-  getTokenByAssetType,
-} from "@/lib/contract";
-import CreatePlanModal from "@/components/plans/CreatePlanModal";
-import CompletePendingPlanModal from "@/components/plans/CompletePendingPlanModal";
-import Link from "next/link";
+} from 'react-icons/fi';
+import { api, Plan, KYCStatus } from '@/lib/api';
+import { formatDate, getPlanStatusBadge, getTokenByAssetType } from '@/lib/contract';
+import CreatePlanModal from '@/components/plans/CreatePlanModal';
+import CompletePendingPlanModal from '@/components/plans/CompletePendingPlanModal';
+import Link from 'next/link';
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [pendingPlanToComplete, setPendingPlanToComplete] =
-    useState<Plan | null>(null);
-  const [filter, setFilter] = useState("ALL");
-  const [search, setSearch] = useState("");
+  const [pendingPlanToComplete, setPendingPlanToComplete] = useState<Plan | null>(null);
+  const [filter, setFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,22 +37,19 @@ export default function PlansPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [plansRes, kycRes] = await Promise.all([
-        api.getPlans(),
-        api.getKYCStatus(),
-      ]);
+      const [plansRes, kycRes] = await Promise.all([api.getPlans(), api.getKYCStatus()]);
 
       if (plansRes.data) setPlans(plansRes.data);
       if (kycRes.data) setKycStatus(kycRes.data);
     } catch (error) {
-      console.error("Error fetching plans:", error);
+      console.error('Error fetching plans:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const filteredPlans = plans.filter((plan) => {
-    const matchesFilter = filter === "ALL" || plan.status === filter;
+    const matchesFilter = filter === 'ALL' || plan.status === filter;
     const matchesSearch =
       plan.planName.toLowerCase().includes(search.toLowerCase()) ||
       plan.planDescription.toLowerCase().includes(search.toLowerCase());
@@ -66,17 +58,15 @@ export default function PlansPage() {
 
   const handleStatusChange = async (
     planId: string,
-    newStatus: "ACTIVE" | "PAUSED" | "CANCELLED"
+    newStatus: 'ACTIVE' | 'PAUSED' | 'CANCELLED',
   ) => {
     try {
       const { data, error } = await api.updatePlanStatus(planId, newStatus);
       if (data) {
-        setPlans((prev) =>
-          prev.map((p) => (p.id === planId ? { ...p, status: newStatus } : p))
-        );
+        setPlans((prev) => prev.map((p) => (p.id === planId ? { ...p, status: newStatus } : p)));
       }
     } catch (error) {
-      console.error("Error updating plan status:", error);
+      console.error('Error updating plan status:', error);
     }
     setOpenMenu(null);
   };
@@ -86,15 +76,15 @@ export default function PlansPage() {
       const { data, error } = await api.getClaimCode(planId);
       if (data?.claimCode) {
         await navigator.clipboard.writeText(data.claimCode);
-        alert("Claim code copied to clipboard!");
+        alert('Claim code copied to clipboard!');
       }
     } catch (error) {
-      console.error("Error getting claim code:", error);
+      console.error('Error getting claim code:', error);
     }
     setOpenMenu(null);
   };
 
-  const canCreatePlan = kycStatus?.status === "APPROVED";
+  const canCreatePlan = kycStatus?.status === 'APPROVED';
 
   if (isLoading) {
     return (
@@ -122,15 +112,13 @@ export default function PlansPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">My Plans</h1>
-          <p className="text-[var(--text-secondary)]">
-            Manage your inheritance plans
-          </p>
+          <p className="text-[var(--text-secondary)]">Manage your inheritance plans</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           disabled={!canCreatePlan}
           className="btn btn-primary"
-          title={!canCreatePlan ? "Complete KYC to create plans" : ""}
+          title={!canCreatePlan ? 'Complete KYC to create plans' : ''}
         >
           <FiPlus size={18} />
           Create Plan
@@ -143,12 +131,12 @@ export default function PlansPage() {
           <div className="flex-1">
             <div className="font-medium text-amber-400">KYC Required</div>
             <div className="text-sm text-amber-300/80">
-              {kycStatus?.status === "PENDING"
-                ? "Your KYC is pending review. You can create plans once approved."
-                : "Complete KYC verification to create inheritance plans."}
+              {kycStatus?.status === 'PENDING'
+                ? 'Your KYC is pending review. You can create plans once approved.'
+                : 'Complete KYC verification to create inheritance plans.'}
             </div>
           </div>
-          {kycStatus?.status !== "PENDING" && (
+          {kycStatus?.status !== 'PENDING' && (
             <Link href="/dashboard/kyc" className="btn btn-sm btn-secondary">
               Complete KYC
             </Link>
@@ -169,16 +157,13 @@ export default function PlansPage() {
           />
         </div>
         <div className="flex gap-2">
-          {["ALL", "PENDING", "ACTIVE", "EXECUTED"].map((status) => (
+          {['ALL', 'PENDING', 'ACTIVE', 'EXECUTED'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`btn btn-sm ${filter === status ? "btn-primary" : "btn-secondary"
-                }`}
+              className={`btn btn-sm ${filter === status ? 'btn-primary' : 'btn-secondary'}`}
             >
-              {status === "ALL"
-                ? "All"
-                : status.charAt(0) + status.slice(1).toLowerCase()}
+              {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
             </button>
           ))}
         </div>
@@ -193,14 +178,11 @@ export default function PlansPage() {
           <h3 className="text-lg font-semibold mb-2">No Plans Found</h3>
           <p className="text-[var(--text-secondary)] mb-4">
             {plans.length === 0
-              ? "Create your first inheritance plan to get started."
-              : "No plans match your current filters."}
+              ? 'Create your first inheritance plan to get started.'
+              : 'No plans match your current filters.'}
           </p>
           {plans.length === 0 && canCreatePlan && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
-            >
+            <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
               <FiPlus size={16} />
               Create Plan
             </button>
@@ -223,9 +205,7 @@ export default function PlansPage() {
                 {/* Menu */}
                 <div className="absolute top-4 right-4">
                   <button
-                    onClick={() =>
-                      setOpenMenu(openMenu === plan.id ? null : plan.id)
-                    }
+                    onClick={() => setOpenMenu(openMenu === plan.id ? null : plan.id)}
                     className="btn btn-icon bg-primary/5"
                   >
                     <FiMoreVertical size={18} />
@@ -272,19 +252,15 @@ export default function PlansPage() {
 
                 {/* Content */}
                 <div className="pr-8">
-                  <span className={`badge ${statusBadge.variant} mb-3`}>
-                    {statusBadge.label}
-                  </span>
-                  <h3 className="font-semibold text-lg mb-1 line-clamp-1">
-                    {plan.planName}
-                  </h3>
+                  <span className={`badge ${statusBadge.variant} mb-3`}>{statusBadge.label}</span>
+                  <h3 className="font-semibold text-lg mb-1 line-clamp-1">{plan.planName}</h3>
                   <p className="text-sm text-[var(--text-muted)] line-clamp-2 mb-4">
                     {plan.planDescription}
                   </p>
                 </div>
 
                 {/* Proceed to Create Button for PENDING plans */}
-                {plan.status === "PENDING" && (
+                {plan.status === 'PENDING' && (
                   <div className="mb-4">
                     <button
                       onClick={() => setPendingPlanToComplete(plan)}
@@ -303,28 +279,16 @@ export default function PlansPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">
-                      Beneficiaries
-                    </span>
-                    <span className="font-medium">
-                      {plan.beneficiaries.length}
-                    </span>
+                    <span className="text-[var(--text-muted)]">Beneficiaries</span>
+                    <span className="font-medium">{plan.beneficiaries.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">
-                      Distribution
-                    </span>
-                    <span className="font-medium">
-                      {plan.distributionMethod.replace("_", " ")}
-                    </span>
+                    <span className="text-[var(--text-muted)]">Distribution</span>
+                    <span className="font-medium">{plan.distributionMethod.replace('_', ' ')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">
-                      Transfer Date
-                    </span>
-                    <span className="font-medium">
-                      {formatDate(plan.transferDate)}
-                    </span>
+                    <span className="text-[var(--text-muted)]">Transfer Date</span>
+                    <span className="font-medium">{formatDate(plan.transferDate)}</span>
                   </div>
                 </div>
 
@@ -335,7 +299,8 @@ export default function PlansPage() {
                       Beneficiaries
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
-                      {plan.beneficiaries.length} {plan.beneficiaries.length === 1 ? 'person' : 'people'}
+                      {plan.beneficiaries.length}{' '}
+                      {plan.beneficiaries.length === 1 ? 'person' : 'people'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -394,9 +359,7 @@ export default function PlansPage() {
       </AnimatePresence>
 
       {/* Click outside to close menu */}
-      {openMenu && (
-        <div className="fixed inset-0 z-0" onClick={() => setOpenMenu(null)} />
-      )}
+      {openMenu && <div className="fixed inset-0 z-0" onClick={() => setOpenMenu(null)} />}
     </div>
   );
 }

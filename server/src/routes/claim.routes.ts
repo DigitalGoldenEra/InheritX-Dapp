@@ -5,12 +5,50 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import multer from 'multer';
 import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { keccak256, verifyHash } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { createCloudinaryStorage, isCloudinaryConfigured } from '../utils/cloudinary';
 
 const router = Router();
+
+// Configure multer for Cloudinary uploads (same as KYC routes)
+let upload: multer.Multer;
+
+if (isCloudinaryConfigured()) {
+  const cloudinaryStorage = createCloudinaryStorage();
+  upload = multer({
+    storage: cloudinaryStorage,
+    limits: {
+      fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880'), // 5MB default
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+      }
+    },
+  });
+} else {
+  upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880'),
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, and PDF are allowed.'));
+      }
+    },
+  });
+}
 
 // Validation schemas
 const verifyClaimSchema = z.object({
@@ -27,6 +65,20 @@ const completeClaimSchema = z.object({
   claimerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   txHash: z.string(),
   claimedAmount: z.string(),
+});
+
+const beneficiaryKYCSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().min(2).max(100),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  nationality: z.string().min(2, 'Nationality is required'),
+  idType: z.enum(['PASSPORT', 'DRIVERS_LICENSE', 'NATIONAL_ID', 'OTHER']),
+  idNumber: z.string().min(4).max(50),
+  idExpiryDate: z.string().min(1, 'ID expiry date is required'),
+  address: z.string().min(5, 'Address is required'),
+  city: z.string().min(2, 'City is required'),
+  country: z.string().min(2, 'Country is required'),
+  postalCode: z.string().min(3, 'Postal code is required'),
 });
 
 /**
@@ -208,7 +260,7 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
 
   // Find plan by global ID or database ID
   const plan = await prisma.plan.findFirst({
-    where: typeof data.planId === 'number' 
+    where: typeof data.planId === 'number'
       ? { globalPlanId: data.planId }
       : { id: data.planId },
     include: {
@@ -230,31 +282,48 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Plan is not yet claimable', 400);
   }
 
-  // Verify claim code hash
+  // Hash the claim code and beneficiary details
   const claimCodeHash = keccak256(data.claimCode);
-  if (claimCodeHash !== plan.claimCodeHash) {
-    throw new AppError('Invalid claim code', 401);
-  }
+  const nameHash = keccak256(data.beneficiaryName);
+  const emailHash = keccak256(data.beneficiaryEmail);
+  const relationshipHash = keccak256(data.beneficiaryRelationship);
 
-  // Find matching beneficiary
-  const beneficiary = plan.beneficiaries.find(b => {
-    const nameHash = keccak256(data.beneficiaryName);
-    const emailHash = keccak256(data.beneficiaryEmail);
-    const relationshipHash = keccak256(data.beneficiaryRelationship);
-
-    return (
-      nameHash === b.nameHash &&
-      emailHash === b.emailHash &&
-      relationshipHash === b.relationshipHash
-    );
-  });
+  // Find matching beneficiary by name/email/relationship hashes
+  const beneficiary = plan.beneficiaries.find(b => (
+    nameHash === b.nameHash &&
+    emailHash === b.emailHash &&
+    relationshipHash === b.relationshipHash
+  ));
 
   if (!beneficiary) {
     throw new AppError('Beneficiary not found or details do not match', 404);
   }
 
+  // Verify claim code against this specific beneficiary's claimCodeHash
+  if (claimCodeHash !== beneficiary.claimCodeHash) {
+    throw new AppError('Invalid claim code', 401);
+  }
+
   if (beneficiary.hasClaimed) {
     throw new AppError('This beneficiary has already claimed their inheritance', 400);
+  }
+
+  // Check beneficiary KYC status
+  const beneficiaryKYC = await prisma.beneficiaryKYC.findUnique({
+    where: { email: data.beneficiaryEmail.toLowerCase() },
+    select: { status: true },
+  });
+
+  if (!beneficiaryKYC || beneficiaryKYC.status !== 'APPROVED') {
+    const kycStatus = beneficiaryKYC?.status || 'NOT_SUBMITTED';
+    throw new AppError(
+      kycStatus === 'PENDING'
+        ? 'Your KYC verification is pending approval. Please wait for admin review.'
+        : kycStatus === 'REJECTED'
+          ? 'Your KYC verification was rejected. Please resubmit with valid documents.'
+          : 'KYC verification is required before claiming. Please submit your KYC.',
+      403
+    );
   }
 
   // Log verification attempt
@@ -383,7 +452,7 @@ router.post('/complete', asyncHandler(async (req: Request, res: Response) => {
     where: { planId: data.planId },
   });
 
-  const allClaimed = allBeneficiaries.every(b => 
+  const allClaimed = allBeneficiaries.every(b =>
     b.id === beneficiary.id ? true : b.hasClaimed
   );
 
@@ -522,5 +591,230 @@ router.get('/my-claims', asyncHandler(async (req: Request, res: Response) => {
   res.json(claims);
 }));
 
+// ============================================
+// BENEFICIARY KYC ENDPOINTS
+// ============================================
+
+/**
+ * @swagger
+ * /claim/kyc/status:
+ *   get:
+ *     summary: Get beneficiary KYC status by email
+ *     description: Public endpoint to check KYC status for a beneficiary
+ *     tags: [Claims]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Beneficiary's email address
+ *     responses:
+ *       200:
+ *         description: KYC status retrieved
+ *       400:
+ *         description: Email required
+ */
+router.get('/kyc/status', asyncHandler(async (req: Request, res: Response) => {
+  const email = req.query.email as string;
+
+  if (!email) {
+    throw new AppError('Email is required', 400);
+  }
+
+  const kyc = await prisma.beneficiaryKYC.findUnique({
+    where: { email: email.toLowerCase() },
+    select: {
+      status: true,
+      submittedAt: true,
+      reviewedAt: true,
+      rejectionReason: true,
+      fullName: true,
+    },
+  });
+
+  if (!kyc) {
+    return res.json({
+      status: 'NOT_SUBMITTED',
+      message: 'KYC has not been submitted yet',
+    });
+  }
+
+  res.json({
+    status: kyc.status,
+    submittedAt: kyc.submittedAt,
+    reviewedAt: kyc.reviewedAt,
+    rejectionReason: kyc.rejectionReason,
+    fullName: kyc.fullName,
+  });
+}));
+
+/**
+ * @swagger
+ * /claim/kyc/submit:
+ *   post:
+ *     summary: Submit beneficiary KYC
+ *     description: Public endpoint for beneficiaries to submit KYC before claiming
+ *     tags: [Claims]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - fullName
+ *               - dateOfBirth
+ *               - nationality
+ *               - idType
+ *               - idNumber
+ *               - idExpiryDate
+ *               - address
+ *               - city
+ *               - country
+ *               - postalCode
+ *               - idDocument
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               fullName:
+ *                 type: string
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *               nationality:
+ *                 type: string
+ *               idType:
+ *                 type: string
+ *                 enum: [PASSPORT, DRIVERS_LICENSE, NATIONAL_ID, OTHER]
+ *               idNumber:
+ *                 type: string
+ *               idExpiryDate:
+ *                 type: string
+ *                 format: date
+ *               address:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *               postalCode:
+ *                 type: string
+ *               idDocument:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: KYC submitted successfully
+ *       400:
+ *         description: Invalid input or KYC already approved
+ */
+router.post(
+  '/kyc/submit',
+  upload.single('idDocument'),
+  asyncHandler(async (req: Request, res: Response) => {
+    // Validate file was uploaded
+    if (!req.file) {
+      throw new AppError('ID document is required', 400);
+    }
+
+    const data = beneficiaryKYCSchema.parse(req.body);
+    const normalizedEmail = data.email.toLowerCase();
+
+    // Get file URL from Cloudinary
+    let documentUrl: string;
+
+    if (isCloudinaryConfigured()) {
+      const cloudinaryFile = req.file as any;
+      if (cloudinaryFile?.path) {
+        documentUrl = cloudinaryFile.path;
+        logger.info('Beneficiary KYC file uploaded to Cloudinary:', {
+          url: documentUrl,
+          email: normalizedEmail,
+        });
+      } else {
+        throw new AppError('Failed to upload file', 500);
+      }
+    } else {
+      throw new AppError('File storage is not configured', 500);
+    }
+
+    // Check existing KYC
+    const existingKYC = await prisma.beneficiaryKYC.findUnique({
+      where: { email: normalizedEmail },
+      select: { status: true, idDocumentUrl: true },
+    });
+
+    if (existingKYC?.status === 'APPROVED') {
+      throw new AppError('KYC already approved', 400);
+    }
+
+    if (existingKYC?.status === 'PENDING') {
+      throw new AppError('KYC already submitted and pending review', 400);
+    }
+
+    // Create or update BeneficiaryKYC record
+    const kyc = await prisma.beneficiaryKYC.upsert({
+      where: { email: normalizedEmail },
+      create: {
+        email: normalizedEmail,
+        fullName: data.fullName,
+        dateOfBirth: new Date(data.dateOfBirth),
+        nationality: data.nationality,
+        idType: data.idType as any,
+        idNumber: data.idNumber,
+        idExpiryDate: new Date(data.idExpiryDate),
+        idDocumentUrl: documentUrl,
+        address: data.address,
+        city: data.city,
+        country: data.country,
+        postalCode: data.postalCode,
+        status: 'PENDING',
+      },
+      update: {
+        fullName: data.fullName,
+        dateOfBirth: new Date(data.dateOfBirth),
+        nationality: data.nationality,
+        idType: data.idType as any,
+        idNumber: data.idNumber,
+        idExpiryDate: new Date(data.idExpiryDate),
+        idDocumentUrl: documentUrl,
+        address: data.address,
+        city: data.city,
+        country: data.country,
+        postalCode: data.postalCode,
+        status: 'PENDING',
+        submittedAt: new Date(),
+        reviewedAt: null,
+        rejectionReason: null,
+      },
+    });
+
+    // Delete old document from Cloudinary if resubmitting
+    if (existingKYC?.idDocumentUrl && existingKYC.idDocumentUrl !== documentUrl) {
+      try {
+        const { deleteCloudinaryImage } = await import('../utils/cloudinary');
+        await deleteCloudinaryImage(existingKYC.idDocumentUrl);
+      } catch (error) {
+        logger.warn('Failed to delete old document:', { error });
+      }
+    }
+
+    logger.info('Beneficiary KYC submitted:', {
+      email: normalizedEmail,
+      idType: data.idType,
+    });
+
+    res.status(201).json({
+      message: 'KYC submitted successfully. Your verification is pending review.',
+      status: 'PENDING',
+    });
+  })
+);
+
 export default router;
+
 

@@ -23,7 +23,6 @@ import {
   getPlanStatusBadge,
   getTokenByAssetType,
   formatTokenAmount,
-
 } from '@/lib/contract';
 import Link from 'next/link';
 
@@ -129,9 +128,7 @@ export default function PlanDetailsPage() {
   const creationFee = plan.assetAmountWei
     ? (BigInt(plan.assetAmountWei) * BigInt(500)) / BigInt(10000)
     : BigInt(0);
-  const totalAmount = plan.assetAmountWei
-    ? BigInt(plan.assetAmountWei) + creationFee
-    : BigInt(0);
+  const totalAmount = plan.assetAmountWei ? BigInt(plan.assetAmountWei) + creationFee : BigInt(0);
 
   return (
     <div className="space-y-6">
@@ -149,9 +146,7 @@ export default function PlanDetailsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`badge ${statusBadge.variant}`}>
-            {statusBadge.label}
-          </span>
+          <span className={`badge ${statusBadge.variant}`}>{statusBadge.label}</span>
           {plan.txHash && (
             <a
               href={`https://sepolia-blockscout.lisk.com/tx/${plan.txHash}`}
@@ -205,11 +200,17 @@ export default function PlanDetailsPage() {
               <div className="pt-3 border-t border-white/10">
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--text-muted)]">Creation Fee (5%)</span>
-                  <span>{formatTokenAmount(creationFee.toString(), token?.decimals || 18)} {token?.symbol}</span>
+                  <span>
+                    {formatTokenAmount(creationFee.toString(), token?.decimals || 18)}{' '}
+                    {token?.symbol}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-white/10">
                   <span>Total Locked</span>
-                  <span>{formatTokenAmount(totalAmount.toString(), token?.decimals || 18)} {token?.symbol}</span>
+                  <span>
+                    {formatTokenAmount(totalAmount.toString(), token?.decimals || 18)}{' '}
+                    {token?.symbol}
+                  </span>
                 </div>
               </div>
             )}
@@ -230,9 +231,7 @@ export default function PlanDetailsPage() {
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-[var(--text-muted)]">Method</label>
-              <p className="mt-1 font-medium">
-                {plan.distributionMethod.replace('_', ' ')}
-              </p>
+              <p className="mt-1 font-medium">{plan.distributionMethod.replace('_', ' ')}</p>
             </div>
             <div>
               <label className="text-xs font-medium text-[var(--text-muted)]">Transfer Date</label>
@@ -243,7 +242,9 @@ export default function PlanDetailsPage() {
             </div>
             {plan.periodicPercentage && (
               <div>
-                <label className="text-xs font-medium text-[var(--text-muted)]">Periodic Percentage</label>
+                <label className="text-xs font-medium text-[var(--text-muted)]">
+                  Periodic Percentage
+                </label>
                 <p className="mt-1 font-medium">{plan.periodicPercentage}% per period</p>
               </div>
             )}
@@ -251,12 +252,16 @@ export default function PlanDetailsPage() {
               <div className="pt-3 border-t border-white/10">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <label className="text-xs font-medium text-[var(--text-muted)]">Global Plan ID</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)]">
+                      Global Plan ID
+                    </label>
                     <p className="mt-1 font-mono">{plan.globalPlanId}</p>
                   </div>
                   {plan.userPlanId && (
                     <div>
-                      <label className="text-xs font-medium text-[var(--text-muted)]">User Plan ID</label>
+                      <label className="text-xs font-medium text-[var(--text-muted)]">
+                        User Plan ID
+                      </label>
                       <p className="mt-1 font-mono">{plan.userPlanId}</p>
                     </div>
                   )}
@@ -305,9 +310,13 @@ export default function PlanDetailsPage() {
                     {plan.assetAmountWei && (
                       <p className="text-xs text-[var(--text-muted)]">
                         {formatTokenAmount(
-                          ((BigInt(plan.assetAmountWei) * BigInt(ben.allocatedPercentage)) / BigInt(10000)).toString(),
-                          token?.decimals || 18
-                        )} {token?.symbol}
+                          (
+                            (BigInt(plan.assetAmountWei) * BigInt(ben.allocatedPercentage)) /
+                            BigInt(10000)
+                          ).toString(),
+                          token?.decimals || 18,
+                        )}{' '}
+                        {token?.symbol}
                       </p>
                     )}
                   </div>
