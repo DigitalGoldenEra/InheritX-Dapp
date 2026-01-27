@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { FiX, FiAlertCircle, FiCheck, FiLoader } from 'react-icons/fi';
 import {
-  FiX,
-  FiAlertCircle,
-  FiCheck,
-  FiLoader
-} from 'react-icons/fi';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+  usePublicClient,
+} from 'wagmi';
 import { formatUnits, decodeEventLog } from 'viem';
 import { api, Plan } from '@/lib/api';
-import { inheritXABI } from '@/contract/abi';
+import inheritXABI from '@/contract/abi';
 import {
   INHERITX_CONTRACT_ADDRESS,
   TOKENS,
@@ -19,7 +20,7 @@ import {
   DISTRIBUTION_METHOD_MAP,
   ERC20_ABI,
   parseTokenAmount,
-  hashString
+  hashString,
 } from '@/lib/contract';
 import { keccak256, encodePacked } from 'viem';
 
@@ -36,10 +37,9 @@ function createBeneficiaryHashes(name: string, email: string, relationship: stri
   const relationshipHash = hashString(relationship);
 
   // Combined hash: keccak256(abi.encodePacked(nameHash, emailHash, relationshipHash))
-  const combinedHash = keccak256(encodePacked(
-    ['bytes32', 'bytes32', 'bytes32'],
-    [nameHash, emailHash, relationshipHash]
-  ));
+  const combinedHash = keccak256(
+    encodePacked(['bytes32', 'bytes32', 'bytes32'], [nameHash, emailHash, relationshipHash]),
+  );
 
   return {
     nameHash,
@@ -49,7 +49,11 @@ function createBeneficiaryHashes(name: string, email: string, relationship: stri
   };
 }
 
-export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: CompletePendingPlanModalProps) {
+export default function CompletePendingPlanModal({
+  plan,
+  onClose,
+  onSuccess,
+}: CompletePendingPlanModalProps) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const [error, setError] = useState<string | null>(null);
@@ -66,19 +70,19 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       emailHash: `0x${string}`;
       relationshipHash: `0x${string}`;
       allocatedPercentage: bigint;
+      claimCodeHash: `0x${string}`;
     }[],
     number,
     bigint,
     number,
     bigint,
     number,
-    `0x${string}`
   ];
 
   const [planArgs, setPlanArgs] = useState<PlanArgs | null>(null);
 
   // Get selected token
-  const selectedToken = TOKENS.find(t => t.id === plan.assetType) || TOKENS[0];
+  const selectedToken = TOKENS.find((t) => t.id === plan.assetType) || TOKENS[0];
 
   if (!selectedToken) {
     return (
@@ -144,11 +148,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   // Distribution Method: 0 = Lump Sum
   const isPeriodic = plan.distributionMethod !== 'LUMP_SUM';
   const periodicPercentage = plan.periodicPercentage || 0;
-  const isPercentageInvalid = isPeriodic && (
-    periodicPercentage <= 0 ||
-    periodicPercentage > 100 ||
-    100 % periodicPercentage !== 0
-  );
+  const isPercentageInvalid =
+    isPeriodic &&
+    (periodicPercentage <= 0 || periodicPercentage > 100 || 100 % periodicPercentage !== 0);
 
   // Parse amount from plan data to ensure consistency with contract args
   const amount = parseTokenAmount(plan.assetAmount, selectedToken.decimals);
@@ -158,7 +160,8 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   const totalRequired = amount + creationFee;
 
   // Check balance
-  const hasInsufficientBalance = tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
+  const hasInsufficientBalance =
+    tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
 
   // Separate hooks for approval and plan creation
   const {
@@ -166,7 +169,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     data: approveTxHash,
     isPending: isApprovePending,
     error: approveError,
-    reset: resetApprove
+    reset: resetApprove,
   } = useWriteContract();
 
   const {
@@ -174,7 +177,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     data: createTxHash,
     isPending: isCreatePending,
     error: createError,
-    reset: resetCreate
+    reset: resetCreate,
   } = useWriteContract();
 
   // Track approval transaction confirmation
@@ -182,9 +185,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     isLoading: isApproveWaiting,
     isSuccess: isApprovalConfirmed,
     isError: isApproveError,
-    error: approveReceiptError
+    error: approveReceiptError,
   } = useWaitForTransactionReceipt({
-    hash: approveTxHash
+    hash: approveTxHash,
   });
 
   // Track plan creation transaction confirmation
@@ -193,9 +196,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     isSuccess: createSuccess,
     isError: isCreateError,
     error: createReceiptError,
-    data: createReceipt
+    data: createReceipt,
   } = useWaitForTransactionReceipt({
-    hash: createTxHash
+    hash: createTxHash,
   });
 
   // Fetch claim code on mount
@@ -230,10 +233,13 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     // Create beneficiary hashes
     // IMPORTANT: Check if percentages are in basis points (sum ~10000) or regular % (sum ~100)
     // The contract expects basis points (100% = 10000)
-    const totalPercentageRaw = plan.beneficiaries.reduce((sum, b) => sum + Number(b.allocatedPercentage), 0);
+    const totalPercentageRaw = plan.beneficiaries.reduce(
+      (sum, b) => sum + Number(b.allocatedPercentage),
+      0,
+    );
     const needsScaling = totalPercentageRaw <= 100;
 
-    const beneficiaryHashes = plan.beneficiaries.map(ben => {
+    const beneficiaryHashes = plan.beneficiaries.map((ben) => {
       const hashes = createBeneficiaryHashes(ben.name, ben.email, ben.relationship);
 
       let percentage = BigInt(ben.allocatedPercentage);
@@ -246,6 +252,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
         emailHash: hashes.emailHash as `0x${string}`,
         relationshipHash: hashes.relationshipHash as `0x${string}`,
         allocatedPercentage: percentage,
+        claimCodeHash: claimCodeHash as `0x${string}`,
       };
     });
 
@@ -260,13 +267,13 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
         emailHash: `0x${string}`;
         relationshipHash: `0x${string}`;
         allocatedPercentage: bigint;
+        claimCodeHash: `0x${string}`;
       }[],
       ASSET_TYPE_MAP[plan.assetType] ?? 0,
       amount,
       DISTRIBUTION_METHOD_MAP[plan.distributionMethod] ?? 0,
       transferTimestamp,
       periodicPercentage,
-      claimCodeHash as `0x${string}`,
     ];
     console.log('amount', amount);
     console.log('args', args);
@@ -276,7 +283,14 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
 
   // Main transaction flow handler
   const startTransactionFlow = useCallback(() => {
-    if (!address || !planArgs || hasInsufficientBalance || isKYCBlocked || isTransferDatePast || isPercentageInvalid) {
+    if (
+      !address ||
+      !planArgs ||
+      hasInsufficientBalance ||
+      isKYCBlocked ||
+      isTransferDatePast ||
+      isPercentageInvalid
+    ) {
       return;
     }
 
@@ -301,7 +315,18 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       setError('Failed to initiate approval transaction. Please try again.');
       setTxStep('idle');
     }
-  }, [address, planArgs, hasInsufficientBalance, totalRequired, selectedToken.address, selectedToken.decimals, writeApprove, isKYCBlocked, isTransferDatePast, isPercentageInvalid]);
+  }, [
+    address,
+    planArgs,
+    hasInsufficientBalance,
+    totalRequired,
+    selectedToken.address,
+    selectedToken.decimals,
+    writeApprove,
+    isKYCBlocked,
+    isTransferDatePast,
+    isPercentageInvalid,
+  ]);
 
   // Handle approval confirmation → trigger plan creation
   useEffect(() => {
@@ -333,7 +358,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
     if (createSuccess && createTxHash && createReceipt) {
       // Check if transaction was reverted
       if (createReceipt.status === 'reverted') {
-        setError('Transaction was reverted on-chain. Please check the transaction details on the explorer and try again.');
+        setError(
+          'Transaction was reverted on-chain. Please check the transaction details on the explorer and try again.',
+        );
         return;
       }
 
@@ -350,7 +377,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               data: log.data,
               topics: log.topics,
             });
-            return decoded.eventName === 'PlanCreated';
+            return (decoded.eventName as string) === 'PlanCreated';
           } catch {
             return false;
           }
@@ -361,7 +388,10 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
             abi: inheritXABI,
             data: planCreatedEvent.data,
             topics: planCreatedEvent.topics,
-          }) as { eventName: string; args: { globalPlanId: bigint; userPlanId: bigint } };
+          }) as unknown as {
+            eventName: string;
+            args: { globalPlanId: bigint; userPlanId: bigint };
+          };
 
           globalPlanId = Number(decoded.args.globalPlanId);
           userPlanId = Number(decoded.args.userPlanId);
@@ -371,16 +401,19 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       }
 
       // Update backend with transaction hash and plan IDs
-      api.updatePlanContract(plan.id, {
-        globalPlanId: globalPlanId || 0,
-        userPlanId: userPlanId || 0,
-        txHash: createTxHash,
-      }).then(() => {
-        onSuccess();
-      }).catch((error) => {
-        console.error('Error updating plan contract:', error);
-        setError('Plan created on-chain but failed to update backend. Please contact support.');
-      });
+      api
+        .updatePlanContract(plan.id, {
+          globalPlanId: globalPlanId || 0,
+          userPlanId: userPlanId || 0,
+          txHash: createTxHash,
+        })
+        .then(() => {
+          onSuccess();
+        })
+        .catch((error) => {
+          console.error('Error updating plan contract:', error);
+          setError('Plan created on-chain but failed to update backend. Please contact support.');
+        });
     }
   }, [createSuccess, createTxHash, createReceipt, plan.id, onSuccess]);
 
@@ -388,10 +421,14 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
   useEffect(() => {
     if (approveError) {
       console.error('Approval error:', approveError);
-      const errorMessage = approveError instanceof Error ? approveError.message :
-        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError)
-          ? String((approveError as { shortMessage: string }).shortMessage)
-          : 'Unknown error';
+      const errorMessage =
+        approveError instanceof Error
+          ? approveError.message
+          : typeof approveError === 'object' &&
+            approveError !== null &&
+            'shortMessage' in approveError
+            ? String((approveError as { shortMessage: string }).shortMessage)
+            : 'Unknown error';
       setError('Approval failed: ' + errorMessage);
       setTxStep('idle');
     }
@@ -414,7 +451,12 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       if (createError instanceof Error) {
         errorMessage = createError.message;
       } else if (typeof createError === 'object' && createError !== null) {
-        const err = createError as { shortMessage?: string; message?: string; cause?: any; data?: any };
+        const err = createError as {
+          shortMessage?: string;
+          message?: string;
+          cause?: any;
+          data?: any;
+        };
         errorMessage = err.shortMessage || err.message || errorMessage;
 
         const errorStr = JSON.stringify(err).toLowerCase();
@@ -427,7 +469,10 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
         } else if (errorStr.includes('paused')) {
           errorMessage = 'Contract is paused. Please contact support.';
         } else if (errorStr.includes('invalid') || errorStr.includes('revert')) {
-          errorMessage = err.shortMessage || err.message || 'Invalid transaction parameters. Please check your plan details.';
+          errorMessage =
+            err.shortMessage ||
+            err.message ||
+            'Invalid transaction parameters. Please check your plan details.';
         }
       }
 
@@ -435,7 +480,8 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       setTxStep('idle');
     }
     if (isCreateError || createReceiptError) {
-      let errorMessage = 'Transaction was rejected or failed. Please check your wallet or the transaction on the explorer.';
+      let errorMessage =
+        'Transaction was rejected or failed. Please check your wallet or the transaction on the explorer.';
       if (createReceiptError) {
         if (createReceiptError instanceof Error) {
           errorMessage = createReceiptError.message;
@@ -447,7 +493,14 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
       setError('Plan creation transaction failed: ' + errorMessage);
       setTxStep('idle');
     }
-  }, [approveError, approveReceiptError, isApproveError, createError, createReceiptError, isCreateError]);
+  }, [
+    approveError,
+    approveReceiptError,
+    isApproveError,
+    createError,
+    createReceiptError,
+    isCreateError,
+  ]);
 
   // Retry handler
   const handleRetry = useCallback(() => {
@@ -540,17 +593,23 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Amount</span>
-                <span>{plan.assetAmount} {selectedToken.symbol}</span>
+                <span>
+                  {plan.assetAmount} {selectedToken.symbol}
+                </span>
               </div>
               <div className="flex gap-2 text-sm">
                 <div className="flex justify-between w-full">
                   <span className="text-[var(--text-muted)]">Fees (5%)</span>
-                  <span>{formatUnits(creationFee, selectedToken.decimals)} {selectedToken.symbol}</span>
+                  <span>
+                    {formatUnits(creationFee, selectedToken.decimals)} {selectedToken.symbol}
+                  </span>
                 </div>
               </div>
               <div className="flex justify-between font-medium pt-2 border-t border-[var(--border-color)]">
                 <span>Total Required</span>
-                <span>{formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}</span>
+                <span>
+                  {formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}
+                </span>
               </div>
             </div>
           </div>
@@ -562,9 +621,9 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               <div className="flex-1">
                 <h4 className="text-amber-400 font-medium text-sm">KYC Verification Required</h4>
                 <p className="text-amber-400/80 text-xs mt-1">
-                  The smart contract requires KYC verification before you can create a plan.
-                  Please complete the KYC process in your profile settings or wait for approval.
-                  Only an admin can approve your on-chain KYC status.
+                  The smart contract requires KYC verification before you can create a plan. Please
+                  complete the KYC process in your profile settings or wait for approval. Only an
+                  admin can approve your on-chain KYC status.
                 </p>
               </div>
             </div>
@@ -578,10 +637,16 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
                 <h4 className="text-red-400 font-medium text-sm">Invalid Plan Configuration</h4>
                 <ul className="list-disc list-inside text-red-400/80 text-xs mt-1 space-y-1">
                   {isTransferDatePast && (
-                    <li>Transfer date must be in the future. Current date: {new Date().toLocaleDateString()}</li>
+                    <li>
+                      Transfer date must be in the future. Current date:{' '}
+                      {new Date().toLocaleDateString()}
+                    </li>
                   )}
                   {isPercentageInvalid && (
-                    <li>Periodic percentage ({periodicPercentage}%) must be a divisor of 100 (e.g., 10, 20, 25, 50).</li>
+                    <li>
+                      Periodic percentage ({periodicPercentage}%) must be a divisor of 100 (e.g.,
+                      10, 20, 25, 50).
+                    </li>
                   )}
                 </ul>
               </div>
@@ -593,7 +658,8 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
             <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
               <FiAlertCircle className="text-amber-500 shrink-0" size={18} />
               <span className="text-amber-400 text-sm">
-                Insufficient balance. Required: {formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}
+                Insufficient balance. Required: {formatUnits(totalRequired, selectedToken.decimals)}{' '}
+                {selectedToken.symbol}
               </span>
             </div>
           )}
@@ -663,7 +729,14 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               <button
                 onClick={startTransactionFlow}
                 className="btn btn-primary"
-                disabled={hasInsufficientBalance || !planArgs || !address || isKYCBlocked || isTransferDatePast || isPercentageInvalid}
+                disabled={
+                  hasInsufficientBalance ||
+                  !planArgs ||
+                  !address ||
+                  isKYCBlocked ||
+                  isTransferDatePast ||
+                  isPercentageInvalid
+                }
               >
                 {isKYCBlocked
                   ? 'KYC Required'
@@ -685,9 +758,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
                 <FiAlertCircle className="text-red-500" size={32} />
               </div>
-              <h3 className="text-lg font-semibold text-red-400 mb-2">
-                Transaction Failed
-              </h3>
+              <h3 className="text-lg font-semibold text-red-400 mb-2">Transaction Failed</h3>
               <p className="text-[var(--text-secondary)] mb-2">
                 Please check the error message above and try again.
               </p>
@@ -702,10 +773,7 @@ export default function CompletePendingPlanModal({ plan, onClose, onSuccess }: C
                 </a>
               )}
               <div className="flex gap-3 justify-center mt-6">
-                <button
-                  onClick={() => setError(null)}
-                  className="btn btn-secondary"
-                >
+                <button onClick={() => setError(null)} className="btn btn-secondary">
                   Dismiss
                 </button>
                 <button

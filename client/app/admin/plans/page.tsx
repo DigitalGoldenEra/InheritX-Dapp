@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
+import {
   FiSearch,
   FiChevronLeft,
   FiChevronRight,
   FiFileText,
-  FiExternalLink
+  FiExternalLink,
 } from 'react-icons/fi';
 import { api, Plan, Pagination } from '@/lib/api';
 import { formatAddress, formatDate, getPlanStatusBadge, getTokenByAssetType } from '@/lib/contract';
@@ -48,9 +48,7 @@ export default function AdminPlansPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">All Plans</h1>
-        <p className="text-[var(--text-secondary)]">
-          View all inheritance plans on the platform.
-        </p>
+        <p className="text-[var(--text-secondary)]">View all inheritance plans on the platform.</p>
       </div>
 
       {/* Filters */}
@@ -69,7 +67,10 @@ export default function AdminPlansPage() {
           {['all', 'ACTIVE', 'PAUSED', 'EXECUTED', 'CANCELLED'].map((status) => (
             <button
               key={status}
-              onClick={() => { setStatusFilter(status); setPage(1); }}
+              onClick={() => {
+                setStatusFilter(status);
+                setPage(1);
+              }}
               className={`btn btn-sm ${statusFilter === status ? 'btn-primary' : 'btn-secondary'}`}
             >
               {status === 'all' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
@@ -123,7 +124,9 @@ export default function AdminPlansPage() {
                         <td className="font-mono text-sm">
                           {plan.globalPlanId ? `#${plan.globalPlanId}` : '-'}
                         </td>
-                        <td>{plan.assetAmount} {token?.symbol}</td>
+                        <td>
+                          {plan.assetAmount} {token?.symbol}
+                        </td>
                         <td>{plan.beneficiaries.length}</td>
                         <td>{formatDate(plan.transferDate)}</td>
                         <td>
@@ -155,18 +158,19 @@ export default function AdminPlansPage() {
             {pagination && pagination.pages > 1 && (
               <div className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="text-sm text-[var(--text-muted)]">
-                  Showing {((page - 1) * pagination.limit) + 1} - {Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
+                  Showing {(page - 1) * pagination.limit + 1} -{' '}
+                  {Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     className="btn btn-sm btn-secondary"
                   >
                     <FiChevronLeft size={16} />
                   </button>
                   <button
-                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                    onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                     disabled={page === pagination.pages}
                     className="btn btn-sm btn-secondary"
                   >
@@ -181,4 +185,3 @@ export default function AdminPlansPage() {
     </div>
   );
 }
-

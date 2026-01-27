@@ -2,13 +2,13 @@ import type { Config } from 'tailwindcss';
 
 /**
  * Tailwind CSS v4 Configuration
- * 
+ *
  * Note: In Tailwind v4, theme customization is primarily done via CSS using @theme in globals.css.
  * This config file is used for:
  * - Content paths (which files to scan for Tailwind classes)
  * - Plugin configuration
  * - Other non-theme settings
- * 
+ *
  * The config is imported in globals.css using @config directive.
  */
 const config: Config = {

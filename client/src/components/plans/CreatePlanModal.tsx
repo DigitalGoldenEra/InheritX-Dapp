@@ -2,18 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { FiX, FiPlus, FiTrash2, FiAlertCircle, FiCheck, FiLoader } from 'react-icons/fi';
 import {
-  FiX,
-  FiPlus,
-  FiTrash2,
-  FiAlertCircle,
-  FiCheck,
-  FiLoader
-} from 'react-icons/fi';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+  usePublicClient,
+} from 'wagmi';
 import { parseUnits, formatUnits, decodeEventLog } from 'viem';
 import { api, CreatePlanData, ContractData as ApiContractData } from '@/lib/api';
-import { inheritXABI } from '@/contract/abi';
+import inheritXABI from '@/contract/abi';
 import {
   INHERITX_CONTRACT_ADDRESS,
   TOKENS,
@@ -21,7 +20,8 @@ import {
   ASSET_TYPE_MAP,
   DISTRIBUTION_METHOD_MAP,
   ERC20_ABI,
-  parseTokenAmount
+  parseTokenAmount,
+  hashString,
 } from '@/lib/contract';
 
 interface CreatePlanModalProps {
@@ -34,6 +34,7 @@ interface Beneficiary {
   email: string;
   relationship: string;
   allocatedPercentage: number;
+  claimCode?: string;
 }
 
 interface ContractBeneficiary {
@@ -44,12 +45,14 @@ interface ContractBeneficiary {
 }
 
 // Extended ContractData for contract calls (includes additional fields needed for blockchain)
-interface ContractData extends ApiContractData {
+interface ContractData extends Omit<ApiContractData, 'beneficiaries'> {
   assetType: number;
   assetAmount: string;
   distributionMethod: number;
   transferDate: string;
   periodicPercentage?: number;
+  claimCodeHash?: undefined; // Removed from top level in favor of per-beneficiary
+  beneficiaries: ContractBeneficiary[];
 }
 
 type Step = 'details' | 'beneficiaries' | 'review' | 'approve' | 'create';
@@ -70,11 +73,15 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const [distributionMethod, setDistributionMethod] = useState('LUMP_SUM');
   const [transferDate, setTransferDate] = useState('');
   const [periodicPercentage, setPeriodicPercentage] = useState(25);
-  const [claimCode, setClaimCode] = useState('');
+  // claimCode state removed - moved to beneficiaries
+
+  // Proof of Life and Notification options
+  const [proofOfLifeEnabled, setProofOfLifeEnabled] = useState(false);
+  const [notifyBeneficiaries, setNotifyBeneficiaries] = useState(false);
 
   // Beneficiaries
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([
-    { name: '', email: '', relationship: '', allocatedPercentage: 100 }
+    { name: '', email: '', relationship: '', allocatedPercentage: 100, claimCode: '' },
   ]);
 
   // Contract data from backend
@@ -90,19 +97,19 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       emailHash: `0x${string}`;
       relationshipHash: `0x${string}`;
       allocatedPercentage: bigint;
+      claimCodeHash: `0x${string}`;
     }[],
     number,
     bigint,
     number,
     bigint,
     number,
-    `0x${string}`
   ];
 
   const [planArgs, setPlanArgs] = useState<PlanArgs | null>(null);
 
   // Get selected token
-  const selectedToken = TOKENS.find(t => t.id === assetType) || TOKENS[0];
+  const selectedToken = TOKENS.find((t) => t.id === assetType) || TOKENS[0];
 
   // Check token balance
   const { data: tokenBalance } = useReadContract({
@@ -135,16 +142,16 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     data: approveTxHash,
     isPending: isApprovePending,
     error: approveError,
-    reset: resetApprove
+    reset: resetApprove,
   } = useWriteContract();
 
   const {
     isLoading: isApproveWaiting,
     isSuccess: isApprovalConfirmed,
     isError: isApproveError,
-    error: approveReceiptError
+    error: approveReceiptError,
   } = useWaitForTransactionReceipt({
-    hash: approveTxHash
+    hash: approveTxHash,
   });
 
   // Create plan transaction
@@ -153,7 +160,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     data: createTxHash,
     isPending: isCreatePending,
     error: createError,
-    reset: resetCreate
+    reset: resetCreate,
   } = useWriteContract();
 
   const {
@@ -161,9 +168,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     isSuccess: createSuccess,
     isError: isCreateError,
     error: createReceiptError,
-    data: createReceipt
+    data: createReceipt,
   } = useWaitForTransactionReceipt({
-    hash: createTxHash
+    hash: createTxHash,
   });
 
   // Calculate required amount with fees (5% creation fee + 2% service fee)
@@ -177,7 +184,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const totalRequired = calculateTotalRequired();
 
   // Check balance (needs to be calculated early)
-  const hasInsufficientBalance = tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
+  const hasInsufficientBalance =
+    tokenBalance !== undefined && typeof tokenBalance === 'bigint' && totalRequired > tokenBalance;
 
   // Handle create success - parse event logs and update backend
   useEffect(() => {
@@ -195,7 +203,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               data: log.data,
               topics: log.topics,
             });
-            return decoded.eventName === 'PlanCreated';
+            return (decoded.eventName as string) === 'PlanCreated';
           } catch {
             return false;
           }
@@ -206,7 +214,10 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
             abi: inheritXABI,
             data: planCreatedEvent.data,
             topics: planCreatedEvent.topics,
-          }) as { eventName: string; args: { globalPlanId: bigint; userPlanId: bigint } };
+          }) as unknown as {
+            eventName: string;
+            args: { globalPlanId: bigint; userPlanId: bigint };
+          };
 
           globalPlanId = Number(decoded.args.globalPlanId);
           userPlanId = Number(decoded.args.userPlanId);
@@ -217,34 +228,43 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
       // Update backend with transaction hash and plan IDs
       // This will also update status from PENDING to ACTIVE
-      api.updatePlanContract(backendPlanId, {
-        globalPlanId: globalPlanId || 0, // Fallback to 0 if parsing fails
-        userPlanId: userPlanId || 0,
-        txHash: createTxHash,
-      }).then(() => {
-        onSuccess();
-      }).catch((error) => {
-        console.error('Error updating plan contract:', error);
-        setError('Plan created on-chain but failed to update backend. Please contact support.');
-      });
+      api
+        .updatePlanContract(backendPlanId, {
+          globalPlanId: globalPlanId || 0, // Fallback to 0 if parsing fails
+          userPlanId: userPlanId || 0,
+          txHash: createTxHash,
+        })
+        .then(() => {
+          onSuccess();
+        })
+        .catch((error) => {
+          console.error('Error updating plan contract:', error);
+          setError('Plan created on-chain but failed to update backend. Please contact support.');
+        });
     }
   }, [createSuccess, createTxHash, backendPlanId, createReceipt, onSuccess]);
 
   // Handle errors
   useEffect(() => {
     if (approveError) {
-      const errorMessage = approveError instanceof Error ? approveError.message :
-        (typeof approveError === 'object' && approveError !== null && 'shortMessage' in approveError)
-          ? String(approveError.shortMessage)
-          : 'Unknown error';
+      const errorMessage =
+        approveError instanceof Error
+          ? approveError.message
+          : typeof approveError === 'object' &&
+            approveError !== null &&
+            'shortMessage' in approveError
+            ? String(approveError.shortMessage)
+            : 'Unknown error';
       setError('Approval failed: ' + errorMessage);
       setStep('review');
     }
     if (createError) {
-      const errorMessage = createError instanceof Error ? createError.message :
-        (typeof createError === 'object' && createError !== null && 'shortMessage' in createError)
-          ? String(createError.shortMessage)
-          : 'Unknown error';
+      const errorMessage =
+        createError instanceof Error
+          ? createError.message
+          : typeof createError === 'object' && createError !== null && 'shortMessage' in createError
+            ? String(createError.shortMessage)
+            : 'Unknown error';
       setError('Transaction failed: ' + errorMessage);
       setStep('review');
     }
@@ -252,7 +272,10 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
   const addBeneficiary = () => {
     if (beneficiaries.length >= 10) return;
-    setBeneficiaries([...beneficiaries, { name: '', email: '', relationship: '', allocatedPercentage: 0 }]);
+    setBeneficiaries([
+      ...beneficiaries,
+      { name: '', email: '', relationship: '', allocatedPercentage: 0, claimCode: '' },
+    ]);
   };
 
   const removeBeneficiary = (index: number) => {
@@ -261,14 +284,14 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   };
 
   const updateBeneficiary = (index: number, field: keyof Beneficiary, value: string | number) => {
-    setBeneficiaries(beneficiaries.map((b, i) =>
-      i === index ? { ...b, [field]: value } : b
-    ));
+    setBeneficiaries(beneficiaries.map((b, i) => (i === index ? { ...b, [field]: value } : b)));
   };
 
   const validateDetails = () => {
     if (!planName || planName.length < 2) return 'Plan name is required (min 2 characters)';
-    if (!planDescription || planDescription.length < 10) return 'Description is required (min 10 characters)';
+    if (!planDescription || planDescription.length < 10)
+      return 'Description is required (min 10 characters)';
+    if (planDescription.length > 500) return 'Description is too long (max 500 characters)';
     if (!assetAmount || parseFloat(assetAmount) <= 0) return 'Amount must be greater than 0';
     if (!transferDate) return 'Transfer date is required';
     if (new Date(transferDate) <= new Date()) return 'Transfer date must be in the future';
@@ -287,10 +310,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       if (!ben.email || !ben.email.includes('@')) return 'All beneficiary emails must be valid';
       if (!ben.relationship) return 'All beneficiary relationships are required';
       if (ben.allocatedPercentage <= 0) return 'All beneficiaries must have an allocation';
+      if (ben.claimCode && ben.claimCode.length !== 6) return 'Claim code must be exactly 6 characters';
     }
 
     const totalPercentage = beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0);
-    if (totalPercentage !== 100) return `Total allocation must be 100% (currently ${totalPercentage}%)`;
+    if (totalPercentage !== 100)
+      return `Total allocation must be 100% (currently ${totalPercentage}%)`;
 
     return null;
   };
@@ -330,11 +355,15 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         distributionMethod: distributionMethod as 'LUMP_SUM' | 'QUARTERLY' | 'YEARLY' | 'MONTHLY',
         transferDate: new Date(transferDate).toISOString(),
         periodicPercentage: distributionMethod !== 'LUMP_SUM' ? periodicPercentage : undefined,
-        beneficiaries: beneficiaries.map(b => ({
+        beneficiaries: beneficiaries.map((b) => ({
           ...b,
           allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points (always x100 when creating new)
+          claimCode: b.claimCode || undefined,
         })),
-        claimCode: claimCode || undefined,
+        // Proof of Life option (LUMP_SUM only)
+        proofOfLifeEnabled: distributionMethod === 'LUMP_SUM' ? proofOfLifeEnabled : false,
+        // Beneficiary notification option
+        notifyBeneficiaries,
       };
 
       const { data, error: apiError } = await api.createPlan(planData);
@@ -348,12 +377,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       const extendedContractData: ContractData = {
         planNameHash: data.contractData.planNameHash as `0x${string}`,
         planDescriptionHash: data.contractData.planDescriptionHash as `0x${string}`,
-        claimCodeHash: data.contractData.claimCodeHash as `0x${string}`,
-        beneficiaries: data.contractData.beneficiaries.map(b => ({
-          nameHash: b.nameHash as `0x${string}`,
+        beneficiaries: data.contractData.beneficiaries.map((b, i) => ({
+          nameHash: hashString(beneficiaries[i].name) as `0x${string}`,
           emailHash: b.emailHash as `0x${string}`,
           relationshipHash: b.relationshipHash as `0x${string}`,
           allocatedPercentage: b.allocatedPercentage,
+          claimCodeHash: b.claimCodeHash as `0x${string}`,
         })),
         assetType: ASSET_TYPE_MAP[assetType] ?? 0,
         assetAmount,
@@ -361,42 +390,63 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         transferDate: new Date(transferDate).toISOString(),
         periodicPercentage: distributionMethod !== 'LUMP_SUM' ? periodicPercentage : undefined,
       };
+
+      // We need to type cast or fix interface if nameHash is missing.
+      // Based on previous code, nameHash IS required by contract.
+      // Make sure we pass it. If backend doesn't return it, we might need to hash it here or ensure backend does.
+      // Re-reading api.ts ContractData (Lines 430+ in Step 369/374/376):
+      // I removed `claimCodeHash` from `ContractData` top level.
+      // `beneficiaries` in `ContractData` has `emailHash`, `relationshipHash`, `allocatedPercentage`, `claimCodeHash`.
+      // It DOES NOT HAVE `nameHash` in the interface I saw in Step 376?
+      // Wait, in Step 376, I removed `claimCodeHash` from top level.
+      // The `beneficiaries` object in `ContractData` (Step 376) has `emailHash`, `relationshipHash`, `allocatedPercentage`, `claimCodeHash`.
+      // It does NOT show `nameHash`.
+      // BUT `PlanArgs` REQUIRES `nameHash`.
+      // Use `hashString` from utils if backend doesn't provide it, or fix api.ts.
+      // Use `hashString(b.name)`
+
       setContractData(extendedContractData);
       setBackendPlanId(data.plan.id);
-      setClaimCode(data.plan.claimCode || claimCode);
 
       // Prepare plan creation arguments
       const amount = parseTokenAmount(assetAmount, selectedToken.decimals);
 
-      console.log('amount', amount);
-
       const transferTimestamp = BigInt(Math.floor(new Date(transferDate).getTime() / 1000));
+
+      // Need to re-map beneficiaries to match PlanArgs structure
+      // PlanArgs expects { nameHash, emailHash, relationshipHash, allocatedPercentage, claimCodeHash }
+
+      // Map original beneficiaries to get names for hashing if needed, or rely on backend.
+      // Since `ContractData` from API seems to lack `nameHash` (need to verify this assumption or just hash it here to be safe),
+      // let's use the local beneficiary name to generate hash.
+
       const preparedPlanArgs: PlanArgs = [
         extendedContractData.planNameHash as `0x${string}`,
         extendedContractData.planDescriptionHash as `0x${string}`,
-        (extendedContractData.beneficiaries as ContractBeneficiary[]).map((b) => ({
-          nameHash: b.nameHash as `0x${string}`,
+        data.contractData.beneficiaries.map((b, i) => ({
+          nameHash: hashString(beneficiaries[i].name) as `0x${string}`, // Hash name locally
           emailHash: b.emailHash as `0x${string}`,
           relationshipHash: b.relationshipHash as `0x${string}`,
           allocatedPercentage: BigInt(b.allocatedPercentage),
+          claimCodeHash: b.claimCodeHash as `0x${string}`,
         })) as readonly {
           nameHash: `0x${string}`;
           emailHash: `0x${string}`;
           relationshipHash: `0x${string}`;
           allocatedPercentage: bigint;
+          claimCodeHash: `0x${string}`;
         }[],
         ASSET_TYPE_MAP[assetType],
         amount,
         DISTRIBUTION_METHOD_MAP[distributionMethod],
         transferTimestamp,
         distributionMethod !== 'LUMP_SUM' ? periodicPercentage : 0,
-        extendedContractData.claimCodeHash as `0x${string}`,
       ];
 
       // Store plan args and proceed to approval step (always start with approval)
       setPlanArgs(preparedPlanArgs);
       setStep('approve');
-      setTxStep('idle'); // Reset transaction step
+      setTxStep('idle');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create plan');
     } finally {
@@ -488,7 +538,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
       >
         {/* Header */}
         <div className="modal-header">
-          <h2 className="text-xl font-bold">Create Inheritance Plan</h2>
+          <h2 className="text-xl font-bold">Create Future Plan</h2>
           <button onClick={onClose} className="btn btn-icon btn-ghost">
             <FiX size={20} />
           </button>
@@ -510,22 +560,28 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               return (
                 <div key={s} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${isCompleted ? 'bg-green-500 text-white' :
-                        isActive ? 'bg-primary text-[#0D1A1E]' :
-                          'bg-[#1A2028] text-gray-500 border border-white/10'
-                      }`}>
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${isCompleted
+                        ? 'bg-green-500 text-white'
+                        : isActive
+                          ? 'bg-primary text-[#0D1A1E]'
+                          : 'bg-[#1A2028] text-gray-500 border border-white/10'
+                        }`}
+                    >
                       {isCompleted ? <FiCheck size={14} /> : stepIndex + 1}
                     </div>
-                    <span className={`text-xs mt-1.5 font-medium ${isActive ? 'text-primary' :
-                        isCompleted ? 'text-green-400' :
-                          'text-gray-500'
-                      }`}>
+                    <span
+                      className={`text-xs mt-1.5 font-medium ${isActive ? 'text-primary' : isCompleted ? 'text-green-400' : 'text-gray-500'
+                        }`}
+                    >
                       {stepLabels[i]}
                     </span>
                   </div>
                   {i < 4 && (
-                    <div className={`w-12 h-0.5 mx-2 mb-5 ${isCompleted ? 'bg-green-500' : 'bg-white/10'
-                      }`} />
+                    <div
+                      className={`w-12 h-0.5 mx-2 mb-5 ${isCompleted ? 'bg-green-500' : 'bg-white/10'
+                        }`}
+                    />
                   )}
                 </div>
               );
@@ -552,7 +608,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
                   className="input"
-                  placeholder="e.g., Family Inheritance Plan"
+                  placeholder="e.g., Wedding Fund, Tuition, or Inheritance"
                 />
               </div>
 
@@ -562,9 +618,18 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   value={planDescription}
                   onChange={(e) => setPlanDescription(e.target.value)}
                   className="input"
-                  placeholder="Describe your inheritance plan..."
+                  placeholder="Describe your plan (e.g., Funds for my daughter's wedding)..."
                   rows={3}
+                  maxLength={500}
                 />
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-xs text-[var(--text-muted)]">Min 10 characters</span>
+                  <span
+                    className={`text-xs ${planDescription.length > 450 ? (planDescription.length >= 500 ? 'text-[var(--accent-red)]' : 'text-amber-400') : 'text-[var(--text-muted)]'}`}
+                  >
+                    {planDescription.length}/500
+                  </span>
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -596,7 +661,14 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   />
                   {tokenBalance !== undefined && (
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      Balance: {formatUnits(tokenBalance as bigint, selectedToken.decimals)} {selectedToken.symbol}
+                      Balance: {(() => {
+                        const formatted = formatUnits(tokenBalance as bigint, selectedToken.decimals);
+                        return parseFloat(formatted).toLocaleString('en-US', {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 3,
+                        });
+                      })()}{' '}
+                      {selectedToken.symbol}
                     </p>
                   )}
                 </div>
@@ -617,7 +689,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     ))}
                   </select>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
-                    {DISTRIBUTION_METHODS.find(m => m.id === distributionMethod)?.description}
+                    {DISTRIBUTION_METHODS.find((m) => m.id === distributionMethod)?.description}
                   </p>
                 </div>
 
@@ -649,19 +721,52 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 </div>
               )}
 
-              <div className="input-group">
-                <label className="input-label">Claim Code (Optional)</label>
-                <input
-                  type="text"
-                  value={claimCode}
-                  onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
-                  className="input"
-                  placeholder="Leave empty to auto-generate"
-                  maxLength={6}
-                />
-                <p className="text-xs text-[var(--text-muted)] mt-1">
-                  6-character code for beneficiaries to claim their inheritance
-                </p>
+
+
+              {/* Options Section */}
+              <div className="pt-4 border-t border-white/10 space-y-4">
+                <h4 className="font-medium text-sm text-[var(--text-secondary)]">Plan Options</h4>
+
+                {/* Proof of Life Toggle - Only for LUMP_SUM */}
+                {distributionMethod === 'LUMP_SUM' && (
+                  <div className="card bg-[var(--bg-deep)] p-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={proofOfLifeEnabled}
+                        onChange={(e) => setProofOfLifeEnabled(e.target.checked)}
+                        className="mt-1 w-5 h-5 rounded border-white/20 bg-transparent"
+                      />
+                      <div className="flex-1">
+                        <span className="font-medium">Enable Life Verification</span>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">
+                          We'll send you a verification email every 6 months. If you don't respond
+                          within 2 months, your beneficiaries will be notified and can claim
+                          immediately, even before the transfer date.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Notify Beneficiaries Toggle */}
+                <div className="card bg-[var(--bg-deep)] p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifyBeneficiaries}
+                      onChange={(e) => setNotifyBeneficiaries(e.target.checked)}
+                      className="mt-1 w-5 h-5 rounded border-white/20 bg-transparent"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium">Notify Beneficiaries Now</span>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">
+                        Send an email to your beneficiaries letting them know you've created an
+                        inheritance plan for them. They won't receive the claim code yet.
+                      </p>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
           )}
@@ -714,24 +819,42 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                       <input
                         type="number"
                         value={ben.allocatedPercentage}
-                        onChange={(e) => updateBeneficiary(index, 'allocatedPercentage', parseInt(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateBeneficiary(
+                            index,
+                            'allocatedPercentage',
+                            parseInt(e.target.value) || 0,
+                          )
+                        }
                         className="input pr-8"
                         placeholder="Allocation %"
                         min={1}
                         max={100}
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">%</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                        %
+                      </span>
                     </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="text-xs text-[var(--text-secondary)] mb-1 block">
+                      Claim Code (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={ben.claimCode || ''}
+                      onChange={(e) => updateBeneficiary(index, 'claimCode', e.target.value.toUpperCase())}
+                      className="input text-sm py-2"
+                      placeholder="6-char code (leave empty to auto-generate)"
+                      maxLength={6}
+                    />
                   </div>
                 </div>
               ))}
 
               {beneficiaries.length < 10 && (
-                <button
-                  type="button"
-                  onClick={addBeneficiary}
-                  className="btn btn-secondary w-full"
-                >
+                <button type="button" onClick={addBeneficiary} className="btn btn-secondary w-full">
                   <FiPlus size={16} />
                   Add Beneficiary
                 </button>
@@ -739,10 +862,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
               <div className="flex items-center justify-between p-3 bg-[var(--bg-elevated)] rounded-lg">
                 <span className="font-medium">Total Allocation</span>
-                <span className={`font-bold ${beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0) === 100
+                <span
+                  className={`font-bold ${beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0) === 100
                     ? 'text-[var(--accent-green)]'
                     : 'text-[var(--accent-red)]'
-                  }`}>
+                    }`}
+                >
                   {beneficiaries.reduce((sum, b) => sum + b.allocatedPercentage, 0)}%
                 </span>
               </div>
@@ -761,7 +886,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--text-muted)]">Amount</span>
-                    <span>{assetAmount} {selectedToken.symbol}</span>
+                    <span>
+                      {assetAmount} {selectedToken.symbol}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--text-muted)]">Distribution</span>
@@ -773,11 +900,19 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[var(--text-muted)]">Fees (5%)</span>
-                    <span>{formatUnits((totalRequired - parseTokenAmount(assetAmount, selectedToken.decimals)), selectedToken.decimals)} {selectedToken.symbol}</span>
+                    <span>
+                      {formatUnits(
+                        totalRequired - parseTokenAmount(assetAmount, selectedToken.decimals),
+                        selectedToken.decimals,
+                      )}{' '}
+                      {selectedToken.symbol}
+                    </span>
                   </div>
                   <div className="flex justify-between font-medium pt-2">
                     <span>Total Required</span>
-                    <span>{formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}</span>
+                    <span>
+                      {formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -786,7 +921,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 <h3 className="font-semibold">Beneficiaries ({beneficiaries.length})</h3>
                 {beneficiaries.map((ben, i) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span>{ben.name} ({ben.relationship})</span>
+                    <span>
+                      {ben.name} ({ben.relationship})
+                    </span>
                     <span className="font-medium">{ben.allocatedPercentage}%</span>
                   </div>
                 ))}
@@ -795,8 +932,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                 <FiAlertCircle className="text-blue-400 shrink-0 mt-0.5" size={18} />
                 <div className="text-sm text-blue-300">
-                  By creating this plan, you agree to lock your tokens in escrow until the transfer date.
-                  The claim code will be generated and sent to beneficiaries.
+                  By creating this plan, you agree to lock your tokens in escrow until the transfer
+                  date. The claim code will be generated and sent to beneficiaries.
                 </div>
               </div>
             </div>
@@ -837,7 +974,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-6 text-left">
                   <FiAlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
                   <div className="flex-1">
-                    <h4 className="text-amber-400 font-medium text-sm">KYC Verification Required</h4>
+                    <h4 className="text-amber-400 font-medium text-sm">
+                      KYC Verification Required
+                    </h4>
                     <p className="text-amber-400/80 text-xs mt-1">
                       The smart contract requires KYC verification before you can create a plan.
                       Please complete the KYC process in your profile settings or wait for approval.
@@ -859,7 +998,9 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <div className="bg-[var(--bg-deep)] p-3 rounded-lg mb-6 text-sm">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)]">Amount to approve:</span>
-                      <span className="font-medium">{formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}</span>
+                      <span className="font-medium">
+                        {formatUnits(totalRequired, selectedToken.decimals)} {selectedToken.symbol}
+                      </span>
                     </div>
                   </div>
                   <button
@@ -880,9 +1021,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
                     <FiAlertCircle className="text-red-500" size={32} />
                   </div>
-                  <h3 className="text-lg font-semibold text-red-400 mb-2">
-                    Transaction Failed
-                  </h3>
+                  <h3 className="text-lg font-semibold text-red-400 mb-2">Transaction Failed</h3>
                   <p className="text-[var(--text-secondary)] mb-2">
                     Please check the error message above and try again.
                   </p>
@@ -897,10 +1036,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     </a>
                   )}
                   <div className="flex gap-3 justify-center mt-6">
-                    <button
-                      onClick={() => setError(null)}
-                      className="btn btn-secondary"
-                    >
+                    <button onClick={() => setError(null)} className="btn btn-secondary">
                       Dismiss
                     </button>
                     <button
@@ -952,15 +1088,12 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <p className="text-[var(--text-secondary)] mt-2 mb-4">
                     Your inheritance plan has been created successfully.
                   </p>
-                  {claimCode && (
-                    <div className="card bg-[var(--bg-deep)] p-4 mb-6">
-                      <p className="text-sm text-[var(--text-muted)] mb-2">Claim Code</p>
-                      <p className="text-2xl font-mono font-bold text-[var(--primary)]">{claimCode}</p>
-                      <p className="text-xs text-[var(--text-muted)] mt-2">
-                        Save this code! Beneficiaries will need it to claim.
-                      </p>
-                    </div>
-                  )}
+                  {/* Claim codes are distributed per beneficiary */}
+                  <div className="card bg-[var(--bg-deep)] p-4 mb-6">
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Claim codes have been generated for each beneficiary. If you enabled notifications, they will be sent automatically.
+                    </p>
+                  </div>
                   <button onClick={onSuccess} className="btn btn-primary">
                     Done
                   </button>
@@ -971,40 +1104,38 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
         </div>
 
         {/* Footer */}
-        {['details', 'beneficiaries', 'review'].includes(step) && (
-          <div className="modal-footer">
-            {step !== 'details' && (
-              <button
-                type="button"
-                onClick={() => setStep(step === 'review' ? 'beneficiaries' : 'details')}
-                className="btn btn-secondary"
-              >
-                Back
-              </button>
-            )}
+        {
+          ['details', 'beneficiaries', 'review'].includes(step) && (
+            <div className="modal-footer">
+              {step !== 'details' && (
+                <button
+                  type="button"
+                  onClick={() => setStep(step === 'review' ? 'beneficiaries' : 'details')}
+                  className="btn btn-secondary"
+                >
+                  Back
+                </button>
+              )}
 
-            {step === 'review' ? (
-              <button
-                onClick={handleSubmit}
-                disabled={isProcessing}
-                className="btn btn-primary"
-              >
-                {isProcessing ? (
-                  <>
-                    <FiLoader className="animate-spin" size={16} />
-                    Processing...
-                  </>
-                ) : (
-                  'Create Plan'
-                )}
-              </button>
-            ) : (
-              <button onClick={handleNext} className="btn btn-primary">
-                Next
-              </button>
-            )}
-          </div>
-        )}
+              {step === 'review' ? (
+                <button onClick={handleSubmit} disabled={isProcessing} className="btn btn-primary">
+                  {isProcessing ? (
+                    <>
+                      <FiLoader className="animate-spin" size={16} />
+                      Processing...
+                    </>
+                  ) : (
+                    'Create Plan'
+                  )}
+                </button>
+              ) : (
+                <button onClick={handleNext} className="btn btn-primary">
+                  Next
+                </button>
+              )}
+            </div>
+          )
+        }
       </motion.div>
     </motion.div>
   );

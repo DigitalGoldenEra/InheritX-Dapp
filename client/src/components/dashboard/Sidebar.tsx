@@ -2,15 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  FiHome, 
-  FiFileText, 
-  FiShield, 
+import {
+  FiHome,
+  FiFileText,
+  FiShield,
   FiActivity,
   FiSettings,
   FiLogOut,
   FiX,
-  FiGift
+  FiGift,
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -26,9 +26,7 @@ const navItems = [
   { href: '/dashboard/activity', icon: FiActivity, label: 'Activity' },
 ];
 
-const secondaryItems = [
-  { href: '/dashboard/settings', icon: FiSettings, label: 'Settings' },
-];
+const secondaryItems = [{ href: '/dashboard/settings', icon: FiSettings, label: 'Settings' }];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -44,12 +42,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={onClose}
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={onClose} />}
 
       {/* Sidebar */}
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -69,7 +62,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </svg>
             <span className="font-bold text-lg">InheritX</span>
           </Link>
-          <button 
+          <button
             className="lg:hidden p-2 hover:bg-[var(--bg-surface)] rounded-lg"
             onClick={onClose}
           >
@@ -131,11 +124,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-footer">
           <div className="card p-4">
             <div className="text-xs text-[var(--text-muted)] mb-1">KYC Status</div>
-            <div className={`badge ${
-              user?.kycStatus === 'APPROVED' ? 'badge-success' :
-              user?.kycStatus === 'PENDING' ? 'badge-purple' :
-              'badge-warning'
-            }`}>
+            <div
+              className={`badge ${
+                user?.kycStatus === 'APPROVED'
+                  ? 'badge-success'
+                  : user?.kycStatus === 'PENDING'
+                    ? 'badge-purple'
+                    : 'badge-warning'
+              }`}
+            >
               {user?.kycStatus || 'Not Submitted'}
             </div>
           </div>

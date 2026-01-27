@@ -1,23 +1,23 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @config "../tailwind.config.ts";
 
 @theme {
-  --color-primary: #33C5E0;
-  --color-primary-hover: #2AB5CF;
-  --color-primary-dark: #1A8A9E;
-  
+  --color-primary: #33c5e0;
+  --color-primary-hover: #2ab5cf;
+  --color-primary-dark: #1a8a9e;
+
   --color-dark: #050608;
-  --color-dark-card: #0C0F12;
+  --color-dark-card: #0c0f12;
   --color-dark-elevated: #141820;
-  --color-dark-section: #0A0D10;
-  
-  --accent-green: #10B981;
-  --accent-red: #EF4444;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --bg-deep: #0A0D10;
+  --color-dark-section: #0a0d10;
+
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --bg-deep: #0a0d10;
   --primary-muted: rgba(51, 197, 224, 0.15);
-  
+
   --font-family-heading: var(--font-syne), sans-serif;
   --font-family-body: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -53,7 +53,12 @@ body {
   border-radius: 3px;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-family-heading);
   font-weight: 700;
   line-height: 1.1;
@@ -139,22 +144,22 @@ h1, h2, h3, h4, h5, h6 {
 
 .badge-success {
   background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
+  color: #10b981;
 }
 
 .badge-warning {
   background: rgba(245, 158, 11, 0.15);
-  color: #F59E0B;
+  color: #f59e0b;
 }
 
 .badge-error {
   background: rgba(239, 68, 68, 0.15);
-  color: #EF4444;
+  color: #ef4444;
 }
 
 .badge-purple {
   background: rgba(139, 92, 246, 0.15);
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 
 .input-group {
@@ -166,7 +171,7 @@ h1, h2, h3, h4, h5, h6 {
 .input-label {
   font-size: 13px;
   font-weight: 500;
-  color: #94A3B8;
+  color: #94a3b8;
   margin-bottom: 4px;
 }
 
@@ -189,7 +194,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .input::placeholder {
-  color: #64748B;
+  color: #64748b;
 }
 
 .input:disabled {
@@ -214,7 +219,7 @@ th {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #64748B;
+  color: #64748b;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: var(--color-dark-elevated);
 }
@@ -283,7 +288,9 @@ tr:hover td {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .page-loader {

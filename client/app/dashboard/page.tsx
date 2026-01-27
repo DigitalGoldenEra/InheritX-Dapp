@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  FiFileText, 
-  FiUsers, 
-  FiDollarSign, 
+import {
+  FiFileText,
+  FiUsers,
+  FiDollarSign,
   FiClock,
   FiPlus,
   FiArrowRight,
   FiAlertCircle,
   FiShield,
-  FiGift
+  FiGift,
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { api, Plan, KYCStatus } from '@/lib/api';
@@ -28,10 +28,7 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [plansRes, kycRes] = await Promise.all([
-          api.getPlans(),
-          api.getKYCStatus(),
-        ]);
+        const [plansRes, kycRes] = await Promise.all([api.getPlans(), api.getKYCStatus()]);
 
         if (plansRes.data) setPlans(plansRes.data);
         if (kycRes.data) setKycStatus(kycRes.data);
@@ -51,28 +48,28 @@ export default function DashboardPage() {
       label: 'Total Plans',
       value: plans.length.toString(),
       color: '#33C5E0',
-      bg: 'rgba(51, 197, 224, 0.1)'
+      bg: 'rgba(51, 197, 224, 0.1)',
     },
     {
       icon: <FiUsers size={22} />,
       label: 'Beneficiaries',
       value: plans.reduce((acc, p) => acc + p.beneficiaries.length, 0).toString(),
       color: '#8B5CF6',
-      bg: 'rgba(139, 92, 246, 0.1)'
+      bg: 'rgba(139, 92, 246, 0.1)',
     },
     {
       icon: <FiDollarSign size={22} />,
       label: 'Assets Locked',
       value: `$${plans.reduce((acc, p) => acc + parseFloat(p.assetAmount || '0'), 0).toLocaleString()}`,
       color: '#10B981',
-      bg: 'rgba(16, 185, 129, 0.1)'
+      bg: 'rgba(16, 185, 129, 0.1)',
     },
     {
       icon: <FiClock size={22} />,
       label: 'Active Plans',
-      value: plans.filter(p => p.status === 'ACTIVE').length.toString(),
+      value: plans.filter((p) => p.status === 'ACTIVE').length.toString(),
       color: '#F59E0B',
-      bg: 'rgba(245, 158, 11, 0.1)'
+      bg: 'rgba(245, 158, 11, 0.1)',
     },
   ];
 
@@ -114,8 +111,8 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className={`flex items-start gap-4 p-5 rounded-xl mb-6 ${
-            kycStatus.status === 'PENDING' 
-              ? 'bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)]' 
+            kycStatus.status === 'PENDING'
+              ? 'bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)]'
               : 'bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)]'
           }`}
         >
@@ -127,9 +124,12 @@ export default function DashboardPage() {
               {kycStatus.status === 'REJECTED' && 'KYC Verification Rejected'}
             </div>
             <div className="text-sm text-[#A0AEC0]">
-              {kycStatus.status === 'NOT_SUBMITTED' && 'Complete KYC verification to create inheritance plans.'}
-              {kycStatus.status === 'PENDING' && 'Your KYC is being reviewed. This usually takes 24-48 hours.'}
-              {kycStatus.status === 'REJECTED' && (kycStatus.rejectionReason || 'Please resubmit your KYC.')}
+              {kycStatus.status === 'NOT_SUBMITTED' &&
+                'Complete KYC verification to create inheritance plans.'}
+              {kycStatus.status === 'PENDING' &&
+                'Your KYC is being reviewed. This usually takes 24-48 hours.'}
+              {kycStatus.status === 'REJECTED' &&
+                (kycStatus.rejectionReason || 'Please resubmit your KYC.')}
             </div>
           </div>
           {kycStatus.status !== 'PENDING' && (
@@ -150,7 +150,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
           >
-            <div 
+            <div
               className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
               style={{ background: stat.bg, color: stat.color }}
             >
@@ -168,18 +168,19 @@ export default function DashboardPage() {
         <div className="bg-[#12181E] border border-white/6 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-white/6 flex items-center justify-between">
             <h2 className="text-base font-semibold">Recent Plans</h2>
-            <Link href="/dashboard/plans" className="flex items-center gap-1 text-[#33C5E0] text-[13px] no-underline">
+            <Link
+              href="/dashboard/plans"
+              className="flex items-center gap-1 text-[#33C5E0] text-[13px] no-underline"
+            >
               View All <FiArrowRight size={14} />
             </Link>
           </div>
-          
+
           {recentPlans.length === 0 ? (
             <div className="py-16 px-6 text-center">
               <FiFileText size={40} color="#64748B" className="mb-4 mx-auto" />
               <h3 className="text-base font-semibold mb-2">No Plans Yet</h3>
-              <p className="text-[#A0AEC0] text-sm mb-5">
-                Create your first inheritance plan.
-              </p>
+              <p className="text-[#A0AEC0] text-sm mb-5">Create your first inheritance plan.</p>
               <Link href="/dashboard/plans" className="btn btn-primary btn-sm">
                 <FiPlus size={14} />
                 Create Plan
@@ -201,12 +202,11 @@ export default function DashboardPage() {
                         {plan.planName}
                       </div>
                       <div className="text-[13px] text-[#64748B]">
-                        {plan.assetAmount} {token?.symbol} • {plan.beneficiaries.length} beneficiaries
+                        {plan.assetAmount} {token?.symbol} • {plan.beneficiaries.length}{' '}
+                        beneficiaries
                       </div>
                     </div>
-                    <span className={`badge ${statusBadge.variant} ml-4`}>
-                      {statusBadge.label}
-                    </span>
+                    <span className={`badge ${statusBadge.variant} ml-4`}>{statusBadge.label}</span>
                   </Link>
                 );
               })}
@@ -267,10 +267,15 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-[#64748B]">KYC Status</span>
-                <span className={`badge ${
-                  kycStatus?.status === 'APPROVED' ? 'badge-success' :
-                  kycStatus?.status === 'PENDING' ? 'badge-purple' : 'badge-warning'
-                }`}>
+                <span
+                  className={`badge ${
+                    kycStatus?.status === 'APPROVED'
+                      ? 'badge-success'
+                      : kycStatus?.status === 'PENDING'
+                        ? 'badge-purple'
+                        : 'badge-warning'
+                  }`}
+                >
                   {kycStatus?.status || 'Not Submitted'}
                 </span>
               </div>

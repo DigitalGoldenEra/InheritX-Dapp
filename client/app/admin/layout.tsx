@@ -5,18 +5,18 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { 
-  FiHome, 
-  FiUsers, 
-  FiShield, 
-  FiFileText, 
+import {
+  FiHome,
+  FiUsers,
+  FiShield,
+  FiFileText,
   FiActivity,
   FiMenu,
   FiX,
   FiLogOut,
   FiArrowLeft,
   FiLock,
-  FiAlertTriangle
+  FiAlertTriangle,
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -64,9 +64,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Not authenticated - redirect to login
   if (!isAuthenticated) {
     // Use effect for redirect to avoid render-time navigation
-    return (
-      <RedirectToLogin />
-    );
+    return <RedirectToLogin />;
   }
 
   // Check admin role - if not admin, redirect to user dashboard
@@ -96,16 +94,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="min-h-screen flex bg-[#0A0E12]">
         {/* Overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`fixed left-0 top-0 bottom-0 w-[280px] bg-[#12181E] border-r border-white/6 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}>
+        <aside
+          className={`fixed left-0 top-0 bottom-0 w-[280px] bg-[#12181E] border-r border-white/6 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
           {/* Logo */}
           <div className="p-5 border-b border-white/6 flex items-center justify-between">
             <Link href="/admin" className="flex items-center gap-2.5 no-underline text-white">
@@ -115,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="badge badge-purple ml-2 text-[10px]">Admin</span>
               </div>
             </Link>
-            <button 
+            <button
               className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"
               onClick={() => setSidebarOpen(false)}
             >
@@ -135,8 +135,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium mb-1 ${
-                    isActive(item.href) 
-                      ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]' 
+                    isActive(item.href)
+                      ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]'
                       : 'text-[#A0AEC0] bg-transparent'
                   }`}
                 >
@@ -202,15 +202,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <FiAlertTriangle className="text-[#F59E0B] flex-shrink-0" size={20} />
               <div className="flex-1">
                 <p className="text-sm text-[#F59E0B] font-medium">Wallet not connected</p>
-                <p className="text-xs text-[#A0AEC0]">Connect your wallet to perform blockchain operations like KYC approval.</p>
+                <p className="text-xs text-[#A0AEC0]">
+                  Connect your wallet to perform blockchain operations like KYC approval.
+                </p>
               </div>
               <ConnectButton />
             </div>
           )}
 
-          <main className="p-6 min-h-[calc(100vh-64px)]">
-            {children}
-          </main>
+          <main className="p-6 min-h-[calc(100vh-64px)]">{children}</main>
         </div>
       </div>
     </>

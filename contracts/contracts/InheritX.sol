@@ -12,13 +12,13 @@ pragma solidity ^0.8.26;
  *      - Distribution methods (LumpSum, Quarterly, Yearly, Monthly)
  *      - KYC verification requirement before plan creation
  *      - Escrow management and fee collection
- * 
+ *
  * KYC FLOW:
  * - Users submit KYC data to backend (off-chain)
  * - Backend reviews and validates KYC data
  * - Admin calls approveKYC() or rejectKYC() to store status on-chain
  * - Only approved users can create inheritance plans
- * 
+ *
  * SECURITY NOTES:
  * - Beneficiary info (name, email, relationship) is hashed before storing
  * - Claim codes are hashed before storing
@@ -43,54 +43,54 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Supported asset types in the platform
  */
 enum AssetType {
-    ERC20_TOKEN1,   // Primary token (e.g., wrapped ETH)
-    ERC20_TOKEN2,   // USDT
-    ERC20_TOKEN3   // USDC
+    ERC20_TOKEN1, // Primary token (e.g., wrapped ETH)
+    ERC20_TOKEN2, // USDT
+    ERC20_TOKEN3 // USDC
 }
 
 /**
  * @notice Status states for inheritance plans
  */
 enum PlanStatus {
-    Active,         // Plan is active and can be modified
-    Executed,       // Plan has been fully executed/claimed
-    Cancelled,      // Plan was cancelled by owner
-    Overridden,     // Plan was overridden by new plan
-    Paused,         // Plan is temporarily paused
-    Expired,        // Plan has expired
-    AssetsLocked,   // Assets are locked pending claim
-    AssetsReleased  // Assets have been released to beneficiaries
+    Active, // Plan is active and can be modified
+    Executed, // Plan has been fully executed/claimed
+    Cancelled, // Plan was cancelled by owner
+    Overridden, // Plan was overridden by new plan
+    Paused, // Plan is temporarily paused
+    Expired, // Plan has expired
+    AssetsLocked, // Assets are locked pending claim
+    AssetsReleased // Assets have been released to beneficiaries
 }
 
 /**
  * @notice Distribution methods for inheritance funds
  */
 enum DistributionMethod {
-    LumpSum,    // Single distribution at specified date
-    Quarterly,  // Distribution every 3 months
-    Yearly,     // Distribution every year
-    Monthly     // Distribution every month
+    LumpSum, // Single distribution at specified date
+    Quarterly, // Distribution every 3 months
+    Yearly, // Distribution every year
+    Monthly // Distribution every month
 }
 
 /**
  * @notice Status of distribution/disbursement schedule
  */
 enum DisbursementStatus {
-    Pending,    // Not yet started
-    Active,     // Currently disbursing
-    Paused,     // Temporarily paused
-    Completed,  // All disbursements complete
-    Cancelled   // Disbursement cancelled
+    Pending, // Not yet started
+    Active, // Currently disbursing
+    Paused, // Temporarily paused
+    Completed, // All disbursements complete
+    Cancelled // Disbursement cancelled
 }
 
 /**
  * @notice KYC verification status
  */
 enum KYCStatus {
-    NotSubmitted,   // No KYC submitted
-    Pending,        // KYC submitted, awaiting review
-    Approved,       // KYC approved
-    Rejected        // KYC rejected
+    NotSubmitted, // No KYC submitted
+    Pending, // KYC submitted, awaiting review
+    Approved, // KYC approved
+    Rejected // KYC rejected
 }
 
 // ============================================
@@ -102,17 +102,17 @@ enum KYCStatus {
  * @dev All sensitive data is stored as keccak256 hashes
  */
 struct InheritancePlan {
-    uint256 id;                     // Unique plan identifier (global)
-    address owner;                  // Address of plan creator
-    uint8 beneficiaryCount;         // Number of beneficiaries
-    AssetType assetType;            // Type of asset in the plan
-    uint256 assetAmount;            // Total asset amount after fees
-    uint64 createdAt;               // Plan creation timestamp
-    uint64 transferDate;            // When assets can be transferred/claimed
-    PlanStatus status;              // Current plan status
-    bool isClaimed;                 // Whether plan has been claimed
-    bytes32 claimCodeHash;          // Keccak256 hash of claim code
-    uint256 escrowId;               // Associated escrow account ID
+    uint256 id; // Unique plan identifier (global)
+    address owner; // Address of plan creator
+    uint8 beneficiaryCount; // Number of beneficiaries
+    AssetType assetType; // Type of asset in the plan
+    uint256 assetAmount; // Total asset amount after fees
+    uint64 createdAt; // Plan creation timestamp
+    uint64 transferDate; // When assets can be transferred/claimed
+    PlanStatus status; // Current plan status
+    bool isClaimed; // Whether plan has been claimed
+    bytes32 claimCodeHash; // DEPRECATED: kept for storage layout (now per-beneficiary)
+    uint256 escrowId; // Associated escrow account ID
 }
 
 /**
@@ -120,14 +120,15 @@ struct InheritancePlan {
  * @dev The actual data is stored in the backend, only hashes on-chain
  */
 struct Beneficiary {
-    bytes32 nameHash;               // Keccak256 hash of beneficiary name
-    bytes32 emailHash;              // Keccak256 hash of beneficiary email
-    bytes32 relationshipHash;       // Keccak256 hash of relationship to owner
-    bytes32 beneficiaryDataHash;    // Combined hash of all beneficiary data
-    address claimedBy;              // Address that claimed (set when claimed)
-    bool hasClaimed;                // Whether beneficiary has claimed
-    uint256 claimedAmount;          // Amount claimed so far
-    uint256 allocatedPercentage;    // Percentage allocated to this beneficiary (basis points)
+    bytes32 nameHash; // Keccak256 hash of beneficiary name
+    bytes32 emailHash; // Keccak256 hash of beneficiary email
+    bytes32 relationshipHash; // Keccak256 hash of relationship to owner
+    bytes32 beneficiaryDataHash; // Combined hash of all beneficiary data
+    address claimedBy; // Address that claimed (set when claimed)
+    bool hasClaimed; // Whether beneficiary has claimed
+    uint256 claimedAmount; // Amount claimed so far
+    uint256 allocatedPercentage; // Percentage allocated to this beneficiary (basis points)
+    bytes32 claimCodeHash; // Keccak256 hash of beneficiary's claim code (NEW - added at end)
 }
 
 /**
@@ -135,53 +136,54 @@ struct Beneficiary {
  * @dev Frontend must hash the data before sending
  */
 struct BeneficiaryInput {
-    bytes32 nameHash;               // Keccak256 hash of name
-    bytes32 emailHash;              // Keccak256 hash of email
-    bytes32 relationshipHash;       // Keccak256 hash of relationship
-    uint256 allocatedPercentage;    // Percentage in basis points (10000 = 100%)
+    bytes32 nameHash; // Keccak256 hash of name
+    bytes32 emailHash; // Keccak256 hash of email
+    bytes32 relationshipHash; // Keccak256 hash of relationship
+    uint256 allocatedPercentage; // Percentage in basis points (10000 = 100%)
+    bytes32 claimCodeHash; // Keccak256 hash of beneficiary's claim code
 }
 
 /**
  * @notice Escrow account for holding plan assets
  */
 struct EscrowAccount {
-    uint256 id;                     // Unique escrow identifier
-    uint256 planId;                 // Associated plan ID
-    AssetType assetType;            // Type of asset held
-    uint256 amount;                 // Amount held in escrow
-    bool isLocked;                  // Whether funds are locked
-    uint64 lockedAt;                // When funds were locked
-    uint256 fees;                   // Fees deducted
+    uint256 id; // Unique escrow identifier
+    uint256 planId; // Associated plan ID
+    AssetType assetType; // Type of asset held
+    uint256 amount; // Amount held in escrow
+    bool isLocked; // Whether funds are locked
+    uint64 lockedAt; // When funds were locked
+    uint256 fees; // Fees deducted
 }
 
 /**
  * @notice Distribution plan for scheduled payouts
  */
 struct DistributionPlan {
-    uint256 planId;                     // Associated plan ID
-    address owner;                      // Plan owner
-    uint256 totalAmount;                // Total amount to distribute
-    DistributionMethod distributionMethod;  // How to distribute
-    uint256 periodAmount;               // Amount per period
-    uint64 startDate;                   // When distribution starts
-    uint64 endDate;                     // When distribution ends
-    uint8 totalPeriods;                 // Total number of periods
-    uint8 completedPeriods;             // Completed periods count
-    uint64 nextDisbursementDate;        // Next scheduled distribution
-    bool isActive;                      // Whether distribution is active
-    DisbursementStatus disbursementStatus;  // Current status
-    uint64 createdAt;                   // Creation timestamp
+    uint256 planId; // Associated plan ID
+    address owner; // Plan owner
+    uint256 totalAmount; // Total amount to distribute
+    DistributionMethod distributionMethod; // How to distribute
+    uint256 periodAmount; // Amount per period
+    uint64 startDate; // When distribution starts
+    uint64 endDate; // When distribution ends
+    uint8 totalPeriods; // Total number of periods
+    uint8 completedPeriods; // Completed periods count
+    uint64 nextDisbursementDate; // Next scheduled distribution
+    bool isActive; // Whether distribution is active
+    DisbursementStatus disbursementStatus; // Current status
+    uint64 createdAt; // Creation timestamp
 }
 
 /**
  * @notice Distribution configuration
  */
 struct DistributionConfig {
-    DistributionMethod distributionMethod;  // Distribution type
-    uint64 transferDate;                    // For lump sum: transfer date
-    uint8 periodicPercentage;               // Percentage per period (for periodic)
-    uint64 startDate;                       // Distribution start date
-    uint64 endDate;                         // Distribution end date
+    DistributionMethod distributionMethod; // Distribution type
+    uint64 transferDate; // For lump sum: transfer date
+    uint8 periodicPercentage; // Percentage per period (for periodic)
+    uint64 startDate; // Distribution start date
+    uint64 endDate; // Distribution end date
 }
 
 /**
@@ -190,23 +192,23 @@ struct DistributionConfig {
  *      which is set when admin approves or rejects the KYC via approveKYC() or rejectKYC()
  */
 struct UserKYC {
-    address userAddress;            // User's wallet address
-    KYCStatus status;               // Current KYC status (set by admin)
-    uint64 submittedAt;             // When KYC was first processed on-chain (set on approve/reject)
-    uint64 reviewedAt;              // When KYC was reviewed by admin
-    address reviewedBy;             // Admin who reviewed
-    bytes32 kycDataHash;            // Hash of KYC data for verification (optional)
+    address userAddress; // User's wallet address
+    KYCStatus status; // Current KYC status (set by admin)
+    uint64 submittedAt; // When KYC was first processed on-chain (set on approve/reject)
+    uint64 reviewedAt; // When KYC was reviewed by admin
+    address reviewedBy; // Admin who reviewed
+    bytes32 kycDataHash; // Hash of KYC data for verification (optional)
 }
 
 /**
  * @notice Fee configuration
  */
 struct FeeConfig {
-    uint256 feePercentage;          // In basis points (100 = 1%)
-    address feeRecipient;           // Where fees go
-    bool isActive;                  // Whether fees are active
-    uint256 minFee;                 // Minimum fee amount
-    uint256 maxFee;                 // Maximum fee amount
+    uint256 feePercentage; // In basis points (100 = 1%)
+    address feeRecipient; // Where fees go
+    bool isActive; // Whether fees are active
+    uint256 minFee; // Minimum fee amount
+    uint256 maxFee; // Maximum fee amount
 }
 
 /**
@@ -233,7 +235,11 @@ error InvalidPercentage(uint256 percentage);
 error PercentageMustEqual100(uint256 total);
 error InvalidAssetType(uint8 assetType);
 error InsufficientAllowance(uint256 required, uint256 allowance);
-error InsufficientUserBalance(address user, uint256 required, uint256 available);
+error InsufficientUserBalance(
+    address user,
+    uint256 required,
+    uint256 available
+);
 error TransferFailed();
 error InvalidClaimCode();
 error InvalidBeneficiaryData();
@@ -316,6 +322,11 @@ event DistributionExecuted(
     uint64 executedAt
 );
 
+/**
+ * @notice Emitted when early claim is enabled for a plan (Proof of Life failed)
+ */
+event EarlyClaimEnabled(uint256 indexed planId, uint64 enabledAt);
+
 // ============================================
 // MAIN CONTRACT
 // ============================================
@@ -340,16 +351,16 @@ contract InheritX is
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
-    
+
     /// @notice Plan creation fee in basis points (5% = 500)
     uint256 public constant PLAN_CREATION_FEE_BPS = 500;
-    
+
     /// @notice Basis points denominator (100% = 10000)
     uint256 public constant BPS_DENOMINATOR = 10_000;
-    
+
     /// @notice Minimum claim code length
     uint256 private constant MIN_CLAIM_CODE_LENGTH = 6;
-    
+
     /// @notice Maximum beneficiaries per plan
     uint8 private constant MAX_BENEFICIARIES = 10;
 
@@ -359,69 +370,73 @@ contract InheritX is
 
     /// @notice Total number of plans created
     uint256 public planCount;
-    
+
     /// @notice Total number of escrow accounts
     uint256 public escrowCount;
 
     /// @notice Primary token address (e.g., wrapped ETH)
     address public primaryToken;
-    
+
     /// @notice USDT token address
     address public usdtToken;
-    
+
     /// @notice USDC token address
     address public usdcToken;
 
     /// @notice All inheritance plans by global ID
     mapping(uint256 => InheritancePlan) public inheritancePlans;
-    
+
     /// @notice All escrow accounts by ID
     mapping(uint256 => EscrowAccount) public escrowAccounts;
-    
+
     /// @notice Plan ID to escrow ID mapping
     mapping(uint256 => uint256) public planEscrow;
-    
+
     /// @notice Beneficiary count per plan
     mapping(uint256 => uint256) public planBeneficiaryCount;
-    
+
     /// @notice Beneficiaries per plan (planId => index => Beneficiary)
-    mapping(uint256 => mapping(uint256 => Beneficiary)) public planBeneficiaries;
-    
+    mapping(uint256 => mapping(uint256 => Beneficiary))
+        public planBeneficiaries;
+
     /// @notice User's total plan count
     mapping(address => uint256) public userPlanCount;
 
     /// @notice Fee configuration
     FeeConfig public feeConfig;
-    
+
     /// @notice Total fees collected
     uint256 public totalFeesCollected;
 
     /// @notice Distribution plans by plan ID
     mapping(uint256 => DistributionPlan) public distributionPlans;
-    
+
     /// @notice Distribution configs by plan ID
     mapping(uint256 => DistributionConfig) public distributionConfigs;
 
     /// @notice Plan names by plan ID (stored as hash for privacy)
     mapping(uint256 => bytes32) public planNameHashes;
-    
+
     /// @notice Plan descriptions by plan ID (stored as hash for privacy)
     mapping(uint256 => bytes32) public planDescriptionHashes;
 
     /// @notice User's plan ID counter (local IDs per user)
     mapping(address => uint256) public userPlanIdCounter;
-    
+
     /// @notice User's local plan ID to global plan ID
     mapping(address => mapping(uint256 => uint256)) public userPlanIdToGlobal;
-    
+
     /// @notice Global plan ID to user mapping
     mapping(uint256 => UserPlanMapping) public globalPlanIdToUser;
 
     /// @notice User KYC data
     mapping(address => UserKYC) public userKYC;
-    
+
     /// @notice Whether KYC is required for plan creation
     bool public kycRequired;
+
+    /// @notice Plans with early claim enabled (Proof of Life failed)
+    mapping(uint256 => bool) public planEarlyClaimEnabled;
 
     // ============================================
     // MODIFIERS
@@ -455,7 +470,10 @@ contract InheritX is
         if (kycRequired) {
             UserKYC memory kyc = userKYC[msg.sender];
             // Check if KYC record exists and is approved
-            if (kyc.userAddress == address(0) || kyc.status != KYCStatus.Approved) {
+            if (
+                kyc.userAddress == address(0) ||
+                kyc.status != KYCStatus.Approved
+            ) {
                 revert KYCNotApproved();
             }
         }
@@ -523,35 +541,44 @@ contract InheritX is
      * @param user Address of user to approve
      * @param kycDataHash Hash of KYC data for verification (optional, can be bytes32(0))
      */
-    function approveKYC(address user, bytes32 kycDataHash) external onlyRole(ADMIN_ROLE) {
+    function approveKYC(
+        address user,
+        bytes32 kycDataHash
+    ) external onlyRole(ADMIN_ROLE) {
         if (user == address(0)) revert ZeroAddress();
-        
+
         UserKYC storage kyc = userKYC[user];
-        
+
         // If KYC already exists and is approved, revert
         if (kyc.status == KYCStatus.Approved) {
             revert KYCAlreadySubmitted();
         }
 
         KYCStatus oldStatus = kyc.status;
-        
+
         // Initialize or update KYC record
         kyc.userAddress = user;
         kyc.status = KYCStatus.Approved;
         kyc.reviewedAt = uint64(block.timestamp);
         kyc.reviewedBy = msg.sender;
-        
+
         // Store hash if provided
         if (kycDataHash != bytes32(0)) {
             kyc.kycDataHash = kycDataHash;
         }
-        
+
         // Set submittedAt to reviewedAt if not already set
         if (kyc.submittedAt == 0) {
             kyc.submittedAt = uint64(block.timestamp);
         }
 
-        emit KYCStatusChanged(user, oldStatus, KYCStatus.Approved, msg.sender, uint64(block.timestamp));
+        emit KYCStatusChanged(
+            user,
+            oldStatus,
+            KYCStatus.Approved,
+            msg.sender,
+            uint64(block.timestamp)
+        );
     }
 
     /**
@@ -562,24 +589,30 @@ contract InheritX is
      */
     function rejectKYC(address user) external onlyRole(ADMIN_ROLE) {
         if (user == address(0)) revert ZeroAddress();
-        
+
         UserKYC storage kyc = userKYC[user];
-        
+
         // If KYC already exists and is rejected, allow updating
         KYCStatus oldStatus = kyc.status;
-        
+
         // Initialize or update KYC record
         kyc.userAddress = user;
         kyc.status = KYCStatus.Rejected;
         kyc.reviewedAt = uint64(block.timestamp);
         kyc.reviewedBy = msg.sender;
-        
+
         // Set submittedAt to reviewedAt if not already set
         if (kyc.submittedAt == 0) {
             kyc.submittedAt = uint64(block.timestamp);
         }
 
-        emit KYCStatusChanged(user, oldStatus, KYCStatus.Rejected, msg.sender, uint64(block.timestamp));
+        emit KYCStatusChanged(
+            user,
+            oldStatus,
+            KYCStatus.Rejected,
+            msg.sender,
+            uint64(block.timestamp)
+        );
     }
 
     /**
@@ -616,6 +649,40 @@ contract InheritX is
     }
 
     // ============================================
+    // PROOF OF LIFE / EARLY CLAIM
+    // ============================================
+
+    /**
+     * @notice Enable early claiming for a plan (admin only)
+     * @dev Called when proof-of-life verification fails (user didn't confirm alive)
+     *      Once enabled, beneficiaries can claim before the transfer date
+     * @param planId Global plan ID to enable early claim for
+     */
+    function enableEarlyClaim(
+        uint256 planId
+    ) external onlyRole(ADMIN_ROLE) planExists(planId) {
+        InheritancePlan storage plan = inheritancePlans[planId];
+
+        if (plan.status != PlanStatus.Active) {
+            revert PlanNotActive(planId);
+        }
+
+        // Enable early claim for this plan
+        planEarlyClaimEnabled[planId] = true;
+
+        emit EarlyClaimEnabled(planId, uint64(block.timestamp));
+    }
+
+    /**
+     * @notice Check if early claim is enabled for a plan
+     * @param planId Global plan ID to check
+     * @return Whether early claim is enabled
+     */
+    function isEarlyClaimEnabled(uint256 planId) external view returns (bool) {
+        return planEarlyClaimEnabled[planId];
+    }
+
+    // ============================================
     // PLAN CREATION
     // ============================================
 
@@ -624,13 +691,12 @@ contract InheritX is
      * @dev All sensitive data (names, emails, relationships) must be hashed before calling
      * @param planNameHash Keccak256 hash of plan name
      * @param planDescriptionHash Keccak256 hash of plan description
-     * @param beneficiaries Array of beneficiary hashed data
+     * @param beneficiaries Array of beneficiary hashed data (includes per-beneficiary claim codes)
      * @param assetType Type of asset (ERC20_TOKEN1, ERC20_TOKEN2, ERC20_TOKEN3)
      * @param assetAmount Amount of tokens to lock in the plan
      * @param distributionMethod How assets will be distributed
      * @param transferDate Date for asset transfer (timestamp)
      * @param periodicPercentage Percentage per period (for non-lump sum)
-     * @param claimCodeHash Keccak256 hash of the claim code
      * @return userPlanId The user's local plan ID
      */
     function createInheritancePlan(
@@ -641,13 +707,11 @@ contract InheritX is
         uint256 assetAmount,
         uint8 distributionMethod,
         uint64 transferDate,
-        uint8 periodicPercentage,
-        bytes32 claimCodeHash
+        uint8 periodicPercentage
     ) external whenNotPaused nonReentrant kycApproved returns (uint256) {
         // Input validation
         if (planNameHash == bytes32(0)) revert InvalidInput();
         if (planDescriptionHash == bytes32(0)) revert InvalidInput();
-        if (claimCodeHash == bytes32(0)) revert InvalidInput();
         if (assetAmount == 0) revert InvalidInput();
         if (transferDate <= block.timestamp) revert InvalidInput();
 
@@ -712,7 +776,7 @@ contract InheritX is
             transferDate: transferDate,
             status: PlanStatus.Active,
             isClaimed: false,
-            claimCodeHash: claimCodeHash,
+            claimCodeHash: bytes32(0), // DEPRECATED: always zero, claim codes are now per-beneficiary
             escrowId: escrowId
         });
 
@@ -724,13 +788,15 @@ contract InheritX is
         planBeneficiaryCount[globalPlanId] = beneficiaries.length;
         for (uint256 i = 0; i < beneficiaries.length; i++) {
             uint256 beneficiaryIndex = i + 1; // 1-indexed
-            
+
             // Create combined hash for verification
-            bytes32 beneficiaryDataHash = keccak256(abi.encodePacked(
-                beneficiaries[i].nameHash,
-                beneficiaries[i].emailHash,
-                beneficiaries[i].relationshipHash
-            ));
+            bytes32 beneficiaryDataHash = keccak256(
+                abi.encodePacked(
+                    beneficiaries[i].nameHash,
+                    beneficiaries[i].emailHash,
+                    beneficiaries[i].relationshipHash
+                )
+            );
 
             planBeneficiaries[globalPlanId][beneficiaryIndex] = Beneficiary({
                 nameHash: beneficiaries[i].nameHash,
@@ -740,7 +806,8 @@ contract InheritX is
                 claimedBy: address(0),
                 hasClaimed: false,
                 claimedAmount: 0,
-                allocatedPercentage: beneficiaries[i].allocatedPercentage
+                allocatedPercentage: beneficiaries[i].allocatedPercentage,
+                claimCodeHash: beneficiaries[i].claimCodeHash
             });
         }
 
@@ -821,48 +888,66 @@ contract InheritX is
         uint256 beneficiaryIndex
     ) external whenNotPaused nonReentrant {
         InheritancePlan storage plan = inheritancePlans[planId];
-        
+
         // Validate plan exists and is claimable
         if (plan.id == 0) revert PlanNotFound(planId);
-        if (plan.status != PlanStatus.Active && plan.status != PlanStatus.AssetsLocked) {
+        if (
+            plan.status != PlanStatus.Active &&
+            plan.status != PlanStatus.AssetsLocked
+        ) {
             revert PlanNotClaimable();
         }
 
-        // Check transfer date has been reached
-        if (block.timestamp < plan.transferDate) {
+        // Check transfer date has been reached OR early claim is enabled
+        if (
+            block.timestamp < plan.transferDate &&
+            !planEarlyClaimEnabled[planId]
+        ) {
             revert TransferDateNotReached();
         }
 
         // Validate beneficiary index
-        if (beneficiaryIndex == 0 || beneficiaryIndex > planBeneficiaryCount[planId]) {
+        if (
+            beneficiaryIndex == 0 ||
+            beneficiaryIndex > planBeneficiaryCount[planId]
+        ) {
             revert InvalidBeneficiaryData();
         }
 
-        Beneficiary storage beneficiary = planBeneficiaries[planId][beneficiaryIndex];
-        
+        Beneficiary storage beneficiary = planBeneficiaries[planId][
+            beneficiaryIndex
+        ];
+
         // Check if already claimed
         if (beneficiary.hasClaimed) revert AlreadyClaimed();
 
-        // Verify claim code by hashing and comparing
+        // Verify claim code by hashing and comparing to beneficiary's claim code
         bytes32 providedClaimCodeHash = keccak256(abi.encodePacked(claimCode));
-        if (providedClaimCodeHash != plan.claimCodeHash) {
+        if (providedClaimCodeHash != beneficiary.claimCodeHash) {
             revert InvalidClaimCode();
         }
 
         // Verify beneficiary data by hashing and comparing
         bytes32 providedNameHash = keccak256(abi.encodePacked(beneficiaryName));
-        bytes32 providedEmailHash = keccak256(abi.encodePacked(beneficiaryEmail));
-        bytes32 providedRelationshipHash = keccak256(abi.encodePacked(beneficiaryRelationship));
+        bytes32 providedEmailHash = keccak256(
+            abi.encodePacked(beneficiaryEmail)
+        );
+        bytes32 providedRelationshipHash = keccak256(
+            abi.encodePacked(beneficiaryRelationship)
+        );
 
-        if (providedNameHash != beneficiary.nameHash ||
+        if (
+            providedNameHash != beneficiary.nameHash ||
             providedEmailHash != beneficiary.emailHash ||
-            providedRelationshipHash != beneficiary.relationshipHash) {
+            providedRelationshipHash != beneficiary.relationshipHash
+        ) {
             revert InvalidBeneficiaryData();
         }
 
         // Calculate beneficiary's share based on allocated percentage
-        uint256 beneficiaryShare = (plan.assetAmount * beneficiary.allocatedPercentage) / BPS_DENOMINATOR;
-        
+        uint256 beneficiaryShare = (plan.assetAmount *
+            beneficiary.allocatedPercentage) / BPS_DENOMINATOR;
+
         // Get escrow and verify funds
         EscrowAccount storage escrow = escrowAccounts[plan.escrowId];
         if (escrow.amount < beneficiaryShare) {
@@ -888,14 +973,25 @@ contract InheritX is
             PlanStatus oldStatus = plan.status;
             plan.status = PlanStatus.Executed;
             plan.isClaimed = true;
-            emit PlanStatusChanged(planId, oldStatus, PlanStatus.Executed, uint64(block.timestamp));
+            emit PlanStatusChanged(
+                planId,
+                oldStatus,
+                PlanStatus.Executed,
+                uint64(block.timestamp)
+            );
         }
 
         // Transfer tokens to claimer
         address tokenAddress = _getTokenAddress(uint8(plan.assetType));
         IERC20(tokenAddress).safeTransfer(msg.sender, beneficiaryShare);
 
-        emit InheritanceClaimed(planId, msg.sender, beneficiaryIndex, beneficiaryShare, uint64(block.timestamp));
+        emit InheritanceClaimed(
+            planId,
+            msg.sender,
+            beneficiaryIndex,
+            beneficiaryShare,
+            uint64(block.timestamp)
+        );
     }
 
     /**
@@ -905,8 +1001,11 @@ contract InheritX is
      */
     function isPlanClaimable(uint256 planId) external view returns (bool) {
         InheritancePlan storage plan = inheritancePlans[planId];
-        
-        if (plan.status != PlanStatus.Active && plan.status != PlanStatus.AssetsLocked) {
+
+        if (
+            plan.status != PlanStatus.Active &&
+            plan.status != PlanStatus.AssetsLocked
+        ) {
             return false;
         }
 
@@ -918,13 +1017,15 @@ contract InheritX is
      * @param planId Global plan ID
      * @return Seconds until claimable (0 if already claimable)
      */
-    function getTimeUntilClaimable(uint256 planId) external view returns (uint256) {
+    function getTimeUntilClaimable(
+        uint256 planId
+    ) external view returns (uint256) {
         InheritancePlan storage plan = inheritancePlans[planId];
-        
+
         if (block.timestamp >= plan.transferDate) {
             return 0;
         }
-        
+
         return plan.transferDate - block.timestamp;
     }
 
@@ -936,14 +1037,21 @@ contract InheritX is
      * @notice Pauses a plan
      * @param planId Global plan ID
      */
-    function pausePlan(uint256 planId) external onlyPlanOwner(planId) planExists(planId) {
+    function pausePlan(
+        uint256 planId
+    ) external onlyPlanOwner(planId) planExists(planId) {
         InheritancePlan storage plan = inheritancePlans[planId];
         if (plan.status != PlanStatus.Active) revert InvalidState();
-        
+
         PlanStatus oldStatus = plan.status;
         plan.status = PlanStatus.Paused;
-        
-        emit PlanStatusChanged(planId, oldStatus, PlanStatus.Paused, uint64(block.timestamp));
+
+        emit PlanStatusChanged(
+            planId,
+            oldStatus,
+            PlanStatus.Paused,
+            uint64(block.timestamp)
+        );
     }
 
     /**
@@ -953,20 +1061,30 @@ contract InheritX is
     function resumePlan(uint256 planId) external onlyPlanOwner(planId) {
         InheritancePlan storage plan = inheritancePlans[planId];
         if (plan.status != PlanStatus.Paused) revert InvalidState();
-        
+
         PlanStatus oldStatus = plan.status;
         plan.status = PlanStatus.Active;
-        
-        emit PlanStatusChanged(planId, oldStatus, PlanStatus.Active, uint64(block.timestamp));
+
+        emit PlanStatusChanged(
+            planId,
+            oldStatus,
+            PlanStatus.Active,
+            uint64(block.timestamp)
+        );
     }
 
     /**
      * @notice Cancels a plan and returns funds to owner
      * @param planId Global plan ID
      */
-    function cancelPlan(uint256 planId) external onlyPlanOwner(planId) nonReentrant {
+    function cancelPlan(
+        uint256 planId
+    ) external onlyPlanOwner(planId) nonReentrant {
         InheritancePlan storage plan = inheritancePlans[planId];
-        if (plan.status == PlanStatus.Executed || plan.status == PlanStatus.Cancelled) {
+        if (
+            plan.status == PlanStatus.Executed ||
+            plan.status == PlanStatus.Cancelled
+        ) {
             revert InvalidState();
         }
 
@@ -991,7 +1109,12 @@ contract InheritX is
             IERC20(tokenAddress).safeTransfer(plan.owner, refundAmount);
         }
 
-        emit PlanStatusChanged(planId, oldStatus, PlanStatus.Cancelled, uint64(block.timestamp));
+        emit PlanStatusChanged(
+            planId,
+            oldStatus,
+            PlanStatus.Cancelled,
+            uint64(block.timestamp)
+        );
     }
 
     // ============================================
@@ -1003,14 +1126,16 @@ contract InheritX is
      * @param planId Global plan ID
      * @return Array of beneficiary data
      */
-    function getPlanBeneficiaries(uint256 planId) external view returns (Beneficiary[] memory) {
+    function getPlanBeneficiaries(
+        uint256 planId
+    ) external view returns (Beneficiary[] memory) {
         uint256 count = planBeneficiaryCount[planId];
         Beneficiary[] memory beneficiaries = new Beneficiary[](count);
-        
+
         for (uint256 i = 0; i < count; i++) {
             beneficiaries[i] = planBeneficiaries[planId][i + 1];
         }
-        
+
         return beneficiaries;
     }
 
@@ -1019,14 +1144,16 @@ contract InheritX is
      * @param user User address
      * @return Array of global plan IDs
      */
-    function getUserPlans(address user) external view returns (uint256[] memory) {
+    function getUserPlans(
+        address user
+    ) external view returns (uint256[] memory) {
         uint256 count = userPlanCount[user];
         uint256[] memory plans = new uint256[](count);
-        
+
         for (uint256 i = 0; i < count; i++) {
             plans[i] = userPlanIdToGlobal[user][i + 1];
         }
-        
+
         return plans;
     }
 
@@ -1035,7 +1162,9 @@ contract InheritX is
      * @param assetAmount Amount to calculate fee for
      * @return Fee amount
      */
-    function previewPlanCreationFee(uint256 assetAmount) public pure returns (uint256) {
+    function previewPlanCreationFee(
+        uint256 assetAmount
+    ) public pure returns (uint256) {
         return _calculatePlanCreationFee(assetAmount);
     }
 
@@ -1055,30 +1184,46 @@ contract InheritX is
         string calldata email,
         string calldata relationship
     ) external view returns (bool) {
-        if (beneficiaryIndex == 0 || beneficiaryIndex > planBeneficiaryCount[planId]) {
+        if (
+            beneficiaryIndex == 0 ||
+            beneficiaryIndex > planBeneficiaryCount[planId]
+        ) {
             return false;
         }
 
         Beneficiary storage ben = planBeneficiaries[planId][beneficiaryIndex];
-        
+
         bytes32 nameHash = keccak256(abi.encodePacked(name));
         bytes32 emailHash = keccak256(abi.encodePacked(email));
         bytes32 relationshipHash = keccak256(abi.encodePacked(relationship));
 
-        return nameHash == ben.nameHash &&
-               emailHash == ben.emailHash &&
-               relationshipHash == ben.relationshipHash;
+        return
+            nameHash == ben.nameHash &&
+            emailHash == ben.emailHash &&
+            relationshipHash == ben.relationshipHash;
     }
 
     /**
-     * @notice Verify claim code matches stored hash
+     * @notice Verify claim code matches stored hash for a specific beneficiary
      * @param planId Plan ID
+     * @param beneficiaryIndex Beneficiary index (1-indexed)
      * @param claimCode Claim code to verify
      * @return Whether the claim code matches
      */
-    function verifyClaimCode(uint256 planId, string calldata claimCode) external view returns (bool) {
+    function verifyClaimCode(
+        uint256 planId,
+        uint256 beneficiaryIndex,
+        string calldata claimCode
+    ) external view returns (bool) {
+        if (
+            beneficiaryIndex == 0 ||
+            beneficiaryIndex > planBeneficiaryCount[planId]
+        ) {
+            return false;
+        }
         bytes32 hash = keccak256(abi.encodePacked(claimCode));
-        return hash == inheritancePlans[planId].claimCodeHash;
+        return
+            hash == planBeneficiaries[planId][beneficiaryIndex].claimCodeHash;
     }
 
     // ============================================
@@ -1094,7 +1239,7 @@ contract InheritX is
     ) external onlyRole(ADMIN_ROLE) {
         if (newFeeRecipient == address(0)) revert ZeroAddress();
         if (newFeePercentage > 1000) revert InvalidInput(); // Max 10%
-        
+
         feeConfig.feePercentage = newFeePercentage;
         feeConfig.feeRecipient = newFeeRecipient;
     }
@@ -1145,9 +1290,12 @@ contract InheritX is
 
         uint256 totalPercentage = 0;
         for (uint256 i = 0; i < length; i++) {
-            if (beneficiaries[i].nameHash == bytes32(0) ||
+            if (
+                beneficiaries[i].nameHash == bytes32(0) ||
                 beneficiaries[i].emailHash == bytes32(0) ||
-                beneficiaries[i].relationshipHash == bytes32(0)) {
+                beneficiaries[i].relationshipHash == bytes32(0) ||
+                beneficiaries[i].claimCodeHash == bytes32(0)
+            ) {
                 revert InvalidInput();
             }
             if (beneficiaries[i].allocatedPercentage == 0) {
@@ -1207,7 +1355,9 @@ contract InheritX is
     /**
      * @notice Calculates plan creation fee (5%)
      */
-    function _calculatePlanCreationFee(uint256 assetAmount) internal pure returns (uint256) {
+    function _calculatePlanCreationFee(
+        uint256 assetAmount
+    ) internal pure returns (uint256) {
         if (assetAmount == 0) return 0;
         return (assetAmount * PLAN_CREATION_FEE_BPS) / BPS_DENOMINATOR;
     }
@@ -1215,11 +1365,9 @@ contract InheritX is
     /**
      * @notice Calculates service fee based on config
      */
-    function _calculateFee(uint256 amount)
-        internal
-        view
-        returns (uint256 feeAmount, uint256 netAmount)
-    {
+    function _calculateFee(
+        uint256 amount
+    ) internal view returns (uint256 feeAmount, uint256 netAmount) {
         if (!feeConfig.isActive) {
             return (0, amount);
         }
@@ -1309,9 +1457,7 @@ contract InheritX is
     /**
      * @notice Authorizes contract upgrades
      */
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyRole(ADMIN_ROLE)
-    {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyRole(ADMIN_ROLE) {}
 }

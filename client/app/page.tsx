@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 import {
   FiArrowRight,
   FiCheck,
@@ -17,7 +17,9 @@ import {
   FiGlobe,
   FiMenu,
   FiX,
-} from "react-icons/fi";
+} from 'react-icons/fi';
+import { FaTelegram, FaXTwitter } from 'react-icons/fa6';
+import Image from 'next/image';
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -31,54 +33,54 @@ export default function HomePage() {
   const features = [
     {
       icon: FiLock,
-      title: "Non-Custodial",
-      desc: "You maintain full control. Assets stay in your wallet until distribution.",
+      title: 'Non-Custodial',
+      desc: 'You maintain full control. Assets stay in your wallet until distribution.',
     },
     {
       icon: FiShield,
-      title: "Privacy First",
-      desc: "Beneficiary data is hashed on-chain. Only verified claims succeed.",
+      title: 'Privacy First',
+      desc: 'Beneficiary data is hashed on-chain. Only verified claims succeed.',
     },
     {
       icon: FiClock,
-      title: "Flexible Timing",
-      desc: "Lump sum or scheduled distributions — monthly, quarterly, yearly.",
+      title: 'Flexible Timing',
+      desc: 'Lump sum or scheduled distributions — monthly, quarterly, yearly.',
     },
     {
       icon: FiUsers,
-      title: "Multi-Beneficiary",
-      desc: "Add up to 10 beneficiaries with custom allocation percentages.",
+      title: 'Multi-Beneficiary',
+      desc: 'Add up to 10 beneficiaries with custom allocation percentages.',
     },
     {
       icon: FiZap,
-      title: "Instant Claims",
-      desc: "Beneficiaries claim instantly when conditions are met.",
+      title: 'Instant Claims',
+      desc: 'Beneficiaries claim instantly when conditions are met.',
     },
     {
       icon: FiGlobe,
-      title: "Global Access",
-      desc: "Access from anywhere. All you need is a Web3 wallet.",
+      title: 'Global Access',
+      desc: 'Access from anywhere. All you need is a Web3 wallet.',
     },
   ];
 
   const steps = [
-    { step: "01", title: "Connect", desc: "Link your Web3 wallet securely" },
-    { step: "02", title: "Verify", desc: "Complete KYC verification" },
-    { step: "03", title: "Create", desc: "Set up your inheritance plan" },
-    { step: "04", title: "Relax", desc: "Assets distribute automatically" },
+    { step: '01', title: 'Connect', desc: 'Link your Web3 wallet securely' },
+    { step: '02', title: 'Verify', desc: 'Complete KYC verification' },
+    { step: '03', title: 'Create', desc: 'Set up your future plan' },
+    { step: '04', title: 'Relax', desc: 'Assets distribute automatically' },
   ];
 
   const stats = [
-    { value: "$2M+", label: "Assets Secured" },
-    { value: "500+", label: "Active Plans" },
-    { value: "24/7", label: "Availability" },
+    { value: '$2M+', label: 'Assets Secured' },
+    { value: '500+', label: 'Active Plans' },
+    { value: '24/7', label: 'Availability' },
   ];
 
   const securityItems = [
-    "Smart contracts audited by leading security firms",
-    "Beneficiary data hashed using keccak256",
-    "Encrypted claim codes — only beneficiaries can access",
-    "Non-custodial architecture — you control everything",
+    'Smart contracts audited by leading security firms',
+    'Beneficiary data hashed using keccak256',
+    'Encrypted claim codes — only beneficiaries can access',
+    'Non-custodial architecture — you control everything',
   ];
 
   return (
@@ -95,32 +97,18 @@ export default function HomePage() {
             href="/"
             className="flex items-center gap-1 no-underline text-white font-['Syne',sans-serif] font-bold text-xl"
           >
-            <img
-              src="/img/logo.svg"
-              alt="InheritX logo"
-              width={36}
-              height={36}
-            />
+            <img src="/img/logo.svg" alt="InheritX logo" width={36} height={36} />
             InheritX
           </Link>
 
           <div className="hidden md:flex items-center gap-10">
-            <a
-              href="#features"
-              className="text-[#94A3B8] no-underline text-sm font-medium"
-            >
+            <a href="#features" className="text-[#94A3B8] no-underline text-sm font-medium">
               Features
             </a>
-            <a
-              href="#how-it-works"
-              className="text-[#94A3B8] no-underline text-sm font-medium"
-            >
+            <a href="#how-it-works" className="text-[#94A3B8] no-underline text-sm font-medium">
               How It Works
             </a>
-            <a
-              href="#security"
-              className="text-[#94A3B8] no-underline text-sm font-medium"
-            >
+            <a href="#security" className="text-[#94A3B8] no-underline text-sm font-medium">
               Security
             </a>
           </div>
@@ -134,10 +122,7 @@ export default function HomePage() {
               ) : (
                 <ConnectButton.Custom>
                   {({ openConnectModal }) => (
-                    <button
-                      onClick={openConnectModal}
-                      className="btn btn-primary"
-                    >
+                    <button onClick={openConnectModal} className="btn btn-primary">
                       Connect
                     </button>
                   )}
@@ -171,11 +156,11 @@ export default function HomePage() {
             <h1 className="font-['Syne',sans-serif] text-[clamp(42px,4vw,80px)] font-extrabold leading-none mb-6 tracking-[-0.03em]">
               <span className="text-white">SECURE YOUR</span>
               <br />
-              <span className="text-[#33C5E0]">DIGITAL LEGACY</span>
+              <span className="text-[#33C5E0]">FUTURE GOALS</span>
             </h1>
 
             <p className="text-lg text-[#94A3B8] mb-12 max-w-[540px] mx-auto leading-[1.7]">
-              Create automated inheritance plans for your crypto assets.
+              Create automated crypto plans for tuition, weddings, travel, or inheritance.
               Trustless, private, and fully on-chain.
             </p>
 
@@ -210,9 +195,7 @@ export default function HomePage() {
                   <div className="font-['Syne',sans-serif] text-[32px] font-extrabold text-white">
                     {stat.value}
                   </div>
-                  <div className="text-[13px] text-[#64748B] mt-1">
-                    {stat.label}
-                  </div>
+                  <div className="text-[13px] text-[#64748B] mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -233,7 +216,7 @@ export default function HomePage() {
               Features
             </p>
             <h2 className="font-['Syne',sans-serif] text-[clamp(32px,5vw,48px)] font-bold max-w-[600px] leading-[1.1] text-white">
-              Everything you need for digital estate planning
+              Everything you need for digital asset planning
             </h2>
           </motion.div>
 
@@ -255,9 +238,7 @@ export default function HomePage() {
                   <h3 className="font-['Syne',sans-serif] text-lg font-semibold mb-2 text-white">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-[#94A3B8] leading-[1.6]">
-                    {feature.desc}
-                  </p>
+                  <p className="text-sm text-[#94A3B8] leading-[1.6]">{feature.desc}</p>
                 </motion.div>
               );
             })}
@@ -323,8 +304,8 @@ export default function HomePage() {
                   Built for trust
                 </h2>
                 <p className="text-[15px] text-[#94A3B8] mb-7 leading-[1.7]">
-                  Your inheritance plans are protected by multiple layers of
-                  security. We never have access to your assets.
+                  Your future plans are protected by multiple layers of security. We never have
+                  access to your assets.
                 </p>
 
                 <div className="flex flex-col gap-3.5">
@@ -333,9 +314,7 @@ export default function HomePage() {
                       <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center bg-[#33C5E0] shrink-0 mt-0.5">
                         <FiCheck size={12} color="#000" />
                       </div>
-                      <span className="text-sm text-[#94A3B8] leading-[1.5]">
-                        {item}
-                      </span>
+                      <span className="text-sm text-[#94A3B8] leading-[1.5]">{item}</span>
                     </div>
                   ))}
                 </div>
@@ -365,8 +344,7 @@ export default function HomePage() {
             Ready to secure your legacy?
           </h2>
           <p className="text-base text-[#94A3B8] mb-9 max-w-[450px] mx-auto">
-            Join thousands who trust InheritX for their digital inheritance
-            planning.
+            Join thousands who trust InheritX for their digital future planning.
           </p>
           {mounted &&
             (isConnected ? (
@@ -391,22 +369,38 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="py-7 px-6 border-t border-white/6">
         <div className="max-w-[1200px] mx-auto flex items-center justify-between flex-wrap gap-5">
-          <div className="flex items-center gap-2.5 font-['Syne',sans-serif]">
-            <div className="w-6 h-6 bg-[#33C5E0] rounded-md flex items-center justify-center font-bold text-[10px] text-[#050608]">
-              IX
-            </div>
-            <span className="font-semibold text-sm text-white">InheritX</span>
-          </div>
-          <div className="text-[13px] text-[#64748B]">
-            © 2024 InheritX. Built on Lisk.
-          </div>
-          <div className="flex gap-6">
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+          <Link
+            href="#hero"
+            className="flex items-center gap-3 transition-opacity hover:opacity-90"
+          >
+            <Image src="/img/logo.svg" alt="InheritX logo" width={48} height={48} priority />
+          </Link>
+          <div className="text-[13px] text-[#64748B]">© 2026 InheritX. Built on Lisk.</div>
+          <div className="flex gap-6 items-center">
+            <a
+              href="https://t.me/+sUOXda22kXsyMzI0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#64748B] hover:text-[#33C5E0] transition-colors"
+              aria-label="Join us on Telegram"
+            >
+              <FaTelegram size={20} />
+            </a>
+            <a
+              href="https://x.com/projectInheritX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#64748B] hover:text-[#33C5E0] transition-colors"
+              aria-label="Follow us on X"
+            >
+              <FaXTwitter size={18} />
+            </a>
+            <Link href="/guidelines" className="text-[13px] text-[#64748B] no-underline hover:text-[#33C5E0] transition-colors">
               Terms
-            </a>
-            <a href="#" className="text-[13px] text-[#64748B] no-underline">
+            </Link>
+            <Link href="/guidelines" className="text-[13px] text-[#64748B] no-underline hover:text-[#33C5E0] transition-colors">
               Privacy
-            </a>
+            </Link>
             <a href="#" className="text-[13px] text-[#64748B] no-underline">
               Docs
             </a>

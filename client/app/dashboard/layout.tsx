@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  FiHome, 
-  FiFileText, 
-  FiShield, 
+import {
+  FiHome,
+  FiFileText,
+  FiShield,
   FiActivity,
   FiSettings,
   FiLogOut,
@@ -18,7 +18,7 @@ import {
   FiMenu,
   FiLock,
   FiBell,
-  FiUser
+  FiUser,
 } from 'react-icons/fi';
 import { formatAddress } from '@/lib/contract';
 
@@ -35,6 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { isConnected } = useAccount();
   const { isLoading, isAuthenticated, login, logout, user, address } = useAuth();
   const pathname = usePathname();
+  const loginAttempted = useRef(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -42,8 +43,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   useEffect(() => {
-    if (isConnected && !isAuthenticated && !isLoading && isClient) {
-      login();
+    // Only attempt login if:
+    // 1. Wallet is connected
+    // 2. Not already authenticated
+    // 3. Not loading
+    // 4. Client side is ready
+    // 5. Haven't attempted login yet in this session
+    if (isConnected && !isAuthenticated && !isLoading && isClient && !loginAttempted.current) {
+      loginAttempted.current = true;
+      login().catch(() => {
+        // Reset attempt if needed, or leave it to prevent loops
+        // loginAttempted.current = false; 
+      });
     }
   }, [isConnected, isAuthenticated, isLoading, login, isClient]);
 
@@ -91,23 +102,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen flex bg-[#0A0E12]">
         {/* Overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`fixed left-0 top-0 bottom-0 w-[280px] bg-[#12181E] border-r border-white/6 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}>
+        <aside
+          className={`fixed left-0 top-0 bottom-0 w-[280px] bg-[#12181E] border-r border-white/6 flex flex-col z-50 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+        >
           {/* Logo */}
           <div className="p-5 border-b border-white/6 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5 no-underline text-white">
-                <img src="/img/logo.svg" alt="InheritX logo" width={36} height={36} />
-                <span className="font-bold text-lg">InheritX</span>
+              <img src="/img/logo.svg" alt="InheritX logo" width={36} height={36} />
+              <span className="font-bold text-lg">InheritX</span>
             </Link>
-            <button 
+            <button
               className="lg:hidden p-2 bg-transparent border-none cursor-pointer text-[#A0AEC0]"
               onClick={() => setSidebarOpen(false)}
             >
@@ -126,11 +138,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium mb-1 ${
-                    isActive(item.href) 
-                      ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]' 
-                      : 'text-[#A0AEC0] bg-transparent'
-                  }`}
+                  className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium mb-1 ${isActive(item.href)
+                    ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]'
+                    : 'text-[#A0AEC0] bg-transparent'
+                    }`}
                 >
                   <item.icon size={18} />
                   {item.label}
@@ -145,11 +156,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 href="/claim"
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium ${
-                  pathname.startsWith('/claim')
-                    ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]' 
-                    : 'text-[#A0AEC0] bg-transparent'
-                }`}
+                className={`flex items-center gap-3 p-3 rounded-[10px] no-underline text-sm font-medium ${pathname.startsWith('/claim')
+                  ? 'text-[#33C5E0] bg-[rgba(51,197,224,0.1)]'
+                  : 'text-[#A0AEC0] bg-transparent'
+                  }`}
               >
                 <FiGift size={18} />
                 Claim Inheritance
@@ -174,10 +184,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-4 border-t border-white/6">
             <div className="bg-[#0A0E12] rounded-xl p-4">
               <div className="text-xs text-[#64748B] mb-2">KYC Status</div>
-              <span className={`badge ${
-                user?.kycStatus === 'APPROVED' ? 'badge-success' :
-                user?.kycStatus === 'PENDING' ? 'badge-purple' : 'badge-warning'
-              }`}>
+              <span
+                className={`badge ${user?.kycStatus === 'APPROVED'
+                  ? 'badge-success'
+                  : user?.kycStatus === 'PENDING'
+                    ? 'badge-purple'
+                    : 'badge-warning'
+                  }`}
+              >
                 {user?.kycStatus || 'Not Submitted'}
               </span>
             </div>
@@ -212,7 +226,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     return (
                       <div className="flex items-center gap-2">
                         {chain.unsupported && (
-                          <button onClick={openChainModal} className="btn btn-sm bg-[rgba(239,68,68,0.1)] text-[#EF4444] border border-[rgba(239,68,68,0.2)]">
+                          <button
+                            onClick={openChainModal}
+                            className="btn btn-sm bg-[rgba(239,68,68,0.1)] text-[#EF4444] border border-[rgba(239,68,68,0.2)]"
+                          >
                             Wrong network
                           </button>
                         )}
@@ -224,8 +241,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <FiUser size={12} color="black" />
                           </div>
                           <div className="text-left text-xs">
-                            <div className="text-[10px] font-medium">{user?.name || formatAddress(account.address)}</div>
-                            <div className="text-[10px] text-[#64748B]">{account.displayBalance}</div>
+                            <div className="text-[10px] font-medium">
+                              {user?.name || formatAddress(account.address)}
+                            </div>
+                            <div className="text-[10px] text-[#64748B]">
+                              {account.displayBalance}
+                            </div>
                           </div>
                         </button>
                       </div>
@@ -236,9 +257,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <main className="p-6 min-h-[calc(100vh-64px)] py-10">
-            {children}
-          </main>
+          <main className="p-6 min-h-[calc(100vh-64px)] py-10">{children}</main>
         </div>
       </div>
     </>

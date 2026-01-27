@@ -1,15 +1,22 @@
-"use client";
+'use client';
 
 /**
  * Comprehensive InheritX Contract Hooks
  * Provides all contract interaction functions with server endpoint integration
  */
 
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from "wagmi";
-import { Address, keccak256, encodePacked } from "viem";
-import { inheritXABI } from "@/contract/abi";
-import { INHERITX_CONTRACT_ADDRESS, ASSET_TYPE_MAP, DISTRIBUTION_METHOD_MAP, hashString, TOKENS, parseTokenAmount } from "@/lib/contract";
-import { api } from "@/lib/api";
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from 'wagmi';
+import { Address, keccak256, encodePacked } from 'viem';
+import inheritXABI from '@/contract/abi';
+import {
+  INHERITX_CONTRACT_ADDRESS,
+  ASSET_TYPE_MAP,
+  DISTRIBUTION_METHOD_MAP,
+  hashString,
+  TOKENS,
+  parseTokenAmount,
+} from '@/lib/contract';
+import { api } from '@/lib/api';
 
 // ============================================
 // READ HOOKS (already in useInheritX.ts)
@@ -26,7 +33,11 @@ import { api } from "@/lib/api";
 export function useCreateInheritancePlan() {
   const { address } = useAccount();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed, error: receiptError } = useWaitForTransactionReceipt({
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    error: receiptError,
+  } = useWaitForTransactionReceipt({
     hash,
   });
 
@@ -38,13 +49,13 @@ export function useCreateInheritancePlan() {
       email: string;
       relationship: string;
       allocatedPercentage: number;
+      claimCode?: string;
     }>;
     assetType: string;
     assetAmount: string;
     distributionMethod: string;
     transferDate: string;
     periodicPercentage?: number;
-    claimCode?: string;
   }) => {
     try {
       // Step 1: Create plan in backend (gets contract data with hashes)
@@ -54,14 +65,18 @@ export function useCreateInheritancePlan() {
         assetType: planData.assetType as 'ERC20_TOKEN1' | 'ERC20_TOKEN2' | 'ERC20_TOKEN3',
         assetAmount: planData.assetAmount,
         assetAmountWei: planData.assetAmount, // Will be converted properly
-        distributionMethod: planData.distributionMethod as 'LUMP_SUM' | 'QUARTERLY' | 'YEARLY' | 'MONTHLY',
+        distributionMethod: planData.distributionMethod as
+          | 'LUMP_SUM'
+          | 'QUARTERLY'
+          | 'YEARLY'
+          | 'MONTHLY',
         transferDate: new Date(planData.transferDate).toISOString(),
         periodicPercentage: planData.periodicPercentage,
-        beneficiaries: planData.beneficiaries.map(b => ({
+        beneficiaries: planData.beneficiaries.map((b) => ({
           ...b,
           allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points
+          claimCode: b.claimCode,
         })),
-        claimCode: planData.claimCode,
       });
 
       if (apiError || !backendData) {
@@ -72,9 +87,11 @@ export function useCreateInheritancePlan() {
 
       // Step 2: Call smart contract
       // Get token decimals for amount conversion
-      const selectedToken = TOKENS.find(t => t.id === planData.assetType) || TOKENS[0];
+      const selectedToken = TOKENS.find((t) => t.id === planData.assetType) || TOKENS[0];
       const amount = parseTokenAmount(planData.assetAmount, selectedToken.decimals);
-      const transferTimestamp = BigInt(Math.floor(new Date(planData.transferDate).getTime() / 1000));
+      const transferTimestamp = BigInt(
+        Math.floor(new Date(planData.transferDate).getTime() / 1000),
+      );
 
       writeContract({
         address: INHERITX_CONTRACT_ADDRESS,
@@ -83,18 +100,18 @@ export function useCreateInheritancePlan() {
         args: [
           contractData.planNameHash as `0x${string}`,
           contractData.planDescriptionHash as `0x${string}`,
-          contractData.beneficiaries.map((b: any) => ({
-            nameHash: b.nameHash as `0x${string}`,
+          contractData.beneficiaries.map((b: any, i: number) => ({
+            nameHash: (b.nameHash || hashString(planData.beneficiaries[i].name)) as `0x${string}`,
             emailHash: b.emailHash as `0x${string}`,
             relationshipHash: b.relationshipHash as `0x${string}`,
             allocatedPercentage: BigInt(b.allocatedPercentage),
+            claimCodeHash: b.claimCodeHash as `0x${string}`, // Per-beneficiary claim code
           })),
           ASSET_TYPE_MAP[planData.assetType],
           amount,
           DISTRIBUTION_METHOD_MAP[planData.distributionMethod],
           transferTimestamp,
-          planData.distributionMethod !== 'LUMP_SUM' ? (planData.periodicPercentage || 0) : 0,
-          contractData.claimCodeHash as `0x${string}`,
+          planData.distributionMethod !== 'LUMP_SUM' ? planData.periodicPercentage || 0 : 0,
         ],
       });
 
@@ -106,7 +123,11 @@ export function useCreateInheritancePlan() {
   };
 
   // Update backend when transaction is confirmed
-  const updateBackendOnSuccess = async (planId: string, globalPlanId: number, userPlanId: number) => {
+  const updateBackendOnSuccess = async (
+    planId: string,
+    globalPlanId: number,
+    userPlanId: number,
+  ) => {
     if (isConfirmed && hash) {
       await api.updatePlanContract(planId, {
         globalPlanId,
@@ -134,7 +155,11 @@ export function useCreateInheritancePlan() {
 export function useClaimInheritance() {
   const { address } = useAccount();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed, error: receiptError } = useWaitForTransactionReceipt({
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    error: receiptError,
+  } = useWaitForTransactionReceipt({
     hash,
   });
 
@@ -183,7 +208,11 @@ export function useClaimInheritance() {
   };
 
   // Complete claim in backend when transaction is confirmed
-  const completeClaim = async (planId: string, beneficiaryIndex: number, allocatedAmount: string) => {
+  const completeClaim = async (
+    planId: string,
+    beneficiaryIndex: number,
+    allocatedAmount: string,
+  ) => {
     if (isConfirmed && hash && address) {
       await api.completeClaim({
         planId,
@@ -211,7 +240,9 @@ export function useClaimInheritance() {
  */
 export function useCancelPlan() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const cancelPlan = (planId: number) => {
     writeContract({
@@ -237,7 +268,9 @@ export function useCancelPlan() {
  */
 export function usePausePlan() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const pausePlan = (planId: number) => {
     writeContract({
@@ -263,7 +296,9 @@ export function usePausePlan() {
  */
 export function useResumePlan() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const resumePlan = (planId: number) => {
     writeContract({
@@ -294,7 +329,9 @@ export function useResumePlan() {
  */
 export function useApproveKYC() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const approveKYC = async (kycId: string, userAddress: Address, kycDataHash?: string) => {
     try {
@@ -303,7 +340,8 @@ export function useApproveKYC() {
       if (!hashToUse) {
         const { data: kycData } = await api.getAdminKYC(kycId);
         // If backend returns kycDataHash, use it; otherwise generate from address
-        hashToUse = (kycData as any)?.kycDataHash || keccak256(encodePacked(['address'], [userAddress]));
+        hashToUse =
+          (kycData as any)?.kycDataHash || keccak256(encodePacked(['address'], [userAddress]));
       }
 
       // Step 2: Call smart contract FIRST (backend update happens after confirmation)
@@ -353,7 +391,9 @@ export function useApproveKYC() {
  */
 export function useRejectKYC() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const rejectKYC = async (kycId: string, userAddress: Address, reason?: string) => {
     try {
@@ -407,7 +447,9 @@ export function useRejectKYC() {
  */
 export function useUpdateFeeConfig() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const updateFeeConfig = (feePercentage: number, feeRecipient: Address) => {
     writeContract({
@@ -433,7 +475,9 @@ export function useUpdateFeeConfig() {
  */
 export function useUpdateTokenAddresses() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const updateTokenAddresses = (primaryToken: Address, usdtToken: Address, usdcToken: Address) => {
     writeContract({
@@ -459,7 +503,9 @@ export function useUpdateTokenAddresses() {
  */
 export function useSetKYCRequired() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const setKYCRequired = (required: boolean) => {
     writeContract({
@@ -485,7 +531,9 @@ export function useSetKYCRequired() {
  */
 export function usePauseContract() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const pause = () => {
     writeContract({
@@ -510,7 +558,9 @@ export function usePauseContract() {
  */
 export function useUnpauseContract() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const unpause = () => {
     writeContract({
@@ -565,16 +615,23 @@ export function useGetPlanBeneficiaries(planId: number | undefined) {
 }
 
 /**
- * Hook to verify claim code
+ * Hook to verify claim code for a specific beneficiary
  */
-export function useVerifyClaimCode(planId: number | undefined, claimCode: string | undefined) {
+export function useVerifyClaimCode(
+  planId: number | undefined,
+  beneficiaryIndex: number | undefined,
+  claimCode: string | undefined,
+) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
     functionName: 'verifyClaimCode',
-    args: planId !== undefined && claimCode ? [BigInt(planId), claimCode] : undefined,
+    args:
+      planId !== undefined && beneficiaryIndex !== undefined && claimCode
+        ? [BigInt(planId), BigInt(beneficiaryIndex), claimCode]
+        : undefined,
     query: {
-      enabled: planId !== undefined && !!claimCode,
+      enabled: planId !== undefined && beneficiaryIndex !== undefined && !!claimCode,
     },
   });
 }
@@ -587,7 +644,7 @@ export function useVerifyBeneficiaryData(
   beneficiaryIndex: number | undefined,
   name: string | undefined,
   email: string | undefined,
-  relationship: string | undefined
+  relationship: string | undefined,
 ) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
@@ -598,7 +655,12 @@ export function useVerifyBeneficiaryData(
         ? [BigInt(planId), BigInt(beneficiaryIndex), name, email, relationship]
         : undefined,
     query: {
-      enabled: planId !== undefined && beneficiaryIndex !== undefined && !!name && !!email && !!relationship,
+      enabled:
+        planId !== undefined &&
+        beneficiaryIndex !== undefined &&
+        !!name &&
+        !!email &&
+        !!relationship,
     },
   });
 }

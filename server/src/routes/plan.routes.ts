@@ -2,7 +2,6 @@
  * Plan Routes
  * Handles inheritance plan management
  */
-
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
@@ -26,6 +25,7 @@ const beneficiarySchema = z.object({
   email: z.string().email(),
   relationship: z.string().min(2).max(50),
   allocatedPercentage: z.number().min(1).max(10000), // Basis points
+  claimCode: z.string().length(6).optional(), // Optional - will generate if not provided
 });
 
 const createPlanSchema = z.object({
@@ -40,6 +40,10 @@ const createPlanSchema = z.object({
   beneficiaries: z.array(beneficiarySchema).min(1).max(10),
   claimCode: z.string().length(6).optional(), // Optional - will generate if not provided
   twoFactorCode: z.string().length(6, 'Two-factor code must be 6 digits'),
+  // Proof of Life option (LUMP_SUM only)
+  proofOfLifeEnabled: z.boolean().optional().default(false),
+  // Beneficiary notification option
+  notifyBeneficiaries: z.boolean().optional().default(false),
   // On-chain data (after contract call)
   globalPlanId: z.number().optional(),
   userPlanId: z.number().optional(),
@@ -165,7 +169,7 @@ router.post('/2fa/request', authenticateToken, asyncHandler(async (req: Request,
 router.get('/:id', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
     include: {
@@ -334,25 +338,21 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
     throw new AppError('Beneficiary percentages must total 100% (10000 basis points)', 400);
   }
 
-  // Generate or use provided claim code
-  const claimCode = data.claimCode || generateClaimCode(6);
-
-  // Encrypt claim code for secure storage
-  const claimCodeEncrypted = encryptClaimCode(claimCode);
-
-  // Hash claim code (same as on-chain)
-  const claimCodeHash = keccak256(claimCode);
-
   // Hash plan name and description
   const planNameHash = keccak256(data.planName);
   const planDescriptionHash = keccak256(data.planDescription);
 
-  // Create beneficiary hashes
+  // Create beneficiary hashes with per-beneficiary claim codes
   const beneficiaryData = data.beneficiaries.map((b, index) => {
     const hashes = createBeneficiaryHashes(b.name, b.email, b.relationship);
     const allocatedAmount = (
       (BigInt(data.assetAmountWei) * BigInt(b.allocatedPercentage)) / BigInt(10000)
     ).toString();
+
+    // Generate unique claim code for each beneficiary
+    const claimCode = b.claimCode || generateClaimCode(6);
+    const claimCodeEncrypted = encryptClaimCode(claimCode);
+    const claimCodeHash = keccak256(claimCode);
 
     return {
       beneficiaryIndex: index + 1,
@@ -365,6 +365,9 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
       combinedHash: hashes.combinedHash,
       allocatedPercentage: b.allocatedPercentage,
       allocatedAmount,
+      claimCode, // Store for response
+      claimCodeEncrypted,
+      claimCodeHash,
     };
   });
 
@@ -383,11 +386,26 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
       distributionMethod: data.distributionMethod,
       transferDate: data.transferDate,
       periodicPercentage: data.periodicPercentage,
-      claimCodeEncrypted,
-      claimCodeHash,
       status: 'PENDING', // Set to PENDING until contract creation is confirmed
+      // Proof of Life (only for LUMP_SUM)
+      proofOfLifeEnabled: data.distributionMethod === 'LUMP_SUM' ? data.proofOfLifeEnabled : false,
+      // Beneficiary notification
+      notifyBeneficiaries: data.notifyBeneficiaries,
       beneficiaries: {
-        create: beneficiaryData,
+        create: beneficiaryData.map(b => ({
+          beneficiaryIndex: b.beneficiaryIndex,
+          name: b.name,
+          email: b.email,
+          relationship: b.relationship,
+          nameHash: b.nameHash,
+          emailHash: b.emailHash,
+          relationshipHash: b.relationshipHash,
+          combinedHash: b.combinedHash,
+          allocatedPercentage: b.allocatedPercentage,
+          allocatedAmount: b.allocatedAmount,
+          claimCodeEncrypted: b.claimCodeEncrypted,
+          claimCodeHash: b.claimCodeHash,
+        })),
       },
     },
     include: {
@@ -460,17 +478,21 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
   res.status(201).json({
     plan: {
       ...plan,
-      claimCode, // Return unhashed claim code (only once!)
+      // Include claim codes per beneficiary for the response
+      beneficiaries: plan.beneficiaries.map((b, index) => ({
+        ...b,
+        claimCode: beneficiaryData[index].claimCode, // Return unhashed claim code (only once!)
+      })),
     },
     contractData: {
       planNameHash,
       planDescriptionHash,
-      claimCodeHash,
       beneficiaries: beneficiaryData.map(b => ({
         nameHash: b.nameHash,
         emailHash: b.emailHash,
         relationshipHash: b.relationshipHash,
         allocatedPercentage: b.allocatedPercentage,
+        claimCodeHash: b.claimCodeHash, // Per-beneficiary claim code hash
       })),
     },
   });
@@ -530,7 +552,7 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
 
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
   });
@@ -637,7 +659,7 @@ router.put('/:id/status', authenticateToken, asyncHandler(async (req: Request, r
 
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
   });
@@ -670,10 +692,10 @@ router.put('/:id/status', authenticateToken, asyncHandler(async (req: Request, r
 
 /**
  * @swagger
- * /plans/{id}/claim-code:
+ * /plans/{id}/claim-codes:
  *   get:
- *     summary: Get decrypted claim code
- *     description: Retrieve the claim code for a plan (plan owner only)
+ *     summary: Get decrypted claim codes for all beneficiaries
+ *     description: Retrieve the claim codes for all beneficiaries in a plan (plan owner only)
  *     tags: [Plans]
  *     security:
  *       - bearerAuth: []
@@ -686,30 +708,50 @@ router.put('/:id/status', authenticateToken, asyncHandler(async (req: Request, r
  *           format: uuid
  *     responses:
  *       200:
- *         description: Claim code retrieved successfully
+ *         description: Claim codes retrieved successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 claimCode:
- *                   type: string
- *                   length: 6
- *                   description: Decrypted claim code
+ *                 beneficiaries:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       beneficiaryIndex:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       claimCode:
+ *                         type: string
+ *                         length: 6
  *       404:
  *         description: Plan not found
  *       401:
  *         description: Unauthorized
  */
-router.get('/:id/claim-code', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id/claim-codes', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const plan = await prisma.plan.findFirst({
     where: {
-      id: req.params.id,
+      id: req.params.id as string,
       userId: req.user!.id,
     },
     select: {
       id: true,
-      claimCodeEncrypted: true,
+      beneficiaries: {
+        select: {
+          beneficiaryIndex: true,
+          name: true,
+          email: true,
+          claimCodeEncrypted: true,
+        },
+        orderBy: {
+          beneficiaryIndex: 'asc',
+        },
+      },
     },
   });
 
@@ -717,11 +759,16 @@ router.get('/:id/claim-code', authenticateToken, asyncHandler(async (req: Reques
     throw new AppError('Plan not found', 404);
   }
 
-  // Decrypt the claim code
+  // Decrypt claim codes for each beneficiary
   const { decryptClaimCode } = await import('../utils/crypto');
-  const claimCode = decryptClaimCode(plan.claimCodeEncrypted);
+  const beneficiaries = (plan as any).beneficiaries.map((b: any) => ({
+    beneficiaryIndex: b.beneficiaryIndex,
+    name: b.name,
+    email: b.email,
+    claimCode: decryptClaimCode(b.claimCodeEncrypted),
+  }));
 
-  res.json({ claimCode });
+  res.json({ beneficiaries });
 }));
 
 export default router;

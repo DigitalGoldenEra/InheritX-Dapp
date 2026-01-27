@@ -23,9 +23,7 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
           >
             <FiMenu size={20} />
           </button>
-          {title && (
-            <h1 className="text-lg font-semibold hidden sm:block">{title}</h1>
-          )}
+          {title && <h1 className="text-lg font-semibold hidden sm:block">{title}</h1>}
         </div>
 
         <div className="flex items-center gap-3">

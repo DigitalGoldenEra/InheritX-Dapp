@@ -29,7 +29,7 @@ export default function SettingsPage() {
 
     try {
       const result = await updateProfile({ name, email });
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Failed to update profile');
       }
@@ -117,11 +117,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="pt-4">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="btn btn-primary"
-            >
+            <button type="submit" disabled={isSaving} className="btn btn-primary">
               {isSaving ? (
                 <>
                   <span className="spinner" />
@@ -157,11 +153,15 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-[var(--text-muted)]">KYC Status</span>
-            <span className={`badge ${
-              user?.kycStatus === 'APPROVED' ? 'badge-success' :
-              user?.kycStatus === 'PENDING' ? 'badge-purple' :
-              'badge-warning'
-            }`}>
+            <span
+              className={`badge ${
+                user?.kycStatus === 'APPROVED'
+                  ? 'badge-success'
+                  : user?.kycStatus === 'PENDING'
+                    ? 'badge-purple'
+                    : 'badge-warning'
+              }`}
+            >
               {user?.kycStatus || 'Not Submitted'}
             </span>
           </div>
@@ -185,7 +185,8 @@ export default function SettingsPage() {
       >
         <h2 className="text-lg font-semibold mb-4 text-[var(--accent-red)]">Danger Zone</h2>
         <p className="text-sm text-[var(--text-secondary)] mb-4">
-          Disconnecting your wallet will log you out. Your plans and data will remain safe on the blockchain.
+          Disconnecting your wallet will log you out. Your plans and data will remain safe on the
+          blockchain.
         </p>
         <button className="btn btn-secondary text-[var(--accent-red)] border-[var(--accent-red)]/30 hover:bg-[var(--accent-red)]/10">
           Disconnect Wallet
@@ -194,4 +195,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

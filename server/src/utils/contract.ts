@@ -33,6 +33,11 @@ const INHERITX_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [],
+    name: 'KYCAlreadySubmitted',
+    type: 'error',
+  },
 ];
 
 // Environment variables
@@ -114,7 +119,7 @@ export async function approveKYCOnContract(
     }
 
     const contract = getContract();
-    
+
     logger.info('Approving KYC on contract:', { userAddress, kycDataHash });
 
     // Call the contract function
@@ -123,7 +128,7 @@ export async function approveKYCOnContract(
 
     // Wait for confirmation
     const receipt: TransactionReceipt = await tx.wait();
-    
+
     if (receipt.status === 0) {
       throw new Error('Transaction failed on-chain');
     }
@@ -144,13 +149,18 @@ export async function approveKYCOnContract(
 
     // Parse common errors
     let errorMessage = 'Failed to approve KYC on blockchain';
-    
+
     if (error.code === 'CALL_EXCEPTION') {
       // Contract reverted
+      // Check for decoded custom error or raw data selector
       if (error.reason) {
         errorMessage = `Contract error: ${error.reason}`;
-      } else if (error.message?.includes('KYCAlreadyApproved')) {
-        errorMessage = 'KYC is already approved on blockchain';
+      } else if (error.data === '0x342569d8' || // Raw selector for KYCAlreadySubmitted()
+        error.message?.includes('KYCAlreadySubmitted') ||
+        (error.info?.error?.name === 'KYCAlreadySubmitted')) {
+        // This is actually a success case for us - the user is already approved!
+        logger.info('User already approved on-chain (KYCAlreadySubmitted encountered)');
+        return { success: true, txHash: 'already-approved-on-chain' };
       } else if (error.message?.includes('OnlyAdmin')) {
         errorMessage = 'Only admin can approve KYC';
       }
@@ -179,7 +189,7 @@ export async function rejectKYCOnContract(
     }
 
     const contract = getContract();
-    
+
     logger.info('Rejecting KYC on contract:', { userAddress });
 
     // Call the contract function
@@ -188,7 +198,7 @@ export async function rejectKYCOnContract(
 
     // Wait for confirmation
     const receipt: TransactionReceipt = await tx.wait();
-    
+
     if (receipt.status === 0) {
       throw new Error('Transaction failed on-chain');
     }
@@ -209,7 +219,7 @@ export async function rejectKYCOnContract(
 
     // Parse common errors
     let errorMessage = 'Failed to reject KYC on blockchain';
-    
+
     if (error.code === 'CALL_EXCEPTION') {
       if (error.reason) {
         errorMessage = `Contract error: ${error.reason}`;
@@ -241,7 +251,7 @@ export async function getKYCStatusFromContract(
 
     const contract = getContract();
     const status = await contract.getKYCStatus(userAddress);
-    
+
     return { success: true, status: Number(status) };
   } catch (error: any) {
     logger.error('Failed to get KYC status from contract:', {

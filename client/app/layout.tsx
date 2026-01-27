@@ -3,6 +3,7 @@ import { Inter, Syne } from 'next/font/google';
 import { Providers } from './providers';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 
 // Configure Inter font for body text
 const inter = Inter({
@@ -22,8 +23,17 @@ const syne = Syne({
 
 export const metadata: Metadata = {
   title: 'InheritX - Secure Digital Inheritance Platform',
-  description: 'Create, manage, and automate your digital asset inheritance on Lisk blockchain. Secure, transparent, and trustless.',
-  keywords: ['inheritance', 'blockchain', 'crypto', 'lisk', 'web3', 'digital assets', 'estate planning'],
+  description:
+    'Create, manage, and automate your digital asset inheritance on Lisk blockchain. Secure, transparent, and trustless.',
+  keywords: [
+    'inheritance',
+    'blockchain',
+    'crypto',
+    'lisk',
+    'web3',
+    'digital assets',
+    'estate planning',
+  ],
   openGraph: {
     title: 'InheritX - Secure Digital Inheritance',
     description: 'The future of digital asset inheritance on blockchain',
@@ -31,11 +41,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${syne.variable}`}>
       <body className={inter.className}>
@@ -47,7 +53,9 @@ export default function RootLayout({
           speed={200}
           shadow="0 0 10px #33C5E0,0 0 5px #33C5E0"
         />
-        <Providers>{children}</Providers>
+        <Providers>
+          {children} <Analytics />
+        </Providers>
       </body>
     </html>
   );

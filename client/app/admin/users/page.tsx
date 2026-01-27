@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiSearch,
-  FiChevronLeft,
-  FiChevronRight,
-  FiShield,
-  FiUser
-} from 'react-icons/fi';
+import { FiSearch, FiChevronLeft, FiChevronRight, FiShield, FiUser } from 'react-icons/fi';
 import { api, User, Pagination } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { formatAddress, formatDateTime } from '@/lib/contract';
@@ -50,7 +44,7 @@ export default function AdminUsersPage() {
     try {
       const { data, error } = await api.updateUserRole(userId, newRole);
       if (data) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
       }
     } catch (error) {
       console.error('Error updating role:', error);
@@ -80,9 +74,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">User Management</h1>
-        <p className="text-[var(--text-secondary)]">
-          View and manage platform users.
-        </p>
+        <p className="text-[var(--text-secondary)]">View and manage platform users.</p>
       </div>
 
       {/* Filters */}
@@ -101,7 +93,10 @@ export default function AdminUsersPage() {
           {['all', 'USER', 'ADMIN', 'SUPER_ADMIN'].map((role) => (
             <button
               key={role}
-              onClick={() => { setRoleFilter(role); setPage(1); }}
+              onClick={() => {
+                setRoleFilter(role);
+                setPage(1);
+              }}
               className={`btn btn-sm ${roleFilter === role ? 'btn-primary' : 'btn-secondary'}`}
             >
               {role === 'all' ? 'All' : role.replace('_', ' ')}
@@ -150,16 +145,12 @@ export default function AdminUsersPage() {
                               {formatAddress(user.walletAddress)}
                             </div>
                             {user.name && (
-                              <div className="text-sm text-[var(--text-muted)]">
-                                {user.name}
-                              </div>
+                              <div className="text-sm text-[var(--text-muted)]">{user.name}</div>
                             )}
                           </div>
                         </td>
                         <td>
-                          <span className={`badge ${kycBadge.class}`}>
-                            {kycBadge.label}
-                          </span>
+                          <span className={`badge ${kycBadge.class}`}>{kycBadge.label}</span>
                         </td>
                         <td>{user.planCount}</td>
                         <td className="text-[var(--text-muted)]">
@@ -193,18 +184,19 @@ export default function AdminUsersPage() {
             {pagination && pagination.pages > 1 && (
               <div className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="text-sm text-[var(--text-muted)]">
-                  Showing {((page - 1) * pagination.limit) + 1} - {Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
+                  Showing {(page - 1) * pagination.limit + 1} -{' '}
+                  {Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     className="btn btn-sm btn-secondary"
                   >
                     <FiChevronLeft size={16} />
                   </button>
                   <button
-                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                    onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                     disabled={page === pagination.pages}
                     className="btn btn-sm btn-secondary"
                   >
@@ -219,4 +211,3 @@ export default function AdminUsersPage() {
     </div>
   );
 }
-

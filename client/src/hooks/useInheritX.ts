@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
-import { inheritXABI } from "@/contract/abi";
-import { INHERITX_CONTRACT_ADDRESS, ASSET_TYPE_MAP, DISTRIBUTION_METHOD_MAP } from "@/lib/contract";
-import { Address, parseUnits } from "viem";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import inheritXABI from '@/contract/abi';
+import { INHERITX_CONTRACT_ADDRESS, ASSET_TYPE_MAP, DISTRIBUTION_METHOD_MAP } from '@/lib/contract';
+import { Address, parseUnits } from 'viem';
 
 // Hook to get user's plan count
 export function useUserPlanCount(address?: Address) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "userPlanCount",
+    functionName: 'userPlanCount',
     args: address ? [address] : undefined,
     query: {
       enabled: !!address,
@@ -23,7 +23,7 @@ export function useInheritancePlan(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "inheritancePlans",
+    functionName: 'inheritancePlans',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -36,7 +36,7 @@ export function usePlanNameHash(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "planNameHashes",
+    functionName: 'planNameHashes',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -49,7 +49,7 @@ export function useDistributionPlan(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "distributionPlans",
+    functionName: 'distributionPlans',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -62,7 +62,7 @@ export function useDistributionConfig(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "distributionConfigs",
+    functionName: 'distributionConfigs',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -75,7 +75,7 @@ export function usePlanBeneficiaryCount(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "planBeneficiaryCount",
+    functionName: 'planBeneficiaryCount',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -84,12 +84,18 @@ export function usePlanBeneficiaryCount(planId: bigint | number | undefined) {
 }
 
 // Hook to get a specific beneficiary
-export function usePlanBeneficiary(planId: bigint | number | undefined, beneficiaryIndex: number | undefined) {
+export function usePlanBeneficiary(
+  planId: bigint | number | undefined,
+  beneficiaryIndex: number | undefined,
+) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "planBeneficiaries",
-    args: planId !== undefined && beneficiaryIndex !== undefined ? [BigInt(planId), BigInt(beneficiaryIndex)] : undefined,
+    functionName: 'planBeneficiaries',
+    args:
+      planId !== undefined && beneficiaryIndex !== undefined
+        ? [BigInt(planId), BigInt(beneficiaryIndex)]
+        : undefined,
     query: {
       enabled: planId !== undefined && beneficiaryIndex !== undefined,
     },
@@ -101,7 +107,7 @@ export function usePlanCount() {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "planCount",
+    functionName: 'planCount',
   });
 }
 
@@ -110,7 +116,7 @@ export function usePlanCreationFeeBPS() {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "PLAN_CREATION_FEE_BPS",
+    functionName: 'PLAN_CREATION_FEE_BPS',
   });
 }
 
@@ -119,7 +125,7 @@ export function usePreviewPlanCreationFee(assetAmount: bigint | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "previewPlanCreationFee",
+    functionName: 'previewPlanCreationFee',
     args: assetAmount !== undefined ? [assetAmount] : undefined,
     query: {
       enabled: assetAmount !== undefined,
@@ -132,7 +138,7 @@ export function usePrimaryToken() {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "primaryToken",
+    functionName: 'primaryToken',
   });
 }
 
@@ -140,7 +146,7 @@ export function useUSDTToken() {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "usdtToken",
+    functionName: 'usdtToken',
   });
 }
 
@@ -148,7 +154,7 @@ export function useUSDCToken() {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "usdcToken",
+    functionName: 'usdcToken',
   });
 }
 
@@ -157,7 +163,7 @@ export function useIsKYCApproved(userAddress?: Address) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "isKYCApproved",
+    functionName: 'isKYCApproved',
     args: userAddress ? [userAddress] : undefined,
     query: {
       enabled: !!userAddress,
@@ -170,7 +176,7 @@ export function useKYCStatus(userAddress?: Address) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "getKYCStatus",
+    functionName: 'getKYCStatus',
     args: userAddress ? [userAddress] : undefined,
     query: {
       enabled: !!userAddress,
@@ -183,7 +189,7 @@ export function useIsPlanClaimable(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "isPlanClaimable",
+    functionName: 'isPlanClaimable',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -196,7 +202,7 @@ export function useTimeUntilClaimable(planId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "getTimeUntilClaimable",
+    functionName: 'getTimeUntilClaimable',
     args: planId !== undefined ? [BigInt(planId)] : undefined,
     query: {
       enabled: planId !== undefined,
@@ -209,7 +215,7 @@ export function useEscrowAccount(escrowId: bigint | number | undefined) {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "escrowAccounts",
+    functionName: 'escrowAccounts',
     args: escrowId !== undefined ? [BigInt(escrowId)] : undefined,
     query: {
       enabled: escrowId !== undefined,
@@ -222,6 +228,6 @@ export function useFeeConfig() {
   return useReadContract({
     address: INHERITX_CONTRACT_ADDRESS,
     abi: inheritXABI,
-    functionName: "feeConfig",
+    functionName: 'feeConfig',
   });
 }

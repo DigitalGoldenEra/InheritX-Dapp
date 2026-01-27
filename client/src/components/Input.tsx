@@ -8,7 +8,9 @@ interface InputProps {
   name: string;
   type?: 'text' | 'email' | 'date' | 'select' | 'file' | 'textarea';
   value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  onChange?: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => void;
   onFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
@@ -22,13 +24,13 @@ interface InputProps {
 
 /**
  * Reusable Input Component
- * 
+ *
  * Supports multiple input types:
  * - text, email, date: Standard input fields
  * - select: Dropdown with options
  * - file: File upload with preview
  * - textarea: Multi-line text input
- * 
+ *
  * @param label - Label text displayed above the input
  * @param name - Input name attribute (for form handling)
  * @param type - Input type (text, email, date, select, file, textarea)
@@ -68,7 +70,8 @@ export default function Input({
     3: 'md:col-span-3',
     4: 'md:col-span-4',
   };
-  const inputGroupClasses = `input-group ${colSpan ? colSpanClasses[colSpan] || '' : ''} ${className}`.trim();
+  const inputGroupClasses =
+    `input-group ${colSpan ? colSpanClasses[colSpan] || '' : ''} ${className}`.trim();
 
   // File upload component (special handling)
   if (type === 'file') {
@@ -93,7 +96,8 @@ export default function Input({
                   <FiUpload className="text-primary mb-2" size={24} />
                   <p className="text-sm text-[#A0AEC0]">Click to upload</p>
                   <p className="text-xs text-[#64748B]">
-                    {accept ? accept.replace(/\./g, '').toUpperCase() : 'JPEG, PNG or PDF'} (max 5MB)
+                    {accept ? accept.replace(/\./g, '').toUpperCase() : 'JPEG, PNG or PDF'} (max
+                    5MB)
                   </p>
                 </>
               )}

@@ -13,11 +13,16 @@ import {
   FiAlertCircle,
   FiLock,
   FiGift,
-  FiLoader
+  FiLoader,
 } from 'react-icons/fi';
 import { api, ClaimPlanInfo, VerifyClaimResponse } from '@/lib/api';
-import { inheritXABI } from '@/contract/abi';
-import { INHERITX_CONTRACT_ADDRESS, formatDate, getTimeUntil, getTokenByAssetType, formatTokenAmount } from '@/lib/contract';
+import inheritXABI from '@/contract/abi';
+import {
+  INHERITX_CONTRACT_ADDRESS,
+  formatDate,
+  getTokenByAssetType,
+  formatTokenAmount,
+} from '@/lib/contract';
 
 export default function ClaimPage() {
   const params = useParams();
@@ -29,6 +34,15 @@ export default function ClaimPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'info' | 'verify' | 'claim' | 'success'>('info');
+
+  // Live countdown timer state
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isPast: boolean;
+  } | null>(null);
 
   // Form state
   const [claimCode, setClaimCode] = useState('');
@@ -45,13 +59,13 @@ export default function ClaimPage() {
     writeContractAsync,
     data: txHash,
     isPending: isClaimPending,
-    error: claimError
+    error: claimError,
   } = useWriteContract();
 
   // ... (keep existing useEffects, but maybe they become redundant for error, but good to keep as backup)
 
   const { isLoading: isClaimWaiting, isSuccess: claimSuccess } = useWaitForTransactionReceipt({
-    hash: txHash
+    hash: txHash,
   });
 
   // Fetch plan info
@@ -87,19 +101,57 @@ export default function ClaimPage() {
     }
   }, [planId]);
 
+  // Live countdown timer
+  useEffect(() => {
+    if (!plan || plan.isClaimable) {
+      setCountdown(null);
+      return;
+    }
+
+    const calculateCountdown = () => {
+      const target = new Date(plan.transferDate).getTime();
+      const now = Date.now();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, isPast: true });
+        // Refresh plan data when countdown reaches zero
+        window.location.reload();
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setCountdown({ days, hours, minutes, seconds, isPast: false });
+    };
+
+    // Calculate immediately
+    calculateCountdown();
+
+    // Update every second
+    const interval = setInterval(calculateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [plan]);
+
   // Handle claim success
   useEffect(() => {
     if (claimSuccess && verificationData && address) {
       // Update backend
-      api.completeClaim({
-        planId: verificationData.planId,
-        beneficiaryIndex: verificationData.beneficiaryIndex,
-        claimerAddress: address,
-        txHash: txHash!,
-        claimedAmount: verificationData.allocatedAmount,
-      }).then(() => {
-        setStep('success');
-      });
+      api
+        .completeClaim({
+          planId: verificationData.planId,
+          beneficiaryIndex: verificationData.beneficiaryIndex,
+          claimerAddress: address,
+          txHash: txHash!,
+          claimedAmount: verificationData.allocatedAmount,
+        })
+        .then(() => {
+          setStep('success');
+        });
     }
   }, [claimSuccess, verificationData, txHash, address]);
 
@@ -169,7 +221,6 @@ export default function ClaimPage() {
     }
   };
 
-  const timeUntil = plan ? getTimeUntil(plan.transferDate) : null;
   const token = plan ? getTokenByAssetType(plan.assetType) : null;
 
   if (isLoading) {
@@ -221,7 +272,10 @@ export default function ClaimPage() {
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto p-4 py-12">
-        <Link href="/claim" className="inline-flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--primary)] mb-6">
+        <Link
+          href="/claim"
+          className="inline-flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--primary)] mb-6"
+        >
           <FiArrowLeft size={16} />
           Back to search
         </Link>
@@ -245,7 +299,9 @@ export default function ClaimPage() {
           <div className="grid gap-4 sm:grid-cols-3 text-sm">
             <div className="card bg-[var(--bg-deep)] p-3">
               <div className="text-[var(--text-muted)] mb-1">Total Amount</div>
-              <div className="font-semibold">{plan?.assetAmount} {token?.symbol}</div>
+              <div className="font-semibold">
+                {plan?.assetAmount} {token?.symbol}
+              </div>
             </div>
             <div className="card bg-[var(--bg-deep)] p-3">
               <div className="text-[var(--text-muted)] mb-1">Distribution</div>
@@ -257,24 +313,45 @@ export default function ClaimPage() {
             </div>
           </div>
 
-          {!plan?.isClaimable && timeUntil && (
+          {!plan?.isClaimable && countdown && !countdown.isPast && (
             <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
               <div className="flex items-center gap-2 text-yellow-500">
                 <FiClock size={18} />
                 <span className="font-medium">Claim available in:</span>
               </div>
-              <div className="mt-2 flex gap-4">
+              <div className="mt-3 flex justify-center gap-3 sm:gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{timeUntil.days}</div>
-                  <div className="text-xs text-[var(--text-muted)]">Days</div>
+                  <div className="text-3xl sm:text-4xl font-bold font-mono bg-[var(--bg-deep)] px-3 py-2 rounded-lg min-w-[60px]">
+                    {String(countdown.days).padStart(2, '0')}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Days</div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold self-center text-[var(--text-muted)]">
+                  :
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{timeUntil.hours}</div>
-                  <div className="text-xs text-[var(--text-muted)]">Hours</div>
+                  <div className="text-3xl sm:text-4xl font-bold font-mono bg-[var(--bg-deep)] px-3 py-2 rounded-lg min-w-[60px]">
+                    {String(countdown.hours).padStart(2, '0')}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Hours</div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold self-center text-[var(--text-muted)]">
+                  :
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{timeUntil.minutes}</div>
-                  <div className="text-xs text-[var(--text-muted)]">Minutes</div>
+                  <div className="text-3xl sm:text-4xl font-bold font-mono bg-[var(--bg-deep)] px-3 py-2 rounded-lg min-w-[60px]">
+                    {String(countdown.minutes).padStart(2, '0')}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Mins</div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold self-center text-[var(--text-muted)]">
+                  :
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold font-mono bg-[var(--bg-deep)] px-3 py-2 rounded-lg min-w-[60px] text-[var(--primary)]">
+                    {String(countdown.seconds).padStart(2, '0')}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1">Secs</div>
                 </div>
               </div>
             </div>
@@ -313,7 +390,9 @@ export default function ClaimPage() {
             <div className="card bg-[var(--bg-deep)] p-4 mb-6">
               <div className="text-sm text-[var(--text-muted)] mb-1">Amount Received</div>
               <div className="text-2xl font-bold text-[var(--primary)]">
-                {verificationData && formatTokenAmount(verificationData.allocatedAmount, token?.decimals || 18)} {token?.symbol}
+                {verificationData &&
+                  formatTokenAmount(verificationData.allocatedAmount, token?.decimals || 18)}{' '}
+                {token?.symbol}
               </div>
             </div>
             <Link href="/" className="btn btn-primary">
@@ -340,12 +419,16 @@ export default function ClaimPage() {
               <div className="flex justify-between mb-2">
                 <span className="text-[var(--text-muted)]">Your Allocation</span>
                 <span className="font-bold text-[var(--primary)]">
-                  {verificationData && formatTokenAmount(verificationData.allocatedAmount, token?.decimals || 18)} {token?.symbol}
+                  {verificationData &&
+                    formatTokenAmount(verificationData.allocatedAmount, token?.decimals || 18)}{' '}
+                  {token?.symbol}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Receiving Address</span>
-                <span className="font-mono text-sm">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+                <span className="font-mono text-sm">
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                </span>
               </div>
             </div>
 

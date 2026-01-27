@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   FiSearch,
   FiFilter,
   FiEye,
@@ -13,7 +13,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiAlertCircle,
-  FiLoader
+  FiLoader,
 } from 'react-icons/fi';
 import { api, KYCApplication, Pagination } from '@/lib/api';
 import { formatDateTime } from '@/lib/contract';
@@ -23,14 +23,14 @@ type StatusFilter = 'all' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export default function AdminKYCPage() {
   const searchParams = useSearchParams();
   const initialStatus = (searchParams.get('status') as StatusFilter) || 'all';
-  
+
   const [applications, setApplications] = useState<KYCApplication[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  
+
   // Selected application for detail view
   const [selectedApp, setSelectedApp] = useState<KYCApplication | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export default function AdminKYCPage() {
 
     try {
       const { data, error } = await api.approveKYC(id);
-      
+
       if (error) {
         throw new Error(error);
       }
@@ -92,7 +92,6 @@ export default function AdminKYCPage() {
       await fetchApplications();
       setSelectedApp(null);
       setSuccessMessage('KYC approved successfully! Email notification sent to user.');
-      
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to approve KYC');
     } finally {
@@ -111,7 +110,7 @@ export default function AdminKYCPage() {
 
     try {
       const { data, error } = await api.rejectKYC(id, rejectReason || undefined);
-      
+
       if (error) {
         throw new Error(error);
       }
@@ -122,7 +121,6 @@ export default function AdminKYCPage() {
       setShowRejectModal(false);
       setRejectReason('');
       setSuccessMessage('KYC rejected. Email notification sent to user.');
-      
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to reject KYC');
     } finally {
@@ -143,9 +141,7 @@ export default function AdminKYCPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">KYC Management</h1>
-        <p className="text-[var(--text-secondary)]">
-          Review and manage user KYC applications.
-        </p>
+        <p className="text-[var(--text-secondary)]">Review and manage user KYC applications.</p>
       </div>
 
       {/* Success Message */}
@@ -159,7 +155,7 @@ export default function AdminKYCPage() {
           >
             <FiCheck className="text-green-500! shrink-0" size={20} />
             <span className="text-green-400! flex-1">{successMessage}</span>
-            <button 
+            <button
               onClick={() => setSuccessMessage(null)}
               className="text-green-400! hover:text-green-300"
             >
@@ -180,7 +176,7 @@ export default function AdminKYCPage() {
           >
             <FiAlertCircle className="text-red-500! shrink-0" size={20} />
             <span className="text-red-400! flex-1">{actionError}</span>
-            <button 
+            <button
               onClick={() => setActionError(null)}
               className="text-red-400! hover:text-red-300"
             >
@@ -206,7 +202,10 @@ export default function AdminKYCPage() {
           {(['all', 'PENDING', 'APPROVED', 'REJECTED'] as StatusFilter[]).map((status) => (
             <button
               key={status}
-              onClick={() => { setStatusFilter(status); setPage(1); }}
+              onClick={() => {
+                setStatusFilter(status);
+                setPage(1);
+              }}
               className={`btn btn-sm ${statusFilter === status ? 'btn-primary' : 'btn-secondary'}`}
             >
               {status === 'all' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
@@ -227,7 +226,7 @@ export default function AdminKYCPage() {
             <FiFilter className="mx-auto text-[var(--text-muted)]" size={48} />
             <h3 className="mt-4 font-semibold">No Applications Found</h3>
             <p className="text-[var(--text-secondary)]">
-              {statusFilter !== 'all' 
+              {statusFilter !== 'all'
                 ? `No ${statusFilter.toLowerCase()} applications.`
                 : 'No KYC applications submitted yet.'}
             </p>
@@ -259,9 +258,7 @@ export default function AdminKYCPage() {
                         <td>{app.idType.replace('_', ' ')}</td>
                         <td>{formatDateTime(app.submittedAt)}</td>
                         <td>
-                          <span className={`badge ${statusBadge.class}`}>
-                            {statusBadge.label}
-                          </span>
+                          <span className={`badge ${statusBadge.class}`}>{statusBadge.label}</span>
                         </td>
                         <td>
                           <div className="flex items-center justify-end gap-2">
@@ -303,18 +300,19 @@ export default function AdminKYCPage() {
             {pagination && pagination.pages > 1 && (
               <div className="p-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="text-sm text-[var(--text-muted)]">
-                  Showing {((page - 1) * pagination.limit) + 1} - {Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
+                  Showing {(page - 1) * pagination.limit + 1} -{' '}
+                  {Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     className="btn btn-sm btn-secondary"
                   >
                     <FiChevronLeft size={16} />
                   </button>
                   <button
-                    onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                    onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                     disabled={page === pagination.pages}
                     className="btn btn-sm btn-secondary"
                   >
@@ -383,7 +381,9 @@ export default function AdminKYCPage() {
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Date of Birth</span>
                       <span className="font-medium text-sm">
-                        {selectedApp.dateOfBirth ? new Date(selectedApp.dateOfBirth).toLocaleDateString() : '-'}
+                        {selectedApp.dateOfBirth
+                          ? new Date(selectedApp.dateOfBirth).toLocaleDateString()
+                          : '-'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -393,7 +393,7 @@ export default function AdminKYCPage() {
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Wallet Address</span>
                       <span className="font-mono text-sm">
-                        {selectedApp.user?.walletAddress 
+                        {selectedApp.user?.walletAddress
                           ? `${selectedApp.user.walletAddress.slice(0, 6)}...${selectedApp.user.walletAddress.slice(-4)}`
                           : '-'}
                       </span>
@@ -407,7 +407,9 @@ export default function AdminKYCPage() {
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">ID Type</span>
-                      <span className="font-medium text-sm">{selectedApp.idType.replace(/_/g, ' ')}</span>
+                      <span className="font-medium text-sm">
+                        {selectedApp.idType.replace(/_/g, ' ')}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">ID Number</span>
@@ -416,7 +418,9 @@ export default function AdminKYCPage() {
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Expiry Date</span>
                       <span className="font-medium text-sm">
-                        {selectedApp.idExpiryDate ? new Date(selectedApp.idExpiryDate).toLocaleDateString() : '-'}
+                        {selectedApp.idExpiryDate
+                          ? new Date(selectedApp.idExpiryDate).toLocaleDateString()
+                          : '-'}
                       </span>
                     </div>
                   </div>
@@ -428,7 +432,9 @@ export default function AdminKYCPage() {
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Street Address</span>
-                      <span className="font-medium text-sm text-right max-w-[60%]">{selectedApp.address || '-'}</span>
+                      <span className="font-medium text-sm text-right max-w-[60%]">
+                        {selectedApp.address || '-'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">City</span>
@@ -451,12 +457,16 @@ export default function AdminKYCPage() {
                   <div className="space-y-2 bg-[var(--bg-deep)] rounded-lg p-3">
                     <div className="flex justify-between">
                       <span className="text-[var(--text-muted)] text-sm">Submitted At</span>
-                      <span className="font-medium text-sm">{formatDateTime(selectedApp.submittedAt)}</span>
+                      <span className="font-medium text-sm">
+                        {formatDateTime(selectedApp.submittedAt)}
+                      </span>
                     </div>
                     {selectedApp.reviewedAt && (
                       <div className="flex justify-between">
                         <span className="text-[var(--text-muted)] text-sm">Reviewed At</span>
-                        <span className="font-medium text-sm">{formatDateTime(selectedApp.reviewedAt)}</span>
+                        <span className="font-medium text-sm">
+                          {formatDateTime(selectedApp.reviewedAt)}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -465,9 +475,13 @@ export default function AdminKYCPage() {
                 {/* Rejection Reason */}
                 {selectedApp.rejectionReason && (
                   <div>
-                    <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">Rejection Reason</h4>
+                    <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-3">
+                      Rejection Reason
+                    </h4>
                     <div className="bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/20 rounded-lg p-3">
-                      <span className="text-[var(--accent-red)] text-sm">{selectedApp.rejectionReason}</span>
+                      <span className="text-[var(--accent-red)] text-sm">
+                        {selectedApp.rejectionReason}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -478,9 +492,9 @@ export default function AdminKYCPage() {
                   {selectedApp.idDocumentUrl && selectedApp.idDocumentUrl.startsWith('http') ? (
                     <div className="space-y-3">
                       <div className="rounded-lg overflow-hidden border border-[var(--border-subtle)]">
-                        <img 
-                          src={selectedApp.idDocumentUrl} 
-                          alt="ID Document" 
+                        <img
+                          src={selectedApp.idDocumentUrl}
+                          alt="ID Document"
                           className="w-full h-auto max-h-[200px] object-contain bg-[var(--bg-deep)]"
                         />
                       </div>
@@ -561,14 +575,18 @@ export default function AdminKYCPage() {
             >
               <div className="modal-header">
                 <h2 className="text-lg font-bold">Reject KYC Application</h2>
-                <button onClick={() => setShowRejectModal(false)} className="btn btn-icon btn-ghost">
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  className="btn btn-icon btn-ghost"
+                >
                   <FiX size={20} />
                 </button>
               </div>
 
               <div className="modal-body">
                 <p className="text-[var(--text-secondary)] mb-4">
-                  Are you sure you want to reject the KYC application for <strong>{selectedApp.fullName}</strong>?
+                  Are you sure you want to reject the KYC application for{' '}
+                  <strong>{selectedApp.fullName}</strong>?
                 </p>
 
                 <div className="input-group">

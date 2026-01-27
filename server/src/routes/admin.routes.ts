@@ -308,7 +308,7 @@ router.get('/notifications', asyncHandler(async (req: Request, res: Response) =>
  *         description: Admin access required
  */
 router.get('/kyc', asyncHandler(async (req: Request, res: Response) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = '1', limit = '20' } = req.query as { status?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (status && status !== 'all') {
@@ -392,7 +392,7 @@ router.get('/kyc', asyncHandler(async (req: Request, res: Response) => {
  */
 router.get('/kyc/:id', asyncHandler(async (req: Request, res: Response) => {
   const kyc = await prisma.kYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       user: {
         select: {
@@ -449,7 +449,7 @@ router.get('/kyc/:id', asyncHandler(async (req: Request, res: Response) => {
  */
 router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response) => {
   const kyc = await prisma.kYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: { user: true },
   });
 
@@ -461,7 +461,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
     throw new AppError('KYC is not pending', 400);
   }
 
-  if (!kyc.user?.walletAddress) {
+  if (!(kyc as any).user?.walletAddress) {
     throw new AppError('User wallet address not found', 400);
   }
 
@@ -472,11 +472,11 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
   // Step 1: Call smart contract FIRST
   logger.info('Approving KYC on blockchain...', {
     kycId: kyc.id,
-    userAddress: kyc.user.walletAddress,
+    userAddress: (kyc as any).user.walletAddress,
   });
 
   const contractResult = await approveKYCOnContract(
-    kyc.user.walletAddress,
+    (kyc as any).user.walletAddress,
     kyc.kycDataHash
   );
 
@@ -486,7 +486,7 @@ router.post('/kyc/:id/approve', asyncHandler(async (req: Request, res: Response)
 
   // Step 2: Update database ONLY after contract success
   const updatedKYC = await prisma.kYC.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       status: 'APPROVED',
       reviewedAt: new Date(),
@@ -565,7 +565,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
   }).parse(req.body);
 
   const kyc = await prisma.kYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: { user: true },
   });
 
@@ -577,17 +577,17 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     throw new AppError('KYC is not pending', 400);
   }
 
-  if (!kyc.user?.walletAddress) {
+  if (!(kyc as any).user?.walletAddress) {
     throw new AppError('User wallet address not found', 400);
   }
 
   // Step 1: Call smart contract FIRST
   logger.info('Rejecting KYC on blockchain...', {
     kycId: kyc.id,
-    userAddress: kyc.user.walletAddress,
+    userAddress: (kyc as any).user.walletAddress,
   });
 
-  const contractResult = await rejectKYCOnContract(kyc.user.walletAddress);
+  const contractResult = await rejectKYCOnContract((kyc as any).user.walletAddress);
 
   if (!contractResult.success) {
     throw new AppError(contractResult.error || 'Failed to reject KYC on blockchain', 500);
@@ -595,7 +595,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
 
   // Step 2: Update database ONLY after contract success
   const updatedKYC = await prisma.kYC.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       status: 'REJECTED',
       reviewedAt: new Date(),
@@ -962,7 +962,7 @@ router.post('/beneficiary-kyc/:id/reject', asyncHandler(async (req: Request, res
  *         description: Admin access required
  */
 router.get('/users', asyncHandler(async (req: Request, res: Response) => {
-  const { role, page = 1, limit = 20 } = req.query;
+  const { role, page = '1', limit = '20' } = req.query as { role?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (role) {
@@ -1036,14 +1036,14 @@ router.put('/users/:id/role', requireSuperAdmin, asyncHandler(async (req: Reques
   }).parse(req.body);
 
   const user = await prisma.user.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: { role },
   });
 
   // Log activity
   await prisma.activity.create({
     data: {
-      userId: req.params.id,
+      userId: req.params.id as string,
       type: 'ADMIN_ACTION',
       description: `User role changed to ${role}`,
       metadata: { adminId: req.user!.id, newRole: role },
@@ -1085,7 +1085,7 @@ router.put('/users/:id/role', requireSuperAdmin, asyncHandler(async (req: Reques
  *         description: Admin access required
  */
 router.get('/plans', asyncHandler(async (req: Request, res: Response) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = '1', limit = '20' } = req.query as { status?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (status) {
@@ -1162,7 +1162,7 @@ router.get('/plans', asyncHandler(async (req: Request, res: Response) => {
  *         description: Admin access required
  */
 router.get('/activity', asyncHandler(async (req: Request, res: Response) => {
-  const { type, userId, page = 1, limit = 50 } = req.query;
+  const { type, userId, page = '1', limit = '50' } = req.query as { type?: string; userId?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (type) where.type = type;

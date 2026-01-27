@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-  FiCheck,
-  FiClock,
-  FiShield,
-  FiAlertCircle
-} from 'react-icons/fi';
+import { FiCheck, FiClock, FiShield, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { api, KYCStatus } from '@/lib/api';
 import Input from '@/components/Input';
@@ -43,8 +38,6 @@ export default function KYCPage() {
   });
   const [idDocument, setIdDocument] = useState<File | null>(null);
 
-
-
   useEffect(() => {
     const fetchKYCStatus = async () => {
       setIsLoading(true);
@@ -52,8 +45,8 @@ export default function KYCPage() {
         const { data, error } = await api.getKYCStatus();
         if (data) {
           setKycStatus(data);
-          if (data.fullName) setFormData(prev => ({ ...prev, fullName: data.fullName! }));
-          if (data.email) setFormData(prev => ({ ...prev, email: data.email! }));
+          if (data.fullName) setFormData((prev) => ({ ...prev, fullName: data.fullName! }));
+          if (data.email) setFormData((prev) => ({ ...prev, email: data.email! }));
         }
       } catch (err) {
         console.error('Error fetching KYC status:', err);
@@ -65,11 +58,11 @@ export default function KYCPage() {
     fetchKYCStatus();
   }, []);
 
-
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,9 +91,19 @@ export default function KYCPage() {
 
     try {
       // Validate required fields
-      if (!formData.fullName || !formData.email || !formData.dateOfBirth || !formData.nationality ||
-        !formData.idType || !formData.idNumber || !formData.idExpiryDate ||
-        !formData.address || !formData.city || !formData.country || !formData.postalCode) {
+      if (
+        !formData.fullName ||
+        !formData.email ||
+        !formData.dateOfBirth ||
+        !formData.nationality ||
+        !formData.idType ||
+        !formData.idNumber ||
+        !formData.idExpiryDate ||
+        !formData.address ||
+        !formData.city ||
+        !formData.country ||
+        !formData.postalCode
+      ) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -130,7 +133,6 @@ export default function KYCPage() {
       if (statusData) setKycStatus(statusData);
 
       // Clear sensitive form data if needed, or just leave it as user sees success message
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit KYC');
     } finally {
@@ -159,10 +161,13 @@ export default function KYCPage() {
           animate={{ opacity: 1, y: 0 }}
           className="card p-8 text-center"
         >
-          <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${kycStatus.status === 'APPROVED'
-            ? 'bg-[var(--accent-green)]/20'
-            : 'bg-[var(--accent-purple)]/20'
-            }`}>
+          <div
+            className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
+              kycStatus.status === 'APPROVED'
+                ? 'bg-[var(--accent-green)]/20'
+                : 'bg-[var(--accent-purple)]/20'
+            }`}
+          >
             {kycStatus.status === 'APPROVED' ? (
               <FiCheck className="text-[var(--accent-green)]" size={40} />
             ) : (
@@ -194,7 +199,9 @@ export default function KYCPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--text-muted)]">Submitted</span>
-              <span>{kycStatus.submittedAt ? new Date(kycStatus.submittedAt).toLocaleDateString() : '-'}</span>
+              <span>
+                {kycStatus.submittedAt ? new Date(kycStatus.submittedAt).toLocaleDateString() : '-'}
+              </span>
             </div>
             {kycStatus.reviewedAt && (
               <div className="flex justify-between">
@@ -210,10 +217,7 @@ export default function KYCPage() {
 
   return (
     <div className="max-w-5xl mx-auto py-5">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <div className="mb-6">
           <h1 className="text-3xl mb-2 font-bold">KYC Verification</h1>
           <p className="text-[var(--text-secondary)]">
@@ -246,7 +250,10 @@ export default function KYCPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="border border-white/6 rounded-[15px] p-8 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="border border-white/6 rounded-[15px] p-8 space-y-6"
+        >
           {/* Personal Information */}
           <div>
             <h3 className="font-semibold text-2xl mb-6 flex items-center text-primary gap-2">
@@ -389,11 +396,7 @@ export default function KYCPage() {
           </div>
 
           <div className="flex justify-end gap-4 pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn btn-primary"
-            >
+            <button type="submit" disabled={isSubmitting} className="btn btn-primary">
               {isSubmitting ? (
                 <>
                   <span className="spinner" />
