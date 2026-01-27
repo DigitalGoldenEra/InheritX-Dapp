@@ -82,6 +82,9 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
     pendingKYC,
     approvedKYC,
     rejectedKYC,
+    pendingBeneficiaryKYC,
+    approvedBeneficiaryKYC,
+    rejectedBeneficiaryKYC,
     totalPlans,
     activePlans,
     totalClaims,
@@ -91,6 +94,9 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
     prisma.kYC.count({ where: { status: 'PENDING' } }),
     prisma.kYC.count({ where: { status: 'APPROVED' } }),
     prisma.kYC.count({ where: { status: 'REJECTED' } }),
+    prisma.beneficiaryKYC.count({ where: { status: 'PENDING' } }),
+    prisma.beneficiaryKYC.count({ where: { status: 'APPROVED' } }),
+    prisma.beneficiaryKYC.count({ where: { status: 'REJECTED' } }),
     prisma.plan.count(),
     prisma.plan.count({ where: { status: 'ACTIVE' } }),
     prisma.beneficiary.count({ where: { hasClaimed: true } }),
@@ -112,6 +118,12 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
       approved: approvedKYC,
       rejected: rejectedKYC,
       total: pendingKYC + approvedKYC + rejectedKYC,
+      beneficiary: {
+        pending: pendingBeneficiaryKYC,
+        approved: approvedBeneficiaryKYC,
+        rejected: rejectedBeneficiaryKYC,
+        total: pendingBeneficiaryKYC + approvedBeneficiaryKYC + rejectedBeneficiaryKYC,
+      },
     },
     plans: {
       total: totalPlans,
@@ -121,6 +133,117 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
       total: totalClaims,
     },
     recentActivity,
+  });
+}));
+
+// ============================================
+// ADMIN NOTIFICATIONS
+// ============================================
+
+/**
+ * @swagger
+ * /admin/notifications:
+ *   get:
+ *     summary: Get notifications for admin dashboard
+ *     description: Returns pending reviews and recent important events for admins.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Notifications retrieved successfully
+ */
+router.get('/notifications', asyncHandler(async (req: Request, res: Response) => {
+  const [
+    pendingUserKYC,
+    pendingBeneficiaryKYC,
+    recentClaims,
+    recentSystemEvents,
+  ] = await Promise.all([
+    prisma.kYC.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            walletAddress: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: 10,
+    }),
+    prisma.beneficiaryKYC.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        beneficiary: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            relationship: true,
+            beneficiaryIndex: true,
+            plan: {
+              select: {
+                id: true,
+                planName: true,
+                globalPlanId: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: 10,
+    }),
+    prisma.activity.findMany({
+      where: {
+        type: {
+          in: ['CLAIM_COMPLETED', 'CLAIM_FAILED'],
+        } as any,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            walletAddress: true,
+            name: true,
+          },
+        },
+        plan: {
+          select: {
+            id: true,
+            planName: true,
+            globalPlanId: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+    prisma.activity.findMany({
+      where: {
+        type: {
+          in: ['ADMIN_ACTION', 'SYSTEM_EVENT'],
+        } as any,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
+  ]);
+
+  res.json({
+    kyc: {
+      pendingUsers: pendingUserKYC,
+      pendingBeneficiaries: pendingBeneficiaryKYC,
+    },
+    claims: {
+      recent: recentClaims,
+    },
+    system: {
+      recentEvents: recentSystemEvents,
+    },
   });
 }));
 
@@ -510,6 +633,297 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
     message: 'KYC rejected',
     kyc: updatedKYC,
     txHash: contractResult.txHash,
+  });
+}));
+
+// ============================================
+// BENEFICIARY KYC MANAGEMENT
+// ============================================
+
+/**
+ * @swagger
+ * /admin/beneficiary-kyc:
+ *   get:
+ *     summary: Get all beneficiary KYC applications
+ *     description: List beneficiary KYC applications with optional filters and pagination
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, APPROVED, REJECTED, all]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Beneficiary KYC applications retrieved
+ */
+router.get('/beneficiary-kyc', asyncHandler(async (req: Request, res: Response) => {
+  const { status, page = 1, limit = 20 } = req.query;
+
+  const where: any = {};
+  if (status && status !== 'all') {
+    where.status = status;
+  }
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [kycs, total] = await Promise.all([
+    prisma.beneficiaryKYC.findMany({
+      where,
+      include: {
+        beneficiary: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            relationship: true,
+            beneficiaryIndex: true,
+            plan: {
+              select: {
+                id: true,
+                planName: true,
+                globalPlanId: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+      skip,
+      take: Number(limit),
+    }),
+    prisma.beneficiaryKYC.count({ where }),
+  ]);
+
+  res.json({
+    data: kycs,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+}));
+
+/**
+ * @swagger
+ * /admin/beneficiary-kyc/{id}:
+ *   get:
+ *     summary: Get beneficiary KYC application details
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Beneficiary KYC details retrieved
+ *       404:
+ *         description: Beneficiary KYC not found
+ */
+router.get('/beneficiary-kyc/:id', asyncHandler(async (req: Request, res: Response) => {
+  const kyc = await prisma.beneficiaryKYC.findUnique({
+    where: { id: req.params.id },
+    include: {
+      beneficiary: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          relationship: true,
+          beneficiaryIndex: true,
+          plan: {
+            select: {
+              id: true,
+              planName: true,
+              globalPlanId: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!kyc) {
+    throw new AppError('Beneficiary KYC not found', 404);
+  }
+
+  res.json(kyc);
+}));
+
+/**
+ * @swagger
+ * /admin/beneficiary-kyc/{id}/approve:
+ *   post:
+ *     summary: Approve a beneficiary KYC application
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Beneficiary KYC approved successfully
+ *       400:
+ *         description: Beneficiary KYC is not pending
+ *       404:
+ *         description: Beneficiary KYC not found
+ */
+router.post('/beneficiary-kyc/:id/approve', asyncHandler(async (req: Request, res: Response) => {
+  const kyc = await prisma.beneficiaryKYC.findUnique({
+    where: { id: req.params.id },
+    include: {
+      beneficiary: {
+        include: {
+          plan: true,
+        },
+      },
+    },
+  });
+
+  if (!kyc) {
+    throw new AppError('Beneficiary KYC not found', 404);
+  }
+
+  if (kyc.status !== 'PENDING') {
+    throw new AppError('Beneficiary KYC is not pending', 400);
+  }
+
+  const updatedKYC = await prisma.beneficiaryKYC.update({
+    where: { id: req.params.id },
+    data: {
+      status: 'APPROVED',
+      reviewedAt: new Date(),
+      reviewedBy: req.user!.id,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      planId: kyc.beneficiary.planId,
+      type: 'BENEFICIARY_KYC_APPROVED',
+      description: `Beneficiary KYC approved for beneficiary index ${kyc.beneficiary.beneficiaryIndex}`,
+      metadata: {
+        adminId: req.user!.id,
+        beneficiaryId: kyc.beneficiaryId,
+        beneficiaryIndex: kyc.beneficiary.beneficiaryIndex,
+        email: kyc.beneficiary.email,
+      },
+    },
+  });
+
+  res.json({
+    message: 'Beneficiary KYC approved successfully',
+    kyc: updatedKYC,
+  });
+}));
+
+/**
+ * @swagger
+ * /admin/beneficiary-kyc/{id}/reject:
+ *   post:
+ *     summary: Reject a beneficiary KYC application
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Beneficiary KYC rejected successfully
+ *       400:
+ *         description: Beneficiary KYC is not pending
+ *       404:
+ *         description: Beneficiary KYC not found
+ */
+router.post('/beneficiary-kyc/:id/reject', asyncHandler(async (req: Request, res: Response) => {
+  const { reason } = z.object({
+    reason: z.string().optional(),
+  }).parse(req.body);
+
+  const kyc = await prisma.beneficiaryKYC.findUnique({
+    where: { id: req.params.id },
+    include: {
+      beneficiary: {
+        include: {
+          plan: true,
+        },
+      },
+    },
+  });
+
+  if (!kyc) {
+    throw new AppError('Beneficiary KYC not found', 404);
+  }
+
+  if (kyc.status !== 'PENDING') {
+    throw new AppError('Beneficiary KYC is not pending', 400);
+  }
+
+  const updatedKYC = await prisma.beneficiaryKYC.update({
+    where: { id: req.params.id },
+    data: {
+      status: 'REJECTED',
+      reviewedAt: new Date(),
+      reviewedBy: req.user!.id,
+      rejectionReason: reason,
+    },
+  });
+
+  await prisma.activity.create({
+    data: {
+      planId: kyc.beneficiary.planId,
+      type: 'BENEFICIARY_KYC_REJECTED',
+      description: `Beneficiary KYC rejected for beneficiary index ${kyc.beneficiary.beneficiaryIndex}. Reason: ${reason || 'Not specified'}`,
+      metadata: {
+        adminId: req.user!.id,
+        beneficiaryId: kyc.beneficiaryId,
+        beneficiaryIndex: kyc.beneficiary.beneficiaryIndex,
+        email: kyc.beneficiary.email,
+        reason,
+      },
+    },
+  });
+
+  res.json({
+    message: 'Beneficiary KYC rejected',
+    kyc: updatedKYC,
   });
 }));
 

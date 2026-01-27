@@ -2,7 +2,6 @@
  * Plan Routes
  * Handles inheritance plan management
  */
-
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
@@ -16,6 +15,7 @@ import {
 } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { sendPlanCreationNotification } from '../utils/email';
+import { initiateUserAction2FA, verifyUserAction2FA } from '../utils/twoFactor';
 
 const router = Router();
 
@@ -38,6 +38,8 @@ const createPlanSchema = z.object({
   transferDate: z.string().transform(s => new Date(s)),
   periodicPercentage: z.number().min(1).max(100).optional(),
   beneficiaries: z.array(beneficiarySchema).min(1).max(10),
+  claimCode: z.string().length(6).optional(), // Optional - will generate if not provided
+  twoFactorCode: z.string().length(6, 'Two-factor code must be 6 digits'),
   // Proof of Life option (LUMP_SUM only)
   proofOfLifeEnabled: z.boolean().optional().default(false),
   // Beneficiary notification option
@@ -96,6 +98,44 @@ router.get('/', authenticateToken, asyncHandler(async (req: Request, res: Respon
   });
 
   res.json(plans);
+}));
+
+/**
+ * @swagger
+ * /plans/2fa/request:
+ *   post:
+ *     summary: Request 2FA code for plan creation
+ *     description: Sends a verification code to the user's email to confirm plan creation.
+ *     tags: [Plans]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 2FA code sent successfully
+ *       400:
+ *         description: Email not set on user profile
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/2fa/request', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, email: true },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  if (!user.email) {
+    throw new AppError('Email is required for 2FA. Please set your email in your profile.', 400);
+  }
+
+  await initiateUserAction2FA(user.id, user.email, 'CREATE_PLAN');
+
+  res.json({
+    message: 'Two-factor code sent to your email',
+  });
 }));
 
 /**
@@ -272,6 +312,12 @@ router.get('/:id', authenticateToken, asyncHandler(async (req: Request, res: Res
  */
 router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const data = createPlanSchema.parse(req.body);
+
+  // Verify 2FA code for plan creation
+  const is2FAValid = verifyUserAction2FA(req.user!.id, 'CREATE_PLAN', data.twoFactorCode);
+  if (!is2FAValid) {
+    throw new AppError('Invalid or expired two-factor code', 400);
+  }
 
   // Check KYC status
   const user = await prisma.user.findUnique({

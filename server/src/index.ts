@@ -24,6 +24,8 @@ import planRoutes from './routes/plan.routes';
 import claimRoutes from './routes/claim.routes';
 import adminRoutes from './routes/admin.routes';
 import webhookRoutes from './routes/webhook.routes';
+import beneficiaryKYCRoutes from './routes/beneficiary-kyc.routes';
+import notificationRoutes from './routes/notification.routes';
 
 // Initialize express app
 const app: Express = express();
@@ -117,6 +119,8 @@ app.use('/api/plans', planRoutes);
 app.use('/api/claim', claimRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/beneficiary-kyc', beneficiaryKYCRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

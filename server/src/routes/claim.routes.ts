@@ -10,6 +10,7 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { keccak256, verifyHash } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { initiateBeneficiaryClaim2FA, verifyBeneficiaryClaim2FA } from '../utils/twoFactor';
 import { createCloudinaryStorage, isCloudinaryConfigured } from '../utils/cloudinary';
 
 const router = Router();
@@ -57,6 +58,7 @@ const verifyClaimSchema = z.object({
   beneficiaryName: z.string().min(2),
   beneficiaryEmail: z.string().email(),
   beneficiaryRelationship: z.string().min(2),
+  twoFactorCode: z.string().length(6, 'Two-factor code must be 6 digits'),
 });
 
 const completeClaimSchema = z.object({
@@ -65,6 +67,13 @@ const completeClaimSchema = z.object({
   claimerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   txHash: z.string(),
   claimedAmount: z.string(),
+});
+
+const requestClaim2FASchema = z.object({
+  planId: z.string().or(z.number()),
+  beneficiaryName: z.string().min(2),
+  beneficiaryEmail: z.string().email(),
+  beneficiaryRelationship: z.string().min(2),
 });
 
 const beneficiaryKYCSchema = z.object({
@@ -186,6 +195,83 @@ router.get('/plan/:globalPlanId', asyncHandler(async (req: Request, res: Respons
 
 /**
  * @swagger
+ * /claim/2fa/request:
+ *   post:
+ *     summary: Request 2FA code for claim verification
+ *     description: Sends a verification code to the beneficiary's email before claim verification.
+ *     tags: [Claims]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - planId
+ *               - beneficiaryName
+ *               - beneficiaryEmail
+ *               - beneficiaryRelationship
+ *             properties:
+ *               planId:
+ *                 oneOf:
+ *                   - type: string
+ *                   - type: integer
+ *               beneficiaryName:
+ *                 type: string
+ *               beneficiaryEmail:
+ *                 type: string
+ *                 format: email
+ *               beneficiaryRelationship:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 2FA code sent successfully
+ *       400:
+ *         description: Invalid data
+ *       404:
+ *         description: Plan or beneficiary not found
+ */
+router.post('/2fa/request', asyncHandler(async (req: Request, res: Response) => {
+  const data = requestClaim2FASchema.parse(req.body);
+
+  const plan = await prisma.plan.findFirst({
+    where: typeof data.planId === 'number'
+      ? { globalPlanId: data.planId }
+      : { id: data.planId },
+    include: {
+      beneficiaries: true,
+    },
+  });
+
+  if (!plan) {
+    throw new AppError('Plan not found', 404);
+  }
+
+  const beneficiary = plan.beneficiaries.find(b => {
+    const nameHash = keccak256(data.beneficiaryName);
+    const emailHash = keccak256(data.beneficiaryEmail);
+    const relationshipHash = keccak256(data.beneficiaryRelationship);
+
+    return (
+      nameHash === b.nameHash &&
+      emailHash === b.emailHash &&
+      relationshipHash === b.relationshipHash
+    );
+  });
+
+  if (!beneficiary) {
+    throw new AppError('Beneficiary not found or details do not match', 404);
+  }
+
+  await initiateBeneficiaryClaim2FA(plan.id, beneficiary.id, data.beneficiaryEmail);
+
+  res.json({
+    message: 'Two-factor code sent to beneficiary email',
+  });
+}));
+
+/**
+ * @swagger
  * /claim/verify:
  *   post:
  *     summary: Verify claim data before submitting to contract
@@ -302,6 +388,12 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
   // Verify claim code against this specific beneficiary's claimCodeHash
   if (claimCodeHash !== beneficiary.claimCodeHash) {
     throw new AppError('Invalid claim code', 401);
+  }
+
+  // Verify 2FA code for this beneficiary
+  const is2FAValid = verifyBeneficiaryClaim2FA(plan.id, beneficiary.id, data.twoFactorCode);
+  if (!is2FAValid) {
+    throw new AppError('Invalid or expired two-factor code', 400);
   }
 
   if (beneficiary.hasClaimed) {
