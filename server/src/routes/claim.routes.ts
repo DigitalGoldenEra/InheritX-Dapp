@@ -401,7 +401,7 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Check beneficiary KYC status
-  const beneficiaryKYC = await prisma.beneficiaryKYC.findUnique({
+  const beneficiaryKYC = await prisma.beneficiaryKYC.findFirst({
     where: { email: data.beneficiaryEmail.toLowerCase() },
     select: { status: true },
   });
@@ -715,7 +715,7 @@ router.get('/kyc/status', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Email is required', 400);
   }
 
-  const kyc = await prisma.beneficiaryKYC.findUnique({
+  const kyc = await prisma.beneficiaryKYC.findFirst({
     where: { email: email.toLowerCase() },
     select: {
       status: true,
@@ -835,9 +835,9 @@ router.post(
     }
 
     // Check existing KYC
-    const existingKYC = await prisma.beneficiaryKYC.findUnique({
+    const existingKYC = await prisma.beneficiaryKYC.findFirst({
       where: { email: normalizedEmail },
-      select: { status: true, idDocumentUrl: true },
+      select: { id: true, status: true, idDocumentUrl: true },
     });
 
     if (existingKYC?.status === 'APPROVED') {
@@ -849,41 +849,52 @@ router.post(
     }
 
     // Create or update BeneficiaryKYC record
-    const kyc = await prisma.beneficiaryKYC.upsert({
-      where: { email: normalizedEmail },
-      create: {
-        email: normalizedEmail,
-        fullName: data.fullName,
-        dateOfBirth: new Date(data.dateOfBirth),
-        nationality: data.nationality,
-        idType: data.idType as any,
-        idNumber: data.idNumber,
-        idExpiryDate: new Date(data.idExpiryDate),
-        idDocumentUrl: documentUrl,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        postalCode: data.postalCode,
-        status: 'PENDING',
-      },
-      update: {
-        fullName: data.fullName,
-        dateOfBirth: new Date(data.dateOfBirth),
-        nationality: data.nationality,
-        idType: data.idType as any,
-        idNumber: data.idNumber,
-        idExpiryDate: new Date(data.idExpiryDate),
-        idDocumentUrl: documentUrl,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        postalCode: data.postalCode,
-        status: 'PENDING',
-        submittedAt: new Date(),
-        reviewedAt: null,
-        rejectionReason: null,
-      },
-    });
+    let kyc;
+    if (existingKYC) {
+      // Update existing KYC
+      kyc = await prisma.beneficiaryKYC.update({
+        where: { id: existingKYC.id },
+        data: {
+          fullName: data.fullName,
+          dateOfBirth: new Date(data.dateOfBirth),
+          nationality: data.nationality,
+          idType: data.idType as any,
+          idNumber: data.idNumber,
+          idExpiryDate: new Date(data.idExpiryDate),
+          idDocumentUrl: documentUrl,
+          address: data.address,
+          city: data.city,
+          country: data.country,
+          postalCode: data.postalCode,
+          status: 'PENDING',
+          submittedAt: new Date(),
+          reviewedAt: null,
+          rejectionReason: null,
+        },
+      });
+    } else {
+      // Create new KYC
+      kyc = await prisma.beneficiaryKYC.create({
+        data: {
+          email: normalizedEmail,
+          fullName: data.fullName,
+          dateOfBirth: new Date(data.dateOfBirth),
+          nationality: data.nationality,
+          idType: data.idType as any,
+          idNumber: data.idNumber,
+          idExpiryDate: new Date(data.idExpiryDate),
+          idDocumentUrl: documentUrl,
+          address: data.address,
+          city: data.city,
+          country: data.country,
+          postalCode: data.postalCode,
+          status: 'PENDING',
+          submittedAt: new Date(),
+          reviewedAt: null,
+          rejectionReason: null,
+        },
+      });
+    }
 
     // Delete old document from Cloudinary if resubmitting
     if (existingKYC?.idDocumentUrl && existingKYC.idDocumentUrl !== documentUrl) {

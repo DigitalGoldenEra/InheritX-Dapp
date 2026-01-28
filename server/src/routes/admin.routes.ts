@@ -823,14 +823,14 @@ router.post('/beneficiary-kyc/:id/approve', asyncHandler(async (req: Request, re
 
   await prisma.activity.create({
     data: {
-      planId: kyc.beneficiary.planId,
+      planId: kyc.beneficiary?.planId || '',
       type: 'BENEFICIARY_KYC_APPROVED',
-      description: `Beneficiary KYC approved for beneficiary index ${kyc.beneficiary.beneficiaryIndex}`,
+      description: `Beneficiary KYC approved for beneficiary index ${kyc.beneficiary?.beneficiaryIndex || 'unknown'}`,
       metadata: {
         adminId: req.user!.id,
         beneficiaryId: kyc.beneficiaryId,
-        beneficiaryIndex: kyc.beneficiary.beneficiaryIndex,
-        email: kyc.beneficiary.email,
+        beneficiaryIndex: kyc.beneficiary?.beneficiaryIndex || 0,
+        email: kyc.beneficiary?.email || '',
       },
     },
   });
@@ -908,14 +908,14 @@ router.post('/beneficiary-kyc/:id/reject', asyncHandler(async (req: Request, res
 
   await prisma.activity.create({
     data: {
-      planId: kyc.beneficiary.planId,
+      planId: kyc.beneficiary?.planId || '',
       type: 'BENEFICIARY_KYC_REJECTED',
-      description: `Beneficiary KYC rejected for beneficiary index ${kyc.beneficiary.beneficiaryIndex}. Reason: ${reason || 'Not specified'}`,
+      description: `Beneficiary KYC rejected for beneficiary index ${kyc.beneficiary?.beneficiaryIndex || 'unknown'}. Reason: ${reason || 'Not specified'}`,
       metadata: {
         adminId: req.user!.id,
         beneficiaryId: kyc.beneficiaryId,
-        beneficiaryIndex: kyc.beneficiary.beneficiaryIndex,
-        email: kyc.beneficiary.email,
+        beneficiaryIndex: kyc.beneficiary?.beneficiaryIndex || 0,
+        email: kyc.beneficiary?.email || '',
         reason,
       },
     },
