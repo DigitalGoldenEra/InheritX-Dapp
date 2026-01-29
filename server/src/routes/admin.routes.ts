@@ -670,7 +670,7 @@ router.post('/kyc/:id/reject', asyncHandler(async (req: Request, res: Response) 
  *         description: Beneficiary KYC applications retrieved
  */
 router.get('/beneficiary-kyc', asyncHandler(async (req: Request, res: Response) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  const { status, page = '1', limit = '20' } = req.query as { status?: string; page?: string; limit?: string };
 
   const where: any = {};
   if (status && status !== 'all') {
@@ -741,7 +741,7 @@ router.get('/beneficiary-kyc', asyncHandler(async (req: Request, res: Response) 
  */
 router.get('/beneficiary-kyc/:id', asyncHandler(async (req: Request, res: Response) => {
   const kyc = await prisma.beneficiaryKYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       beneficiary: {
         select: {
@@ -794,7 +794,7 @@ router.get('/beneficiary-kyc/:id', asyncHandler(async (req: Request, res: Respon
  */
 router.post('/beneficiary-kyc/:id/approve', asyncHandler(async (req: Request, res: Response) => {
   const kyc = await prisma.beneficiaryKYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       beneficiary: {
         include: {
@@ -813,7 +813,7 @@ router.post('/beneficiary-kyc/:id/approve', asyncHandler(async (req: Request, re
   }
 
   const updatedKYC = await prisma.beneficiaryKYC.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       status: 'APPROVED',
       reviewedAt: new Date(),
@@ -878,7 +878,7 @@ router.post('/beneficiary-kyc/:id/reject', asyncHandler(async (req: Request, res
   }).parse(req.body);
 
   const kyc = await prisma.beneficiaryKYC.findUnique({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     include: {
       beneficiary: {
         include: {
@@ -897,7 +897,7 @@ router.post('/beneficiary-kyc/:id/reject', asyncHandler(async (req: Request, res
   }
 
   const updatedKYC = await prisma.beneficiaryKYC.update({
-    where: { id: req.params.id },
+    where: { id: req.params.id as string },
     data: {
       status: 'REJECTED',
       reviewedAt: new Date(),
