@@ -9,6 +9,7 @@ export default function SecurityPage() {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [setupData, setSetupData] = useState<{ secret: string; qrCode: string } | null>(null);
+    const [isSettingUp, setIsSettingUp] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export default function SecurityPage() {
 
     const start2FASetup = async () => {
         setError(null);
+        setIsSettingUp(true);
         try {
             const { data, error } = await api.setup2FA();
             if (error) {
@@ -42,6 +44,8 @@ export default function SecurityPage() {
             }
         } catch (err) {
             setError('Failed to start 2FA setup');
+        } finally {
+            setIsSettingUp(false);
         }
     };
 
@@ -101,10 +105,20 @@ export default function SecurityPage() {
                     <div className="mt-6">
                         <button
                             onClick={start2FASetup}
+                            disabled={isSettingUp}
                             className="btn btn-primary"
                         >
-                            <FiLock className="mr-2" />
-                            Setup 2FA
+                            {isSettingUp ? (
+                                <>
+                                    <div className="spinner border-2 border-white/20 border-t-white w-4 h-4 rounded-full animate-spin mr-2"></div>
+                                    Setting up...
+                                </>
+                            ) : (
+                                <>
+                                    <FiLock className="mr-2" />
+                                    Setup 2FA
+                                </>
+                            )}
                         </button>
                     </div>
                 )}

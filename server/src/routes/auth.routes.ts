@@ -501,7 +501,11 @@ router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, r
   const secret = authenticator.generateSecret();
 
   // Create key URI for authenticator apps
-  const otpauth = authenticator.keyuri(user.email || user.walletAddress, 'InheritX', secret);
+  const otpauth = (authenticator as any).toURI({
+    secret,
+    label: user.email || user.walletAddress,
+    issuer: 'InheritX',
+  });
 
   // Generate QR code
   const qrCode = await QRCode.toDataURL(otpauth);
