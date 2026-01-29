@@ -266,6 +266,7 @@ router.get('/me', authenticateToken, asyncHandler(async (req: Request, res: Resp
     kycReviewedAt: user.kyc?.reviewedAt,
     planCount: user._count.plans,
     createdAt: user.createdAt,
+    twoFactorEnabled: (user as any).twoFactorEnabled,
   });
 }));
 
@@ -573,9 +574,9 @@ router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, 
   }
 
   const secret = decryptTotpSecret((user as any).twoFactorSecret);
-  const isValid = (authenticator as any).verify({ token, secret });
+  const isValid = await (authenticator as any).verify(token, { secret });
 
-  if (!isValid) {
+  if (!isValid?.valid) {
     throw new AppError('Invalid 2FA code', 400);
   }
 
