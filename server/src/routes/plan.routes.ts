@@ -283,6 +283,11 @@ router.post('/', authenticateToken, asyncHandler(async (req: Request, res: Respo
     throw new AppError('KYC must be approved before creating plans', 403);
   }
 
+  // Check 2FA
+  if (!(user as any).twoFactorEnabled) {
+    throw new AppError('2FA must be enabled to create plans', 403);
+  }
+
   // Validate total percentage equals 100%
   const totalPercentage = data.beneficiaries.reduce(
     (sum, b) => sum + b.allocatedPercentage,

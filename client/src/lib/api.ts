@@ -135,6 +135,19 @@ class ApiService {
     });
   }
 
+  async setup2FA() {
+    return this.request<{ secret: string; qrCode: string }>('/auth/2fa/setup', {
+      method: 'POST',
+    });
+  }
+
+  async verify2FA(token: string) {
+    return this.request<{ success: boolean; message: string }>('/auth/2fa/verify', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
   // ============================================
   // KYC
   // ============================================
@@ -315,6 +328,7 @@ export interface User {
   role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   kycStatus: string;
   planCount: number;
+  twoFactorEnabled?: boolean;
   createdAt: string;
 }
 

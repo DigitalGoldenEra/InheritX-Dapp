@@ -62,10 +62,10 @@ const nonceStore = new Map<string, { nonce: string; expires: number }>();
  */
 router.get('/nonce', asyncHandler(async (req: Request, res: Response) => {
   const { walletAddress } = nonceSchema.parse(req.query);
-  
+
   // Generate nonce
   const nonce = `Sign this message to authenticate with InheritX.\n\nNonce: ${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   // Store nonce with expiration (5 minutes)
   nonceStore.set(walletAddress.toLowerCase(), {
     nonce,
@@ -451,6 +451,146 @@ router.post('/admin/login', asyncHandler(async (req: Request, res: Response) => 
       kycStatus: user.kyc?.status || 'NOT_SUBMITTED',
     },
   });
+}));
+
+
+/**
+ * @swagger
+ * /auth/2fa/setup:
+ *   post:
+ *     summary: Setup 2FA
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 2FA setup initiated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 secret:
+ *                   type: string
+ *                 qrCode:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+  const { TOTP, ScureBase32Plugin, NobleCryptoPlugin } = await import('otplib');
+  const QRCode = await import('qrcode');
+  const { encryptTotpSecret } = await import('../utils/crypto');
+
+  const authenticator = new TOTP({
+    crypto: new NobleCryptoPlugin(),
+    base32: new ScureBase32Plugin(),
+    step: 30,
+    window: 1,
+  } as any) as any;
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Generate secret
+  const secret = authenticator.generateSecret();
+
+  // Create key URI for authenticator apps
+  const otpauth = authenticator.keyuri(user.email || user.walletAddress, 'InheritX', secret);
+
+  // Generate QR code
+  const qrCode = await QRCode.toDataURL(otpauth);
+
+  // Save secret to valid (temporarily or mark as pending verification if we wanted to be strict, 
+  // but here we just save it. verification sets enabled=true)
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      twoFactorSecret: encryptTotpSecret(secret),
+      twoFactorEnabled: false, // Ensure it's false until verified
+    },
+  });
+
+  res.json({ secret, qrCode });
+}));
+
+/**
+ * @swagger
+ * /auth/2fa/verify:
+ *   post:
+ *     summary: Verify 2FA token to enable it
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: 6-digit TOTP code
+ *     responses:
+ *       200:
+ *         description: 2FA enabled successfully
+ *       400:
+ *         description: Invalid token
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+  const { token } = z.object({ token: z.string() }).parse(req.body);
+  const { TOTP, ScureBase32Plugin, NobleCryptoPlugin } = await import('otplib');
+  const { decryptTotpSecret } = await import('../utils/crypto');
+
+  const authenticator = new TOTP({
+    crypto: new NobleCryptoPlugin(),
+    base32: new ScureBase32Plugin(),
+    step: 30,
+    window: 1,
+  } as any) as any;
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+  });
+
+  // Cast user to any to access twoFactorSecret
+  if (!user || !(user as any).twoFactorSecret) {
+    throw new AppError('2FA not setup. Please call setup first.', 400);
+  }
+
+  const secret = decryptTotpSecret((user as any).twoFactorSecret);
+  const isValid = (authenticator as any).verify({ token, secret });
+
+  if (!isValid) {
+    throw new AppError('Invalid 2FA code', 400);
+  }
+
+  // Enable 2FA
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { twoFactorEnabled: true } as any,
+  });
+
+  // Log activity
+  await prisma.activity.create({
+    data: {
+      userId: user.id,
+      type: 'SYSTEM_EVENT', // Or create a new type if strictly needed, but reusing generic system event for now
+      description: '2FA enabled',
+    },
+  });
+
+  res.json({ success: true, message: '2FA enabled successfully' });
 }));
 
 export default router;

@@ -89,12 +89,12 @@ export function createBeneficiaryHashes(
   const nameHash = keccak256(name);
   const emailHash = keccak256(email);
   const relationshipHash = keccak256(relationship);
-  
+
   // Combined hash matches Solidity: keccak256(abi.encodePacked(nameHash, emailHash, relationshipHash))
   const combinedHash = ethers.keccak256(
     ethers.concat([nameHash, emailHash, relationshipHash])
   );
-  
+
   return {
     nameHash,
     emailHash,
@@ -135,6 +135,16 @@ export function generateSecureToken(length: number = 32): string {
   return crypto.randomBytes(length).toString('hex');
 }
 
+
+export function encryptTotpSecret(secret: string): string {
+  return jwt.sign({ secret }, CLAIM_CODE_SECRET, { algorithm: 'HS256' });
+}
+
+export function decryptTotpSecret(token: string): string {
+  const decoded = jwt.verify(token, CLAIM_CODE_SECRET) as { secret: string };
+  return decoded.secret;
+}
+
 export default {
   keccak256,
   keccak256NoPrefix,
@@ -145,5 +155,7 @@ export default {
   createKYCHash,
   verifyHash,
   generateSecureToken,
+  encryptTotpSecret,
+  decryptTotpSecret,
 };
 

@@ -25,6 +25,10 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // 2FA
+  twoFactorSecret  String? // Secret for TOTP
+  twoFactorEnabled Boolean @default(false)
+
   // Relations
   kyc        KYC?
   plans      Plan[]

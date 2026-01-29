@@ -14,7 +14,7 @@ import {
   FiCopy,
   FiExternalLink,
 } from 'react-icons/fi';
-import { api, Plan, KYCStatus } from '@/lib/api';
+import { api, Plan, KYCStatus, User } from '@/lib/api'; // Import User type
 import { formatDate, getPlanStatusBadge, getTokenByAssetType } from '@/lib/contract';
 import CreatePlanModal from '@/components/plans/CreatePlanModal';
 import CompletePendingPlanModal from '@/components/plans/CompletePendingPlanModal';
@@ -30,23 +30,30 @@ export default function PlansPage() {
   const [search, setSearch] = useState('');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [user, setUser] = useState<User | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [plansRes, kycRes] = await Promise.all([api.getPlans(), api.getKYCStatus()]);
+      const [plansRes, kycRes, userRes] = await Promise.all([
+        api.getPlans(),
+        api.getKYCStatus(),
+        api.getMe()
+      ]);
 
       if (plansRes.data) setPlans(plansRes.data);
       if (kycRes.data) setKycStatus(kycRes.data);
+      if (userRes.data) setUser(userRes.data);
     } catch (error) {
       console.error('Error fetching plans:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const filteredPlans = plans.filter((plan) => {
     const matchesFilter = filter === 'ALL' || plan.status === filter;
@@ -116,9 +123,9 @@ export default function PlansPage() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          disabled={!canCreatePlan}
+          disabled={!canCreatePlan || !user?.twoFactorEnabled}
           className="btn btn-primary"
-          title={!canCreatePlan ? 'Complete KYC to create plans' : ''}
+          title={!canCreatePlan ? 'Complete KYC to create plans' : !user?.twoFactorEnabled ? 'Enable 2FA to create plans' : ''}
         >
           <FiPlus size={18} />
           Create Plan
@@ -141,6 +148,21 @@ export default function PlansPage() {
               Complete KYC
             </Link>
           )}
+        </div>
+      )}
+
+      {/* 2FA Warning (Only show if KYC is OK but 2FA is missing) */}
+      {canCreatePlan && !user?.twoFactorEnabled && (
+        <div className="flex items-center gap-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <div className="flex-1">
+            <div className="font-medium text-amber-400">2FA Required</div>
+            <div className="text-sm text-amber-300/80">
+              You must enable Two-Factor Authentication to create inheritance plans.
+            </div>
+          </div>
+          <Link href="/dashboard/security" className="btn btn-sm btn-secondary">
+            Setup 2FA
+          </Link>
         </div>
       )}
 

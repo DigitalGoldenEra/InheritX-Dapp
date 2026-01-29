@@ -11,6 +11,7 @@ import {
   FiLogOut,
   FiX,
   FiGift,
+  FiLock,
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -26,7 +27,10 @@ const navItems = [
   { href: '/dashboard/activity', icon: FiActivity, label: 'Activity' },
 ];
 
-const secondaryItems = [{ href: '/dashboard/settings', icon: FiSettings, label: 'Settings' }];
+const secondaryItems = [
+  { href: '/dashboard/settings', icon: FiSettings, label: 'Settings' },
+  { href: '/dashboard/security', icon: FiLock, label: 'Security' },
+];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -125,13 +129,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="card p-4">
             <div className="text-xs text-[var(--text-muted)] mb-1">KYC Status</div>
             <div
-              className={`badge ${
-                user?.kycStatus === 'APPROVED'
+              className={`badge ${user?.kycStatus === 'APPROVED'
                   ? 'badge-success'
                   : user?.kycStatus === 'PENDING'
                     ? 'badge-purple'
                     : 'badge-warning'
-              }`}
+                }`}
             >
               {user?.kycStatus || 'Not Submitted'}
             </div>

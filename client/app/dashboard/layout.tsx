@@ -27,6 +27,7 @@ const navItems = [
   { href: '/dashboard/plans', icon: FiFileText, label: 'My Plans' },
   { href: '/dashboard/kyc', icon: FiShield, label: 'KYC Verification' },
   { href: '/dashboard/activity', icon: FiActivity, label: 'Activity' },
+  { href: '/dashboard/security', icon: FiLock, label: 'Security' },
   { href: '/dashboard/settings', icon: FiSettings, label: 'Settings' },
 ];
 
