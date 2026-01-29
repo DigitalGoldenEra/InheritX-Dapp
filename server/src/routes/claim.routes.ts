@@ -10,6 +10,7 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { keccak256, verifyHash } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { initiateBeneficiaryClaim2FA, verifyBeneficiaryClaim2FA } from '../utils/twoFactor';
 import { createCloudinaryStorage, isCloudinaryConfigured } from '../utils/cloudinary';
 
 const router = Router();
@@ -57,6 +58,7 @@ const verifyClaimSchema = z.object({
   beneficiaryName: z.string().min(2),
   beneficiaryEmail: z.string().email(),
   beneficiaryRelationship: z.string().min(2),
+  twoFactorCode: z.string().length(6, 'Two-factor code must be 6 digits'),
 });
 
 const completeClaimSchema = z.object({
@@ -65,6 +67,13 @@ const completeClaimSchema = z.object({
   claimerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   txHash: z.string(),
   claimedAmount: z.string(),
+});
+
+const requestClaim2FASchema = z.object({
+  planId: z.string().or(z.number()),
+  beneficiaryName: z.string().min(2),
+  beneficiaryEmail: z.string().email(),
+  beneficiaryRelationship: z.string().min(2),
 });
 
 const beneficiaryKYCSchema = z.object({
@@ -181,6 +190,83 @@ router.get('/plan/:globalPlanId', asyncHandler(async (req: Request, res: Respons
     timeUntilClaimable,
     // Don't expose sensitive data
     claimCodeHash: undefined,
+  });
+}));
+
+/**
+ * @swagger
+ * /claim/2fa/request:
+ *   post:
+ *     summary: Request 2FA code for claim verification
+ *     description: Sends a verification code to the beneficiary's email before claim verification.
+ *     tags: [Claims]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - planId
+ *               - beneficiaryName
+ *               - beneficiaryEmail
+ *               - beneficiaryRelationship
+ *             properties:
+ *               planId:
+ *                 oneOf:
+ *                   - type: string
+ *                   - type: integer
+ *               beneficiaryName:
+ *                 type: string
+ *               beneficiaryEmail:
+ *                 type: string
+ *                 format: email
+ *               beneficiaryRelationship:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 2FA code sent successfully
+ *       400:
+ *         description: Invalid data
+ *       404:
+ *         description: Plan or beneficiary not found
+ */
+router.post('/2fa/request', asyncHandler(async (req: Request, res: Response) => {
+  const data = requestClaim2FASchema.parse(req.body);
+
+  const plan = await prisma.plan.findFirst({
+    where: typeof data.planId === 'number'
+      ? { globalPlanId: data.planId }
+      : { id: data.planId },
+    include: {
+      beneficiaries: true,
+    },
+  });
+
+  if (!plan) {
+    throw new AppError('Plan not found', 404);
+  }
+
+  const beneficiary = plan.beneficiaries.find(b => {
+    const nameHash = keccak256(data.beneficiaryName);
+    const emailHash = keccak256(data.beneficiaryEmail);
+    const relationshipHash = keccak256(data.beneficiaryRelationship);
+
+    return (
+      nameHash === b.nameHash &&
+      emailHash === b.emailHash &&
+      relationshipHash === b.relationshipHash
+    );
+  });
+
+  if (!beneficiary) {
+    throw new AppError('Beneficiary not found or details do not match', 404);
+  }
+
+  await initiateBeneficiaryClaim2FA(plan.id, beneficiary.id, data.beneficiaryEmail);
+
+  res.json({
+    message: 'Two-factor code sent to beneficiary email',
   });
 }));
 
@@ -304,12 +390,18 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Invalid claim code', 401);
   }
 
+  // Verify 2FA code for this beneficiary
+  const is2FAValid = verifyBeneficiaryClaim2FA(plan.id, beneficiary.id, data.twoFactorCode);
+  if (!is2FAValid) {
+    throw new AppError('Invalid or expired two-factor code', 400);
+  }
+
   if (beneficiary.hasClaimed) {
     throw new AppError('This beneficiary has already claimed their inheritance', 400);
   }
 
   // Check beneficiary KYC status
-  const beneficiaryKYC = await prisma.beneficiaryKYC.findUnique({
+  const beneficiaryKYC = await prisma.beneficiaryKYC.findFirst({
     where: { email: data.beneficiaryEmail.toLowerCase() },
     select: { status: true },
   });
@@ -623,7 +715,7 @@ router.get('/kyc/status', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Email is required', 400);
   }
 
-  const kyc = await prisma.beneficiaryKYC.findUnique({
+  const kyc = await prisma.beneficiaryKYC.findFirst({
     where: { email: email.toLowerCase() },
     select: {
       status: true,
@@ -743,9 +835,9 @@ router.post(
     }
 
     // Check existing KYC
-    const existingKYC = await prisma.beneficiaryKYC.findUnique({
+    const existingKYC = await prisma.beneficiaryKYC.findFirst({
       where: { email: normalizedEmail },
-      select: { status: true, idDocumentUrl: true },
+      select: { id: true, status: true, idDocumentUrl: true },
     });
 
     if (existingKYC?.status === 'APPROVED') {
@@ -757,41 +849,52 @@ router.post(
     }
 
     // Create or update BeneficiaryKYC record
-    const kyc = await prisma.beneficiaryKYC.upsert({
-      where: { email: normalizedEmail },
-      create: {
-        email: normalizedEmail,
-        fullName: data.fullName,
-        dateOfBirth: new Date(data.dateOfBirth),
-        nationality: data.nationality,
-        idType: data.idType as any,
-        idNumber: data.idNumber,
-        idExpiryDate: new Date(data.idExpiryDate),
-        idDocumentUrl: documentUrl,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        postalCode: data.postalCode,
-        status: 'PENDING',
-      },
-      update: {
-        fullName: data.fullName,
-        dateOfBirth: new Date(data.dateOfBirth),
-        nationality: data.nationality,
-        idType: data.idType as any,
-        idNumber: data.idNumber,
-        idExpiryDate: new Date(data.idExpiryDate),
-        idDocumentUrl: documentUrl,
-        address: data.address,
-        city: data.city,
-        country: data.country,
-        postalCode: data.postalCode,
-        status: 'PENDING',
-        submittedAt: new Date(),
-        reviewedAt: null,
-        rejectionReason: null,
-      },
-    });
+    let kyc;
+    if (existingKYC) {
+      // Update existing KYC
+      kyc = await prisma.beneficiaryKYC.update({
+        where: { id: existingKYC.id },
+        data: {
+          fullName: data.fullName,
+          dateOfBirth: new Date(data.dateOfBirth),
+          nationality: data.nationality,
+          idType: data.idType as any,
+          idNumber: data.idNumber,
+          idExpiryDate: new Date(data.idExpiryDate),
+          idDocumentUrl: documentUrl,
+          address: data.address,
+          city: data.city,
+          country: data.country,
+          postalCode: data.postalCode,
+          status: 'PENDING',
+          submittedAt: new Date(),
+          reviewedAt: null,
+          rejectionReason: null,
+        },
+      });
+    } else {
+      // Create new KYC
+      kyc = await prisma.beneficiaryKYC.create({
+        data: {
+          email: normalizedEmail,
+          fullName: data.fullName,
+          dateOfBirth: new Date(data.dateOfBirth),
+          nationality: data.nationality,
+          idType: data.idType as any,
+          idNumber: data.idNumber,
+          idExpiryDate: new Date(data.idExpiryDate),
+          idDocumentUrl: documentUrl,
+          address: data.address,
+          city: data.city,
+          country: data.country,
+          postalCode: data.postalCode,
+          status: 'PENDING',
+          submittedAt: new Date(),
+          reviewedAt: null,
+          rejectionReason: null,
+        },
+      });
+    }
 
     // Delete old document from Cloudinary if resubmitting
     if (existingKYC?.idDocumentUrl && existingKYC.idDocumentUrl !== documentUrl) {
