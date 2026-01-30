@@ -186,6 +186,12 @@ class ApiService {
     });
   }
 
+  async requestPlan2FA() {
+    return this.request<{ message: string }>('/plans/2fa/request', {
+      method: 'POST',
+    });
+  }
+
   async updatePlanContract(
     id: string,
     data: { globalPlanId: number; userPlanId: number; txHash: string },
@@ -434,6 +440,8 @@ export interface CreatePlanData {
     allocatedPercentage: number;
     claimCode?: string;
   }[];
+  // 2FA code for plan creation
+  twoFactorCode: string;
   // Proof of Life option (LUMP_SUM only)
   proofOfLifeEnabled?: boolean;
   // Beneficiary notification option

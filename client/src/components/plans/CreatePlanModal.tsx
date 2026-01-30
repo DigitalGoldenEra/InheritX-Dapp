@@ -89,6 +89,11 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
   const [contractData, setContractData] = useState<ContractData | null>(null);
   const [backendPlanId, setBackendPlanId] = useState<string | null>(null);
 
+  // 2FA for plan creation
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [is2FARequested, setIs2FARequested] = useState(false);
+  const [is2FALoading, setIs2FALoading] = useState(false);
+
   // Define plan args type
   type PlanArgs = [
     `0x${string}`,
@@ -337,6 +342,23 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     }
   };
 
+  // Request 2FA code for plan creation
+  const handleRequest2FA = async () => {
+    setIs2FALoading(true);
+    setError(null);
+    try {
+      const { data, error: apiError } = await api.requestPlan2FA();
+      if (apiError) {
+        throw new Error(apiError);
+      }
+      setIs2FARequested(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request 2FA code');
+    } finally {
+      setIs2FALoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setError(null);
     setIsProcessing(true);
@@ -357,6 +379,8 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
           allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points (always x100 when creating new)
           claimCode: b.claimCode || undefined,
         })),
+        // 2FA code for plan creation
+        twoFactorCode,
         // Proof of Life option (LUMP_SUM only)
         proofOfLifeEnabled: distributionMethod === 'LUMP_SUM' ? proofOfLifeEnabled : false,
         // Beneficiary notification option
@@ -926,6 +950,44 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                 ))}
               </div>
 
+              {/* 2FA Verification Section */}
+              <div className="card bg-[var(--bg-deep)] p-4 space-y-3">
+                <h3 className="font-semibold">2FA Verification</h3>
+                <p className="text-sm text-[var(--text-muted)]">
+                  A verification code will be sent to your email to confirm plan creation.
+                </p>
+                {!is2FARequested ? (
+                  <button
+                    type="button"
+                    onClick={handleRequest2FA}
+                    disabled={is2FALoading}
+                    className="btn-secondary w-full"
+                  >
+                    {is2FALoading ? 'Sending...' : 'Send Verification Code'}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-green-400">✓ Code sent to your email</p>
+                    <input
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      className="input w-full text-center text-lg tracking-widest"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRequest2FA}
+                      disabled={is2FALoading}
+                      className="text-sm text-[var(--primary)] hover:underline"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                 <FiAlertCircle className="text-blue-400 shrink-0 mt-0.5" size={18} />
                 <div className="text-sm text-blue-300">
@@ -1115,7 +1177,11 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
               )}
 
               {step === 'review' ? (
-                <button onClick={handleSubmit} disabled={isProcessing} className="btn btn-primary">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isProcessing || twoFactorCode.length !== 6}
+                  className="btn btn-primary"
+                >
                   {isProcessing ? (
                     <>
                       <FiLoader className="animate-spin" size={16} />
