@@ -1,0 +1,16 @@
+{
+  "network": "mainnet",
+  "chainId": 1135,
+  "proxyAddress": "0x7D335d06F3F002623850E108Ba4A9F025d8468e7",
+  "implementationAddress": "0xbC906498f83dCAdC62E55EaFF3505613B13b5EAa",
+  "deployer": "0xd22AF7C143BCEE78600cCA8e33f8E3F3a0E20CD7",
+  "admin": "0x8a4f48fEA452E9bE82668A936eEaD297bE3C0fe5",
+  "tokens": {
+    "primaryToken": "0x680e8ECB908A2040232ef139A0A52cbE47b9F15B",
+    "usdtToken": "0x05D032ac25d322df992303dCa074EE7392C117b9",
+    "usdcToken": "0x680e8ECB908A2040232ef139A0A52cbE47b9F15B"
+  },
+  "deployedAt": "2026-01-30T09:52:07.824Z",
+  "blockNumber": 27518969,
+  "verified": true
+}

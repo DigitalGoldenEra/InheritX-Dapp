@@ -1,0 +1,863 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0x7D335d06F3F002623850E108Ba4A9F025d8468e7",
+      "txHash": "0xb89da4aeb5152bb690bf6f782a0e2c647a5c0f84f10a21884ce9b1498309d780",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "7d7fd9225749ef1fce88c20bc0fc614d7c12f6acfb9ac8cb3fa12221a9f2f694": {
+      "address": "0xbC906498f83dCAdC62E55EaFF3505613B13b5EAa",
+      "txHash": "0x895d789eee201f5cc705d6a546d841fd13ff21f91ab857d1daacab6688f28d67",
+      "layout": {
+        "solcVersion": "0.8.26",
+        "storage": [
+          {
+            "label": "planCount",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:372"
+          },
+          {
+            "label": "escrowCount",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:375"
+          },
+          {
+            "label": "primaryToken",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:378"
+          },
+          {
+            "label": "usdtToken",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:381"
+          },
+          {
+            "label": "usdcToken",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:384"
+          },
+          {
+            "label": "inheritancePlans",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_uint256,t_struct(InheritancePlan)3582_storage)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:387"
+          },
+          {
+            "label": "escrowAccounts",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(EscrowAccount)3631_storage)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:390"
+          },
+          {
+            "label": "planEscrow",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:393"
+          },
+          {
+            "label": "planBeneficiaryCount",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_uint256,t_uint256)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:396"
+          },
+          {
+            "label": "planBeneficiaries",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_struct(Beneficiary)3602_storage))",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:399"
+          },
+          {
+            "label": "userPlanCount",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:403"
+          },
+          {
+            "label": "feeConfig",
+            "offset": 0,
+            "slot": "11",
+            "type": "t_struct(FeeConfig)3701_storage",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:406"
+          },
+          {
+            "label": "totalFeesCollected",
+            "offset": 0,
+            "slot": "15",
+            "type": "t_uint256",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:409"
+          },
+          {
+            "label": "distributionPlans",
+            "offset": 0,
+            "slot": "16",
+            "type": "t_mapping(t_uint256,t_struct(DistributionPlan)3661_storage)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:412"
+          },
+          {
+            "label": "distributionConfigs",
+            "offset": 0,
+            "slot": "17",
+            "type": "t_mapping(t_uint256,t_struct(DistributionConfig)3674_storage)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:415"
+          },
+          {
+            "label": "planNameHashes",
+            "offset": 0,
+            "slot": "18",
+            "type": "t_mapping(t_uint256,t_bytes32)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:418"
+          },
+          {
+            "label": "planDescriptionHashes",
+            "offset": 0,
+            "slot": "19",
+            "type": "t_mapping(t_uint256,t_bytes32)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:421"
+          },
+          {
+            "label": "userPlanIdCounter",
+            "offset": 0,
+            "slot": "20",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:424"
+          },
+          {
+            "label": "userPlanIdToGlobal",
+            "offset": 0,
+            "slot": "21",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:427"
+          },
+          {
+            "label": "globalPlanIdToUser",
+            "offset": 0,
+            "slot": "22",
+            "type": "t_mapping(t_uint256,t_struct(UserPlanMapping)3707_storage)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:430"
+          },
+          {
+            "label": "userKYC",
+            "offset": 0,
+            "slot": "23",
+            "type": "t_mapping(t_address,t_struct(UserKYC)3689_storage)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:433"
+          },
+          {
+            "label": "kycRequired",
+            "offset": 0,
+            "slot": "24",
+            "type": "t_bool",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:436"
+          },
+          {
+            "label": "planEarlyClaimEnabled",
+            "offset": 0,
+            "slot": "25",
+            "type": "t_mapping(t_uint256,t_bool)",
+            "contract": "InheritX",
+            "src": "contracts/InheritX.sol:439"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)26_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AccessControlStorage)36_storage": {
+            "label": "struct AccessControlUpgradeable.AccessControlStorage",
+            "members": [
+              {
+                "label": "_roles",
+                "type": "t_mapping(t_bytes32,t_struct(RoleData)26_storage)",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(InitializableStorage)147_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)298_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReentrancyGuardStorage)362_storage": {
+            "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+            "members": [
+              {
+                "label": "_status",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(RoleData)26_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "hasRole",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_enum(AssetType)3527": {
+            "label": "enum AssetType",
+            "members": [
+              "ERC20_TOKEN1",
+              "ERC20_TOKEN2",
+              "ERC20_TOKEN3"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(DisbursementStatus)3550": {
+            "label": "enum DisbursementStatus",
+            "members": [
+              "Pending",
+              "Active",
+              "Paused",
+              "Completed",
+              "Cancelled"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(DistributionMethod)3543": {
+            "label": "enum DistributionMethod",
+            "members": [
+              "LumpSum",
+              "Quarterly",
+              "Yearly",
+              "Monthly"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(KYCStatus)3556": {
+            "label": "enum KYCStatus",
+            "members": [
+              "NotSubmitted",
+              "Pending",
+              "Approved",
+              "Rejected"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_enum(PlanStatus)3537": {
+            "label": "enum PlanStatus",
+            "members": [
+              "Active",
+              "Executed",
+              "Cancelled",
+              "Overridden",
+              "Paused",
+              "Expired",
+              "AssetsLocked",
+              "AssetsReleased"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(address => mapping(uint256 => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(UserKYC)3689_storage)": {
+            "label": "mapping(address => struct UserKYC)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bool)": {
+            "label": "mapping(uint256 => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_bytes32)": {
+            "label": "mapping(uint256 => bytes32)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_uint256,t_struct(Beneficiary)3602_storage))": {
+            "label": "mapping(uint256 => mapping(uint256 => struct Beneficiary))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Beneficiary)3602_storage)": {
+            "label": "mapping(uint256 => struct Beneficiary)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(DistributionConfig)3674_storage)": {
+            "label": "mapping(uint256 => struct DistributionConfig)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(DistributionPlan)3661_storage)": {
+            "label": "mapping(uint256 => struct DistributionPlan)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(EscrowAccount)3631_storage)": {
+            "label": "mapping(uint256 => struct EscrowAccount)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(InheritancePlan)3582_storage)": {
+            "label": "mapping(uint256 => struct InheritancePlan)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(UserPlanMapping)3707_storage)": {
+            "label": "mapping(uint256 => struct UserPlanMapping)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Beneficiary)3602_storage": {
+            "label": "struct Beneficiary",
+            "members": [
+              {
+                "label": "nameHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "emailHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "relationshipHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "beneficiaryDataHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "claimedBy",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "hasClaimed",
+                "type": "t_bool",
+                "offset": 20,
+                "slot": "4"
+              },
+              {
+                "label": "claimedAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "allocatedPercentage",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "6"
+              },
+              {
+                "label": "claimCodeHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "7"
+              }
+            ],
+            "numberOfBytes": "256"
+          },
+          "t_struct(DistributionConfig)3674_storage": {
+            "label": "struct DistributionConfig",
+            "members": [
+              {
+                "label": "distributionMethod",
+                "type": "t_enum(DistributionMethod)3543",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "transferDate",
+                "type": "t_uint64",
+                "offset": 1,
+                "slot": "0"
+              },
+              {
+                "label": "periodicPercentage",
+                "type": "t_uint8",
+                "offset": 9,
+                "slot": "0"
+              },
+              {
+                "label": "startDate",
+                "type": "t_uint64",
+                "offset": 10,
+                "slot": "0"
+              },
+              {
+                "label": "endDate",
+                "type": "t_uint64",
+                "offset": 18,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(DistributionPlan)3661_storage": {
+            "label": "struct DistributionPlan",
+            "members": [
+              {
+                "label": "planId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "distributionMethod",
+                "type": "t_enum(DistributionMethod)3543",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "periodAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "startDate",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "endDate",
+                "type": "t_uint64",
+                "offset": 8,
+                "slot": "5"
+              },
+              {
+                "label": "totalPeriods",
+                "type": "t_uint8",
+                "offset": 16,
+                "slot": "5"
+              },
+              {
+                "label": "completedPeriods",
+                "type": "t_uint8",
+                "offset": 17,
+                "slot": "5"
+              },
+              {
+                "label": "nextDisbursementDate",
+                "type": "t_uint64",
+                "offset": 18,
+                "slot": "5"
+              },
+              {
+                "label": "isActive",
+                "type": "t_bool",
+                "offset": 26,
+                "slot": "5"
+              },
+              {
+                "label": "disbursementStatus",
+                "type": "t_enum(DisbursementStatus)3550",
+                "offset": 27,
+                "slot": "5"
+              },
+              {
+                "label": "createdAt",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "6"
+              }
+            ],
+            "numberOfBytes": "224"
+          },
+          "t_struct(EscrowAccount)3631_storage": {
+            "label": "struct EscrowAccount",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "planId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "assetType",
+                "type": "t_enum(AssetType)3527",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "isLocked",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "lockedAt",
+                "type": "t_uint64",
+                "offset": 1,
+                "slot": "4"
+              },
+              {
+                "label": "fees",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(FeeConfig)3701_storage": {
+            "label": "struct FeeConfig",
+            "members": [
+              {
+                "label": "feePercentage",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "feeRecipient",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "isActive",
+                "type": "t_bool",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "minFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "maxFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(InheritancePlan)3582_storage": {
+            "label": "struct InheritancePlan",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "beneficiaryCount",
+                "type": "t_uint8",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "assetType",
+                "type": "t_enum(AssetType)3527",
+                "offset": 21,
+                "slot": "1"
+              },
+              {
+                "label": "assetAmount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "createdAt",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "transferDate",
+                "type": "t_uint64",
+                "offset": 8,
+                "slot": "3"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(PlanStatus)3537",
+                "offset": 16,
+                "slot": "3"
+              },
+              {
+                "label": "isClaimed",
+                "type": "t_bool",
+                "offset": 17,
+                "slot": "3"
+              },
+              {
+                "label": "claimCodeHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "escrowId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(UserKYC)3689_storage": {
+            "label": "struct UserKYC",
+            "members": [
+              {
+                "label": "userAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(KYCStatus)3556",
+                "offset": 20,
+                "slot": "0"
+              },
+              {
+                "label": "submittedAt",
+                "type": "t_uint64",
+                "offset": 21,
+                "slot": "0"
+              },
+              {
+                "label": "reviewedAt",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "reviewedBy",
+                "type": "t_address",
+                "offset": 8,
+                "slot": "1"
+              },
+              {
+                "label": "kycDataHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(UserPlanMapping)3707_storage": {
+            "label": "struct UserPlanMapping",
+            "members": [
+              {
+                "label": "user",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "userPlanId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.ReentrancyGuard": [
+            {
+              "contract": "ReentrancyGuardUpgradeable",
+              "label": "_status",
+              "type": "t_uint256",
+              "src": "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol:43",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.AccessControl": [
+            {
+              "contract": "AccessControlUpgradeable",
+              "label": "_roles",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)26_storage)",
+              "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:62",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

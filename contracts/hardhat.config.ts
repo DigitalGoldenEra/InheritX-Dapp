@@ -51,11 +51,17 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
       chainId: 11155111,
     },
-    // Ethereum Mainnet
+    // Ethereum Mainnet (or Lisk Mainnet if RPC matches)
     mainnet: {
       url: MAINNET_RPC_URL,
       accounts: [PRIVATE_KEY],
-      chainId: 1,
+      chainId: 1135, // Lisk Mainnet
+    },
+    // Lisk Mainnet Alias
+    lisk: {
+      url: MAINNET_RPC_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 1135,
     },
     // Lisk Sepolia Testnet
     liskSepolia: {
@@ -68,10 +74,19 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       sepolia: ETHERSCAN_API_KEY,
-      mainnet: ETHERSCAN_API_KEY,
-      liskSepolia: "placeholder", // Lisk uses Blockscout, may need different config
+      mainnet: "123", // Blockscout doesn't require a real key usually, or use arbitrary
+      lisk: "123",
+      liskSepolia: "placeholder",
     },
     customChains: [
+      {
+        network: "lisk",
+        chainId: 1135,
+        urls: {
+          apiURL: "https://blockscout.lisk.com/api",
+          browserURL: "https://blockscout.lisk.com",
+        },
+      },
       {
         network: "liskSepolia",
         chainId: 4202,

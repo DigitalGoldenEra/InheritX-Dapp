@@ -265,11 +265,11 @@ async function main() {
   let verified = false;
   if (networkName !== "localhost" && networkName !== "hardhat" && process.env.SKIP_VERIFICATION !== "true") {
     console.log("🔍 Verifying contracts on explorer...\n");
-    
+
     // Verify implementation contract
     // For UUPS proxies, we verify the implementation, not the proxy
     verified = await verifyContract(implementationAddress);
-    
+
     if (verified) {
       console.log("✅ All contracts verified successfully!\n");
     }
@@ -316,10 +316,11 @@ async function main() {
     liskSepolia: "https://sepolia-blockscout.lisk.com",
     sepolia: "https://sepolia.etherscan.io",
     mainnet: "https://etherscan.io",
+    lisk: "https://blockscout.lisk.com",
   };
 
   const explorerUrl = explorerUrls[networkName] || "https://blockscout.com";
-  
+
   console.log("========================================");
   console.log("   🔗 Explorer Links");
   console.log("========================================\n");

@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { liskSepolia, sepolia, mainnet } from 'wagmi/chains';
+import { liskSepolia, lisk, sepolia, mainnet } from 'wagmi/chains';
 import { RainbowKitProvider, getDefaultConfig, darkTheme } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 import { useState, useEffect } from 'react';
@@ -11,9 +11,10 @@ import { AuthProvider } from '@/context/AuthContext';
 const config = getDefaultConfig({
   appName: 'InheritX',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo',
-  chains: [liskSepolia],
+  chains: [liskSepolia, lisk],
   transports: {
     [liskSepolia.id]: http(),
+    [lisk.id]: http(),
   },
   ssr: true,
 });
