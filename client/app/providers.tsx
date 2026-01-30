@@ -11,9 +11,8 @@ import { AuthProvider } from '@/context/AuthContext';
 const config = getDefaultConfig({
   appName: 'InheritX',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo',
-  chains: [liskSepolia, lisk],
+  chains: [lisk],
   transports: {
-    [liskSepolia.id]: http(),
     [lisk.id]: http(),
   },
   ssr: true,
