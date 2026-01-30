@@ -11,13 +11,14 @@ export const INHERITX_CONTRACT_ADDRESS =
   '0x0000000000000000000000000000000000000000';
 
 // Token addresses on Lisk
-// USDC (Primary): Set in NEXT_PUBLIC_TOKEN1_ADDRESS
+// Token addresses on Lisk
+// ETH (Primary): Set in NEXT_PUBLIC_TOKEN1_ADDRESS (Wrapped ETH)
 // USDT: Set in NEXT_PUBLIC_TOKEN2_ADDRESS
-// USDC (Secondary): Set in NEXT_PUBLIC_TOKEN3_ADDRESS
+// USDC: Set in NEXT_PUBLIC_TOKEN3_ADDRESS
 export const TOKEN_ADDRESSES = {
   ERC20_TOKEN1:
     (process.env.NEXT_PUBLIC_TOKEN1_ADDRESS as `0x${string}`) ||
-    '0x0000000000000000000000000000000000000000', // USDC
+    '0x0000000000000000000000000000000000000000', // ETH
   ERC20_TOKEN2:
     (process.env.NEXT_PUBLIC_TOKEN2_ADDRESS as `0x${string}`) ||
     '0x0000000000000000000000000000000000000000', // USDT
@@ -30,9 +31,9 @@ export const TOKEN_ADDRESSES = {
 export const TOKENS = [
   {
     id: 'ERC20_TOKEN1',
-    name: 'USD Coin (Primary)',
-    symbol: 'USDC',
-    decimals: 6,
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18,
     address: TOKEN_ADDRESSES.ERC20_TOKEN1,
   },
   {
