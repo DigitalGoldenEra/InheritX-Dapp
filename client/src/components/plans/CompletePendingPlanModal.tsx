@@ -206,8 +206,8 @@ export default function CompletePendingPlanModal({
     const fetchClaimCode = async () => {
       try {
         const { data, error } = await api.getClaimCode(plan.id);
-        if (data?.claimCode) {
-          setClaimCode(data.claimCode);
+        if (data?.beneficiaries?.[0]?.claimCode) {
+          setClaimCode(data.beneficiaries[0].claimCode);
         } else {
           setError('Failed to retrieve claim code. Please contact support.');
         }

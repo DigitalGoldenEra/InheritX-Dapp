@@ -34,7 +34,7 @@ export default function PlanDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [claimCode, setClaimCode] = useState<string | null>(null);
+  const [claimCodes, setClaimCodes] = useState<{ beneficiaryIndex: number; name: string; email: string; claimCode: string }[] | null>(null);
 
   useEffect(() => {
     fetchPlan();
@@ -73,17 +73,24 @@ export default function PlanDetailsPage() {
     }
   };
 
-  const copyClaimCode = async () => {
+  const fetchClaimCodes = async () => {
     if (!plan) return;
     try {
       const { data, error: apiError } = await api.getClaimCode(plan.id);
-      if (data?.claimCode) {
-        setClaimCode(data.claimCode);
-        await navigator.clipboard.writeText(data.claimCode);
-        alert('Claim code copied to clipboard!');
+      if (data?.beneficiaries) {
+        setClaimCodes(data.beneficiaries);
       }
     } catch (err) {
-      setError('Failed to retrieve claim code');
+      setError('Failed to retrieve claim codes');
+    }
+  };
+
+  const copyClaimCode = async (claimCode: string) => {
+    try {
+      await navigator.clipboard.writeText(claimCode);
+      alert('Claim code copied to clipboard!');
+    } catch (err) {
+      setError('Failed to copy claim code');
     }
   };
 
@@ -349,22 +356,42 @@ export default function PlanDetailsPage() {
         >
           <h2 className="text-lg font-semibold mb-4">Actions</h2>
           <div className="space-y-3">
-            {/* Claim Code */}
+            {/* Claim Codes */}
             <div className="p-4 bg-[var(--bg-deep)] rounded-lg border border-white/10">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Claim Code</label>
-                <button
-                  onClick={copyClaimCode}
-                  className="btn btn-icon btn-ghost btn-sm"
-                  title="Copy Claim Code"
-                >
-                  <FiCopy size={16} />
-                </button>
+                <label className="text-sm font-medium">Claim Codes</label>
+                {!claimCodes && (
+                  <button
+                    onClick={fetchClaimCodes}
+                    className="btn btn-sm btn-secondary"
+                  >
+                    Reveal Codes
+                  </button>
+                )}
               </div>
-              {claimCode ? (
-                <p className="font-mono text-lg font-bold text-primary">{claimCode}</p>
+              {claimCodes ? (
+                <div className="space-y-2">
+                  {claimCodes.map((c) => (
+                    <div key={c.beneficiaryIndex} className="flex items-center justify-between p-2 bg-white/5 rounded">
+                      <div>
+                        <p className="text-sm font-medium">{c.name}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{c.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="font-mono text-sm text-primary">{c.claimCode}</code>
+                        <button
+                          onClick={() => copyClaimCode(c.claimCode)}
+                          className="btn btn-icon btn-ghost btn-sm"
+                          title="Copy"
+                        >
+                          <FiCopy size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p className="text-sm text-[var(--text-muted)]">Click to reveal claim code</p>
+                <p className="text-sm text-[var(--text-muted)]">Click to reveal claim codes</p>
               )}
             </div>
 
