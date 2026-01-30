@@ -298,11 +298,6 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     if (!transferDate) return 'Transfer date is required';
     if (new Date(transferDate) <= new Date()) return 'Transfer date must be in the future';
 
-    // Check balance
-    if (hasInsufficientBalance) {
-      return `Insufficient balance. Required: ${formatUnits(totalRequired, selectedToken.decimals)} ${selectedToken.symbol}`;
-    }
-
     return null;
   };
 
@@ -458,7 +453,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
 
   // Main transaction flow handler
   const startTransactionFlow = () => {
-    if (!address || !planArgs || hasInsufficientBalance || isKYCBlocked) {
+    if (!address || !planArgs || isKYCBlocked) {
       return;
     }
 
