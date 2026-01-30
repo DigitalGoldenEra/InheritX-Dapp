@@ -10,8 +10,8 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { verifyWalletSignature, generateToken, authenticateToken } from '../middleware/auth';
 import { logger } from '../utils/logger';
-import { TOTP, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib';
-import * as QRCode from 'qrcode';
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
 import { encryptTotpSecret, decryptTotpSecret } from '../utils/crypto';
 
 const router = Router();
@@ -482,13 +482,6 @@ router.post('/admin/login', asyncHandler(async (req: Request, res: Response) => 
  *         description: Unauthorized
  */
 router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
-  // Configure authenticator
-  const authenticator = new TOTP({
-    period: 30,
-    crypto: new NobleCryptoPlugin(),
-    base32: new ScureBase32Plugin(),
-  });
-
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
   });
@@ -497,30 +490,26 @@ router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, r
     throw new AppError('User not found', 404);
   }
 
-  // Generate secret
-  const secret = authenticator.generateSecret();
-
-  // Create key URI for authenticator apps
-  const otpauth = authenticator.toURI({
-    label: user.email || user.walletAddress,
+  // Generate secret using speakeasy
+  const secret = speakeasy.generateSecret({
+    name: `InheritX (${user.email || user.walletAddress})`,
     issuer: 'InheritX',
-    secret
+    length: 20,
   });
 
-  // Generate QR code
-  const qrCode = await QRCode.toDataURL(otpauth);
+  // Generate QR code from the otpauth URL
+  const qrCode = await QRCode.toDataURL(secret.otpauth_url as string);
 
-  // Save secret to valid (temporarily or mark as pending verification if we wanted to be strict, 
-  // but here we just save it. verification sets enabled=true)
+  // Save encrypted secret (temporarily until verified)
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      twoFactorSecret: encryptTotpSecret(secret),
+      twoFactorSecret: encryptTotpSecret(secret.base32 as string),
       twoFactorEnabled: false, // Ensure it's false until verified
     },
   });
 
-  res.json({ secret, qrCode });
+  res.json({ secret: secret.base32, qrCode });
 }));
 
 /**
@@ -554,13 +543,6 @@ router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, r
 router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const { token } = z.object({ token: z.string() }).parse(req.body);
 
-  // Configure authenticator
-  const authenticator = new TOTP({
-    period: 30,
-    crypto: new NobleCryptoPlugin(),
-    base32: new ScureBase32Plugin(),
-  });
-
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
   });
@@ -571,9 +553,16 @@ router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, 
   }
 
   const secret = decryptTotpSecret((user as any).twoFactorSecret);
-  const { valid } = await authenticator.verify(token, { secret, epochTolerance: 30 });
 
-  if (!valid) {
+  // Verify the TOTP token using speakeasy
+  const verified = speakeasy.totp.verify({
+    secret: secret,
+    encoding: 'base32',
+    token: token,
+    window: 1, // Allow 1 period before/after for clock drift
+  });
+
+  if (!verified) {
     throw new AppError('Invalid 2FA code', 400);
   }
 
@@ -587,7 +576,7 @@ router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, 
   await prisma.activity.create({
     data: {
       userId: user.id,
-      type: 'SYSTEM_EVENT', // Or create a new type if strictly needed, but reusing generic system event for now
+      type: 'SYSTEM_EVENT',
       description: '2FA enabled',
     },
   });
