@@ -11,6 +11,7 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { parseUnits, formatUnits, decodeEventLog } from 'viem';
+import { lisk } from 'viem/chains';
 import { api, CreatePlanData, ContractData as ApiContractData } from '@/lib/api';
 import inheritXABI from '@/contract/abi';
 import {
@@ -117,6 +118,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    chainId: lisk.id,
   });
 
   // Check KYC status

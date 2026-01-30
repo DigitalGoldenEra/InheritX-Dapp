@@ -10,6 +10,9 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { verifyWalletSignature, generateToken, authenticateToken } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { TOTP, NobleCryptoPlugin, ScureBase32Plugin } from 'otplib';
+import * as QRCode from 'qrcode';
+import { encryptTotpSecret, decryptTotpSecret } from '../utils/crypto';
 
 const router = Router();
 
@@ -479,16 +482,12 @@ router.post('/admin/login', asyncHandler(async (req: Request, res: Response) => 
  *         description: Unauthorized
  */
 router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
-  const { TOTP, ScureBase32Plugin, NobleCryptoPlugin } = await import('otplib');
-  const QRCode = await import('qrcode');
-  const { encryptTotpSecret } = await import('../utils/crypto');
-
+  // Configure authenticator
   const authenticator = new TOTP({
+    period: 30,
     crypto: new NobleCryptoPlugin(),
     base32: new ScureBase32Plugin(),
-    step: 30,
-    window: 1,
-  } as any) as any;
+  });
 
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
@@ -502,10 +501,10 @@ router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, r
   const secret = authenticator.generateSecret();
 
   // Create key URI for authenticator apps
-  const otpauth = (authenticator as any).toURI({
-    secret,
+  const otpauth = authenticator.toURI({
     label: user.email || user.walletAddress,
     issuer: 'InheritX',
+    secret
   });
 
   // Generate QR code
@@ -554,15 +553,13 @@ router.post('/2fa/setup', authenticateToken, asyncHandler(async (req: Request, r
  */
 router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const { token } = z.object({ token: z.string() }).parse(req.body);
-  const { TOTP, ScureBase32Plugin, NobleCryptoPlugin } = await import('otplib');
-  const { decryptTotpSecret } = await import('../utils/crypto');
 
+  // Configure authenticator
   const authenticator = new TOTP({
+    period: 30,
     crypto: new NobleCryptoPlugin(),
     base32: new ScureBase32Plugin(),
-    step: 30,
-    window: 1,
-  } as any) as any;
+  });
 
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
@@ -574,9 +571,9 @@ router.post('/2fa/verify', authenticateToken, asyncHandler(async (req: Request, 
   }
 
   const secret = decryptTotpSecret((user as any).twoFactorSecret);
-  const isValid = await (authenticator as any).verify(token, { secret });
+  const { valid } = await authenticator.verify(token, { secret, epochTolerance: 30 });
 
-  if (!isValid?.valid) {
+  if (!valid) {
     throw new AppError('Invalid 2FA code', 400);
   }
 
