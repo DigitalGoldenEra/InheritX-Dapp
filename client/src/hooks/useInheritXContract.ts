@@ -56,6 +56,7 @@ export function useCreateInheritancePlan() {
     distributionMethod: string;
     transferDate: string;
     periodicPercentage?: number;
+    twoFactorCode: string;
   }) => {
     try {
       // Step 1: Create plan in backend (gets contract data with hashes)
@@ -77,6 +78,7 @@ export function useCreateInheritancePlan() {
           allocatedPercentage: b.allocatedPercentage * 100, // Convert to basis points
           claimCode: b.claimCode,
         })),
+        twoFactorCode: planData.twoFactorCode,
       });
 
       if (apiError || !backendData) {
