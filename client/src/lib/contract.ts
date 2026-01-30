@@ -10,42 +10,42 @@ export const INHERITX_CONTRACT_ADDRESS =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`) ||
   '0x0000000000000000000000000000000000000000';
 
-// Token addresses on Lisk Sepolia
-// ETH: 0x6033f7f88332b8db6ad452b7c6d5bb643990ae3f (Wrapped ETH)
-// USDC: Set in NEXT_PUBLIC_TOKEN2_ADDRESS
-// USDT: Set in NEXT_PUBLIC_TOKEN3_ADDRESS
+// Token addresses on Lisk
+// USDC (Primary): Set in NEXT_PUBLIC_TOKEN1_ADDRESS
+// USDT: Set in NEXT_PUBLIC_TOKEN2_ADDRESS
+// USDC (Secondary): Set in NEXT_PUBLIC_TOKEN3_ADDRESS
 export const TOKEN_ADDRESSES = {
   ERC20_TOKEN1:
     (process.env.NEXT_PUBLIC_TOKEN1_ADDRESS as `0x${string}`) ||
-    '0x0000000000000000000000000000000000000000', // ETH
+    '0x0000000000000000000000000000000000000000', // USDC
   ERC20_TOKEN2:
     (process.env.NEXT_PUBLIC_TOKEN2_ADDRESS as `0x${string}`) ||
-    '0x0000000000000000000000000000000000000000', // USDC
+    '0x0000000000000000000000000000000000000000', // USDT
   ERC20_TOKEN3:
     (process.env.NEXT_PUBLIC_TOKEN3_ADDRESS as `0x${string}`) ||
-    '0x0000000000000000000000000000000000000000', // USDT
+    '0x0000000000000000000000000000000000000000', // USDC
 };
 
 // Token metadata
 export const TOKENS = [
   {
     id: 'ERC20_TOKEN1',
-    name: 'Ethereum',
-    symbol: 'ETH',
-    decimals: 18,
+    name: 'USD Coin (Primary)',
+    symbol: 'USDC',
+    decimals: 6,
     address: TOKEN_ADDRESSES.ERC20_TOKEN1,
   },
   {
     id: 'ERC20_TOKEN2',
-    name: 'USD Coin',
-    symbol: 'USDC',
+    name: 'Tether USD',
+    symbol: 'USDT',
     decimals: 6,
     address: TOKEN_ADDRESSES.ERC20_TOKEN2,
   },
   {
     id: 'ERC20_TOKEN3',
-    name: 'Tether USD',
-    symbol: 'USDT',
+    name: 'USD Coin (Secondary)',
+    symbol: 'USDC',
     decimals: 6,
     address: TOKEN_ADDRESSES.ERC20_TOKEN3,
   },
