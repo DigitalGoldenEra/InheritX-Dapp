@@ -1065,7 +1065,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   <button
                     onClick={startTransactionFlow}
                     className="btn btn-primary w-full"
-                    disabled={isKYCBlocked || hasInsufficientBalance || !planArgs || !address}
+                    disabled={isKYCBlocked || !planArgs || !address}
                   >
                     {isKYCBlocked ? 'KYC Required' : 'Start Transaction'}
                   </button>
@@ -1101,7 +1101,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                     <button
                       onClick={handleRetry}
                       className="btn btn-primary"
-                      disabled={hasInsufficientBalance || !planArgs}
+                      disabled={!planArgs}
                     >
                       Retry
                     </button>

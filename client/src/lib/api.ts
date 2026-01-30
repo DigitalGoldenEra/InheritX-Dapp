@@ -210,7 +210,7 @@ class ApiService {
   }
 
   async getClaimCode(planId: string) {
-    return this.request<{ claimCode: string }>(`/plans/${planId}/claim-code`);
+    return this.request<{ beneficiaries: { beneficiaryIndex: number; name: string; email: string; claimCode: string }[] }>(`/plans/${planId}/claim-codes`);
   }
 
   // ============================================
