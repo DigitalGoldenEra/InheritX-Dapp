@@ -81,9 +81,12 @@ export default function PlansPage() {
   const copyClaimCode = async (planId: string) => {
     try {
       const { data, error } = await api.getClaimCode(planId);
-      if (data?.claimCode) {
-        await navigator.clipboard.writeText(data.claimCode);
-        alert('Claim code copied to clipboard!');
+      if (data?.beneficiaries && data.beneficiaries.length > 0) {
+        const claimCodes = data.beneficiaries
+          .map((b) => `${b.name}: ${b.claimCode}`)
+          .join('\n');
+        await navigator.clipboard.writeText(claimCodes);
+        alert('Claim codes copied to clipboard!');
       }
     } catch (error) {
       console.error('Error getting claim code:', error);
