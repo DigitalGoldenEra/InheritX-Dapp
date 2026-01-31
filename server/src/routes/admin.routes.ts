@@ -11,6 +11,7 @@ import { authenticateToken, requireAdmin, requireSuperAdmin } from '../middlewar
 import { sendKYCApprovalNotification, sendKYCRejectionNotification } from '../utils/email';
 import { logger } from '../utils/logger';
 import { approveKYCOnContract, rejectKYCOnContract, isContractConfigured } from '../utils/contract';
+import { processDueDistributions } from '../cron';
 
 const router = Router();
 
@@ -133,6 +134,31 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
       total: totalClaims,
     },
     recentActivity,
+  });
+}));
+
+// ============================================
+// SYSTEM MANAGEMENT
+// ============================================
+
+/**
+ * @swagger
+ * /admin/distributions/trigger:
+ *   post:
+ *     summary: Manually trigger distribution processing
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Distribution processing triggered
+ */
+router.post('/distributions/trigger', asyncHandler(async (req: Request, res: Response) => {
+  // Run asynchronously without waiting
+  processDueDistributions().catch((err: unknown) => logger.error('Manual distribution trigger failed:', err));
+
+  res.json({
+    message: 'Distribution processing triggered successfully',
   });
 }));
 

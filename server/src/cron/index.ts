@@ -15,7 +15,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
  * Process due distributions and send notifications
  * Runs daily at 8:00 AM
  */
-async function processDueDistributions() {
+export async function processDueDistributions() {
   logger.info('🔄 Starting distribution processing cron job...');
 
   const now = new Date();

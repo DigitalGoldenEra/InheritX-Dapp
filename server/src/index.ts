@@ -26,6 +26,7 @@ import adminRoutes from './routes/admin.routes';
 import webhookRoutes from './routes/webhook.routes';
 import beneficiaryKYCRoutes from './routes/beneficiary-kyc.routes';
 import notificationRoutes from './routes/notification.routes';
+import { startCronJobs } from './cron';
 
 // Initialize express app
 const app: Express = express();
@@ -142,6 +143,9 @@ async function startServer() {
     // Test database connection
     await prisma.$connect();
     logger.info('✅ Database connected successfully');
+
+    // Start cron jobs
+    startCronJobs();
 
     // Start server
     app.listen(PORT, () => {

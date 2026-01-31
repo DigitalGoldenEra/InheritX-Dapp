@@ -10,11 +10,12 @@ import { authenticateToken } from '../middleware/auth';
 import {
   keccak256,
   encryptClaimCode,
+  decryptClaimCode,
   createBeneficiaryHashes,
   generateClaimCode,
 } from '../utils/crypto';
 import { logger } from '../utils/logger';
-import { sendPlanCreationNotification } from '../utils/email';
+import { sendPlanCreationNotification, sendClaimNotification } from '../utils/email';
 import { initiateUserAction2FA, verifyUserAction2FA } from '../utils/twoFactor';
 
 const router = Router();
@@ -576,6 +577,7 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
     },
     include: {
       user: true, // Include user to get email
+      beneficiaries: true, // Include beneficiaries for notification
     },
   });
 
@@ -594,16 +596,16 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
     },
   });
 
-  // Send confirmation email
-  if (updatedPlan.user?.email && updatedPlan.user?.name) {
-    // Determine asset symbol based on type
-    let assetSymbol = 'Tokens';
-    switch (updatedPlan.assetType) {
-      case 'ERC20_TOKEN1': assetSymbol = 'WETH (Mock)'; break;
-      case 'ERC20_TOKEN2': assetSymbol = 'USDT (Mock)'; break;
-      case 'ERC20_TOKEN3': assetSymbol = 'USDC (Mock)'; break;
-    }
+  // Determine asset symbol based on type
+  let assetSymbol = 'Tokens';
+  switch (updatedPlan.assetType) {
+    case 'ERC20_TOKEN1': assetSymbol = 'WETH (Mock)'; break;
+    case 'ERC20_TOKEN2': assetSymbol = 'USDT (Mock)'; break;
+    case 'ERC20_TOKEN3': assetSymbol = 'USDC (Mock)'; break;
+  }
 
+  // Send confirmation email to creator
+  if (updatedPlan.user?.email && updatedPlan.user?.name) {
     await sendPlanCreationNotification(
       updatedPlan.user.email,
       updatedPlan.user.name,
@@ -611,6 +613,41 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
       updatedPlan.assetAmount,
       assetSymbol,
       data.txHash
+    );
+  }
+
+  // Send notifications to beneficiaries if enabled
+  if (updatedPlan.notifyBeneficiaries && updatedPlan.beneficiaries.length > 0) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const claimUrl = `${frontendUrl}/claim/${updatedPlan.id}`;
+
+    // Process each beneficiary
+    await Promise.all(
+      updatedPlan.beneficiaries.map(async (beneficiary) => {
+        try {
+          // Decrypt claim code
+          const claimCode = decryptClaimCode(beneficiary.claimCodeEncrypted);
+
+          // Calculate allocated amount (simple approximation for display)
+          // For exact amount we should use BigInt math with assetAmountWei
+          const shareAmount = (parseFloat(updatedPlan.assetAmount) * beneficiary.allocatedPercentage / 10000).toFixed(4);
+
+          await sendClaimNotification(
+            beneficiary.email,
+            beneficiary.name,
+            updatedPlan.planName,
+            claimCode,
+            shareAmount,
+            assetSymbol,
+            claimUrl,
+            updatedPlan.globalPlanId || undefined
+          );
+
+          logger.info(`Notification sent to beneficiary: ${beneficiary.email} for plan ${updatedPlan.id}`);
+        } catch (error) {
+          logger.error(`Failed to notify beneficiary ${beneficiary.email}:`, error);
+        }
+      })
     );
   }
 
