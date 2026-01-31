@@ -3,11 +3,31 @@
  * Scheduled tasks for distribution notifications and maintenance
  */
 
+import { formatUnits } from 'ethers';
 import cron from 'node-cron';
 import { prisma } from '../utils/prisma';
 import { decryptClaimCode } from '../utils/crypto';
 import { sendClaimNotification } from '../utils/email';
 import { logger } from '../utils/logger';
+
+// Helper to format Wei amount to readable string
+function formatWeiAmount(amountWei: string, assetType: string): string {
+  try {
+    let decimals = 18;
+    if (assetType === 'ERC20_TOKEN2' || assetType === 'ERC20_TOKEN3') {
+      decimals = 6;
+    }
+
+    // Format and remove trailing zeros
+    const formatted = formatUnits(amountWei, decimals);
+
+    // Remove unnecessary decimals (e.g. 1.5000 -> 1.5, 1.0 -> 1)
+    return formatted.replace(/\.?0+$/, '');
+  } catch (error) {
+    logger.error('Error formatting wei amount:', error);
+    return amountWei; // Fallback to raw string
+  }
+}
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -59,7 +79,7 @@ export async function processDueDistributions() {
 /**
  * Process Lump Sum distribution - send notifications to all beneficiaries
  */
-async function processLumpSumDistribution(plan: any) {
+export async function processLumpSumDistribution(plan: any) {
   logger.info(`Processing lump sum distribution for plan ${plan.id}`);
 
   // Send notifications to each beneficiary
@@ -74,13 +94,14 @@ async function processLumpSumDistribution(plan: any) {
     }
 
     const claimUrl = `${FRONTEND_URL}/claim/${plan.globalPlanId}`;
+    const formattedAmount = formatWeiAmount(beneficiary.allocatedAmount, plan.assetType);
 
     const sent = await sendClaimNotification(
       beneficiary.email,
       beneficiary.name,
       plan.planName,
       claimCode,
-      beneficiary.allocatedAmount,
+      formattedAmount,
       getAssetTypeName(plan.assetType),
       claimUrl,
       plan.globalPlanId
@@ -151,13 +172,14 @@ async function processPeriodicDistribution(plan: any) {
 
       const periodName = getPeriodName(plan.distributionMethod);
       const amount = calculatePeriodAmount(beneficiary.allocatedAmount, plan.periodicPercentage || 100);
+      const formattedAmount = formatWeiAmount(amount, plan.assetType);
 
       const sent = await sendClaimNotification(
         beneficiary.email,
         beneficiary.name,
         `${plan.planName} - ${periodName} ${distribution.periodNumber}`,
         claimCode,
-        amount,
+        formattedAmount,
         getAssetTypeName(plan.assetType),
         claimUrl,
         plan.globalPlanId
