@@ -525,6 +525,7 @@ export interface AdminStats {
   kyc: { pending: number; approved: number; rejected: number; total: number };
   plans: { total: number; active: number };
   claims: { total: number };
+  revenue: { total: number; totalFormatted: string };
   recentActivity: Activity[];
 }
 

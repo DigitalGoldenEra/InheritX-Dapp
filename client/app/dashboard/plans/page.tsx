@@ -261,7 +261,7 @@ export default function PlansPage() {
 
                         {plan.txHash && (
                           <a
-                            href={`https://sepolia-blockscout.lisk.com/tx/${plan.txHash}`}
+                            href={`https://blockscout.lisk.com/tx/${plan.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 px-3 py-2 text-xs rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"

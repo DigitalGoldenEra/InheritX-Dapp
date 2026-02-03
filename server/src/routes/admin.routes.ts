@@ -90,6 +90,7 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
     activePlans,
     totalClaims,
     recentActivity,
+    successfulPlans,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.kYC.count({ where: { status: 'PENDING' } }),
@@ -108,7 +109,22 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
         user: { select: { walletAddress: true, name: true } },
       },
     }),
+    // Get all successful plans (ACTIVE or EXECUTED) for revenue calculation
+    prisma.plan.findMany({
+      where: {
+        status: { in: ['ACTIVE', 'EXECUTED'] },
+      },
+      select: {
+        assetAmount: true,
+      },
+    }),
   ]);
+
+  // Calculate revenue: 2% of all successful plan amounts
+  const totalRevenue = successfulPlans.reduce((sum, plan) => {
+    const amount = parseFloat(plan.assetAmount) || 0;
+    return sum + (amount * 0.02); // 2% of each plan amount
+  }, 0);
 
   res.json({
     users: {
@@ -132,6 +148,10 @@ router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
     },
     claims: {
       total: totalClaims,
+    },
+    revenue: {
+      total: totalRevenue,
+      totalFormatted: totalRevenue.toFixed(6),
     },
     recentActivity,
   });
@@ -1011,8 +1031,21 @@ router.get('/users', asyncHandler(async (req: Request, res: Response) => {
     prisma.user.count({ where }),
   ]);
 
+  // Map users to include kycStatus and planCount as expected by frontend
+  const mappedUsers = users.map(user => ({
+    id: user.id,
+    walletAddress: user.walletAddress,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    kycStatus: user.kyc?.status || 'NOT_SUBMITTED',
+    planCount: user._count?.plans || 0,
+    twoFactorEnabled: user.twoFactorEnabled,
+    createdAt: user.createdAt,
+  }));
+
   res.json({
-    data: users,
+    data: mappedUsers,
     pagination: {
       total,
       page: Number(page),

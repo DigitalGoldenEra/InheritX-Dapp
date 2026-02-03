@@ -70,13 +70,20 @@ export default function AdminDashboard() {
       color: '#F59E0B',
       bg: 'rgba(245, 158, 11, 0.1)',
     },
+    {
+      icon: <FiDollarSign size={22} />,
+      label: 'Revenue Collected',
+      value: stats?.revenue?.totalFormatted ? `${stats.revenue.totalFormatted} ETH` : '0 ETH',
+      color: '#22C55E',
+      bg: 'rgba(34, 197, 94, 0.1)',
+    },
   ];
 
   if (isLoading) {
     return (
       <div className="max-w-[1400px] mx-auto">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="skeleton h-[140px] rounded-2xl" />
           ))}
         </div>
@@ -100,8 +107,8 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-5 mb-8">
+      {/* Stats Grid - 3 per row on large screens */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
         {statCards.map((stat, index) => {
           const cardContent = (
             <>
