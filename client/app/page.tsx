@@ -40,7 +40,7 @@ export default function WaitlistPage() {
 
   const fetchWaitlistCount = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/waitlist/count`);
+      const res = await fetch(`${API_BASE}/waitlist/count`);
       if (res.ok) {
         const data = await res.json();
         setWaitlistCount(data.count || 0);
