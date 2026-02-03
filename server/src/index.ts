@@ -44,7 +44,7 @@ app.use(helmet());
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://waitlist.inheritx.org',
+    'https://waitlist.inheritx.org', 'https://www.waitlist.inheritx.org', 'https://waitlist.inheritx.org/'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
