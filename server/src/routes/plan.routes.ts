@@ -640,7 +640,8 @@ router.put('/:id/contract', authenticateToken, asyncHandler(async (req: Request,
             shareAmount,
             assetSymbol,
             claimUrl,
-            updatedPlan.globalPlanId || undefined
+            updatedPlan.globalPlanId || undefined,
+            false // Don't include claim code in early notification
           );
 
           logger.info(`Notification sent to beneficiary: ${beneficiary.email} for plan ${updatedPlan.id}`);

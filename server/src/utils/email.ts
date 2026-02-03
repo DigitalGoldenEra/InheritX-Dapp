@@ -54,7 +54,8 @@ export async function sendClaimNotification(
   amount: string,
   assetType: string,
   claimUrl: string,
-  globalPlanId?: number
+  globalPlanId?: number,
+  includeClaimCode: boolean = true
 ): Promise<boolean> {
   const subject = `InheritX: You Have an Inheritance to Claim - ${planName}`;
   const planIdDisplay = globalPlanId ? `#${globalPlanId}` : '';
@@ -119,6 +120,7 @@ export async function sendClaimNotification(
                               <span style="color: #33C5E0; font-size: 14px; float: right; font-weight: 600;">${amount} ${assetType}</span>
                             </td>
                           </tr>
+                          ${includeClaimCode ? `
                           <tr>
                             <td style="padding: 12px 0 4px 0;">
                               <span style="color: #64748B; font-size: 14px;">Claim Code</span>
@@ -127,14 +129,25 @@ export async function sendClaimNotification(
                               </div>
                             </td>
                           </tr>
+                          ` : `
+                          <tr>
+                            <td style="padding: 12px 0 4px 0;">
+                              <p style="margin: 0; font-size: 14px; color: #94A3B8; text-align: center;">
+                                The plan owner will provide your claim code when the time comes.
+                              </p>
+                            </td>
+                          </tr>
+                          `}
                         </table>
                       </td>
                     </tr>
                   </table>
                   
-                  <!-- Steps -->
                   <p style="margin: 0 0 16px 0; font-size: 14px; color: #94A3B8; text-align: center;">
-                    <strong style="color: #FFFFFF;">How to claim:</strong> Click below → Connect wallet → Enter code
+                    ${includeClaimCode
+      ? '<strong style="color: #FFFFFF;">How to claim:</strong> Click below → Connect wallet → Enter code'
+      : '<strong style="color: #FFFFFF;">When the time comes:</strong> Get your code from the plan owner → Connect wallet → Enter code'
+    }
                   </p>
                   
                   <!-- CTA Button -->
@@ -158,7 +171,10 @@ export async function sendClaimNotification(
               <tr>
                 <td style="padding-top: 32px; text-align: center;">
                   <p style="margin: 0 0 8px 0; font-size: 13px; color: #64748B;">
-                    Keep your claim code secure. Anyone with this code can claim.
+                    ${includeClaimCode
+      ? 'Keep your claim code secure. Anyone with this code can claim.'
+      : 'The plan owner will share your claim code with you when the time is right.'
+    }
                   </p>
                   <p style="margin: 0; font-size: 12px; color: #475569;">
                     © ${new Date().getFullYear()} InheritX. Built on Lisk.
@@ -173,7 +189,8 @@ export async function sendClaimNotification(
     </html>
   `;
 
-  const text = `
+  const text = includeClaimCode
+    ? `
 Hello ${beneficiaryName},
 
 You have been designated as a beneficiary in an inheritance plan.
@@ -187,7 +204,20 @@ To claim: Visit ${claimUrl}, connect your wallet, and enter the claim code.
 Keep your claim code secure.
 
 © ${new Date().getFullYear()} InheritX
-  `;
+    `
+    : `
+Hello ${beneficiaryName},
+
+You have been designated as a beneficiary in an inheritance plan.
+
+Plan: ${planName} ${planIdDisplay}
+Amount: ${amount} ${assetType}
+
+When the time comes, the plan owner will provide your claim code.
+To claim: Visit ${claimUrl}, connect your wallet, and enter the code provided to you.
+
+© ${new Date().getFullYear()} InheritX
+    `;
 
   return sendEmail(beneficiaryEmail, subject, text, html);
 }
