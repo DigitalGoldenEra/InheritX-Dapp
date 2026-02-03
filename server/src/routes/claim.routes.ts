@@ -397,13 +397,22 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('This beneficiary has already claimed their inheritance', 400);
   }
 
-  // Check beneficiary KYC status
+  // Check beneficiary KYC status - also check if they have User KYC (platform user)
   const beneficiaryKYC = await prisma.beneficiaryKYC.findFirst({
     where: { email: data.beneficiaryEmail.toLowerCase() },
     select: { status: true },
   });
 
-  if (!beneficiaryKYC || beneficiaryKYC.status !== 'APPROVED') {
+  // Also check if they are a registered user with approved KYC
+  const userWithKYC = await prisma.user.findFirst({
+    where: { email: data.beneficiaryEmail.toLowerCase() },
+    include: { kyc: { select: { status: true } } },
+  });
+
+  const hasApprovedBeneficiaryKYC = beneficiaryKYC?.status === 'APPROVED';
+  const hasApprovedUserKYC = userWithKYC?.kyc?.status === 'APPROVED';
+
+  if (!hasApprovedBeneficiaryKYC && !hasApprovedUserKYC) {
     const kycStatus = beneficiaryKYC?.status || 'NOT_SUBMITTED';
     throw new AppError(
       kycStatus === 'PENDING'
@@ -712,8 +721,11 @@ router.get('/kyc/status', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Email is required', 400);
   }
 
-  const kyc = await prisma.beneficiaryKYC.findFirst({
-    where: { email: email.toLowerCase() },
+  const normalizedEmail = email.toLowerCase();
+
+  // Check beneficiary KYC first
+  const beneficiaryKYC = await prisma.beneficiaryKYC.findFirst({
+    where: { email: normalizedEmail },
     select: {
       status: true,
       submittedAt: true,
@@ -723,19 +735,48 @@ router.get('/kyc/status', asyncHandler(async (req: Request, res: Response) => {
     },
   });
 
-  if (!kyc) {
+  // Also check if they are a registered user with KYC
+  const userWithKYC = await prisma.user.findFirst({
+    where: { email: normalizedEmail },
+    include: {
+      kyc: {
+        select: {
+          status: true,
+          submittedAt: true,
+          reviewedAt: true,
+          fullName: true
+        }
+      }
+    },
+  });
+
+  // If user has approved platform KYC, return that
+  if (userWithKYC?.kyc?.status === 'APPROVED') {
     return res.json({
-      status: 'NOT_SUBMITTED',
-      message: 'KYC has not been submitted yet',
+      status: 'APPROVED',
+      submittedAt: userWithKYC.kyc.submittedAt,
+      reviewedAt: userWithKYC.kyc.reviewedAt,
+      rejectionReason: null,
+      fullName: userWithKYC.kyc.fullName || userWithKYC.name,
+      source: 'platform', // Indicate they're verified as platform user
     });
   }
 
+  // Return beneficiary KYC status
+  if (beneficiaryKYC) {
+    return res.json({
+      status: beneficiaryKYC.status,
+      submittedAt: beneficiaryKYC.submittedAt,
+      reviewedAt: beneficiaryKYC.reviewedAt,
+      rejectionReason: beneficiaryKYC.rejectionReason,
+      fullName: beneficiaryKYC.fullName,
+    });
+  }
+
+  // No KYC found
   res.json({
-    status: kyc.status,
-    submittedAt: kyc.submittedAt,
-    reviewedAt: kyc.reviewedAt,
-    rejectionReason: kyc.rejectionReason,
-    fullName: kyc.fullName,
+    status: 'NOT_SUBMITTED',
+    message: 'KYC has not been submitted yet',
   });
 }));
 

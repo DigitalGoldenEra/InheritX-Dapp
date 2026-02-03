@@ -15,7 +15,7 @@ import {
   FiGift,
   FiLoader,
 } from 'react-icons/fi';
-import { api, ClaimPlanInfo, VerifyClaimResponse } from '@/lib/api';
+import { api, ClaimPlanInfo, VerifyClaimResponse, BeneficiaryKYCStatus } from '@/lib/api';
 import inheritXABI from '@/contract/abi';
 import {
   INHERITX_CONTRACT_ADDRESS,
@@ -53,6 +53,10 @@ export default function ClaimPage() {
   // Verification response
   const [verificationData, setVerificationData] = useState<VerifyClaimResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // KYC status
+  const [kycStatus, setKycStatus] = useState<BeneficiaryKYCStatus | null>(null);
+  const [isCheckingKYC, setIsCheckingKYC] = useState(false);
 
   // Contract interaction
   const {
@@ -161,6 +165,30 @@ export default function ClaimPage() {
       setError('Claim transaction failed: ' + (claimError as any)?.shortMessage || 'Unknown error');
     }
   }, [claimError]);
+
+  // Check KYC status when email changes
+  useEffect(() => {
+    const checkKYC = async () => {
+      if (!beneficiaryEmail || !beneficiaryEmail.includes('@')) {
+        setKycStatus(null);
+        return;
+      }
+
+      setIsCheckingKYC(true);
+      try {
+        const { data } = await api.getBeneficiaryKYCStatus(beneficiaryEmail);
+        setKycStatus(data || null);
+      } catch (err) {
+        console.error('Error checking KYC:', err);
+        setKycStatus(null);
+      } finally {
+        setIsCheckingKYC(false);
+      }
+    };
+
+    const debounce = setTimeout(checkKYC, 500);
+    return () => clearTimeout(debounce);
+  }, [beneficiaryEmail]);
 
   const handleVerify = async () => {
     setError(null);
@@ -469,9 +497,19 @@ export default function ClaimPage() {
             </p>
 
             {error && (
-              <div className="bg-red-500/10! flex gap-2 items-center border border-red-500/20! p-4 rounded-lg mb-4">
-                <FiAlertCircle size={18} />
-                {error}
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg mb-4">
+                <div className="flex gap-2 items-center text-red-400">
+                  <FiAlertCircle size={18} />
+                  <span>{error}</span>
+                </div>
+                {error.toLowerCase().includes('kyc') && (
+                  <Link
+                    href={`/claim/kyc?email=${encodeURIComponent(beneficiaryEmail)}&returnTo=${encodeURIComponent(`/claim/${planId}`)}`}
+                    className="btn btn-primary btn-sm mt-3 w-full"
+                  >
+                    Submit KYC Verification
+                  </Link>
+                )}
               </div>
             )}
 
@@ -508,6 +546,62 @@ export default function ClaimPage() {
                   className="input"
                   placeholder="your@email.com"
                 />
+                {/* KYC Status Display */}
+                {beneficiaryEmail && beneficiaryEmail.includes('@') && (
+                  <div className="mt-2">
+                    {isCheckingKYC ? (
+                      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                        <FiLoader className="animate-spin" size={14} />
+                        Checking KYC status...
+                      </div>
+                    ) : kycStatus ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {kycStatus.status === 'APPROVED' && (
+                            <span className="badge badge-success flex items-center gap-1">
+                              <FiCheck size={12} /> KYC Verified
+                            </span>
+                          )}
+                          {kycStatus.status === 'PENDING' && (
+                            <span className="badge badge-warning flex items-center gap-1">
+                              <FiClock size={12} /> KYC Pending Review
+                            </span>
+                          )}
+                          {kycStatus.status === 'REJECTED' && (
+                            <span className="badge badge-error flex items-center gap-1">
+                              <FiAlertCircle size={12} /> KYC Rejected
+                            </span>
+                          )}
+                          {kycStatus.status === 'NOT_SUBMITTED' && (
+                            <span className="badge badge-secondary flex items-center gap-1">
+                              <FiAlertCircle size={12} /> KYC Not Submitted
+                            </span>
+                          )}
+                        </div>
+                        {(kycStatus.status === 'NOT_SUBMITTED' || kycStatus.status === 'REJECTED') && (
+                          <Link
+                            href={`/claim/kyc?email=${encodeURIComponent(beneficiaryEmail)}&returnTo=${encodeURIComponent(`/claim/${planId}`)}`}
+                            className="text-sm text-[var(--primary)] hover:underline"
+                          >
+                            Submit KYC →
+                          </Link>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="badge badge-secondary flex items-center gap-1">
+                          <FiAlertCircle size={12} /> KYC Not Submitted
+                        </span>
+                        <Link
+                          href={`/claim/kyc?email=${encodeURIComponent(beneficiaryEmail)}&returnTo=${encodeURIComponent(`/claim/${planId}`)}`}
+                          className="text-sm text-[var(--primary)] hover:underline"
+                        >
+                          Submit KYC →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="input-group">
