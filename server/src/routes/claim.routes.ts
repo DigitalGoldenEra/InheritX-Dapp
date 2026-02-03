@@ -58,7 +58,6 @@ const verifyClaimSchema = z.object({
   beneficiaryName: z.string().min(2),
   beneficiaryEmail: z.string().email(),
   beneficiaryRelationship: z.string().min(2),
-  twoFactorCode: z.string().length(6, 'Two-factor code must be 6 digits'),
 });
 
 const completeClaimSchema = z.object({
@@ -388,12 +387,6 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
   // Verify claim code against this specific beneficiary's claimCodeHash
   if (claimCodeHash !== beneficiary.claimCodeHash) {
     throw new AppError('Invalid claim code', 401);
-  }
-
-  // Verify 2FA code for this beneficiary
-  const is2FAValid = verifyBeneficiaryClaim2FA(plan.id, beneficiary.id, data.twoFactorCode);
-  if (!is2FAValid) {
-    throw new AppError('Invalid or expired two-factor code', 400);
   }
 
   if (beneficiary.hasClaimed) {
