@@ -258,6 +258,7 @@ router.post('/2fa/request', asyncHandler(async (req: Request, res: Response) => 
     );
   });
 
+
   if (!beneficiary) {
     throw new AppError('Beneficiary not found or details do not match', 404);
   }
@@ -372,6 +373,9 @@ router.post('/verify', asyncHandler(async (req: Request, res: Response) => {
   const nameHash = keccak256(data.beneficiaryName);
   const emailHash = keccak256(data.beneficiaryEmail);
   const relationshipHash = keccak256(data.beneficiaryRelationship);
+
+  // console.log({ nameHash, emailHash, relationshipHash, claimCodeHash });
+  // console.log(plan.beneficiaries)
 
   // Find matching beneficiary by name/email/relationship hashes
   const beneficiary = plan.beneficiaries.find(b => (

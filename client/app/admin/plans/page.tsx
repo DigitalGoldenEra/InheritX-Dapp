@@ -137,7 +137,7 @@ export default function AdminPlansPage() {
                         <td>
                           {plan.txHash && (
                             <a
-                              href={`https://sepolia-blockscout.lisk.com/tx/${plan.txHash}`}
+                              href={`https://blockscout.lisk.com/tx/${plan.txHash}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn btn-icon btn-ghost"

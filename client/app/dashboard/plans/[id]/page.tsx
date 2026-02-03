@@ -156,7 +156,7 @@ export default function PlanDetailsPage() {
           <span className={`badge ${statusBadge.variant}`}>{statusBadge.label}</span>
           {plan.txHash && (
             <a
-              href={`https://sepolia-blockscout.lisk.com/tx/${plan.txHash}`}
+              href={`https://blockscout.lisk.com/tx/${plan.txHash}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-icon btn-ghost"

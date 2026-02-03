@@ -462,7 +462,7 @@ export async function sendPlanCreationNotification(
 ): Promise<boolean> {
   const subject = 'InheritX: Your Inheritance Plan Has Been Created ✓';
 
-  const explorerUrl = `https://sepolia-blockscout.lisk.com/tx/${txHash}`;
+  const explorerUrl = `https://blockscout.lisk.com/tx/${txHash}`;
   const shortTxHash = `${txHash.substring(0, 10)}...${txHash.substring(txHash.length - 8)}`;
 
   const text = `Hi ${name},

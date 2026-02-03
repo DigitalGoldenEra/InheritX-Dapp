@@ -571,7 +571,7 @@ export default function CompletePendingPlanModal({
                 <span className="text-red-400 text-sm block">{error}</span>
                 {(createTxHash || approveTxHash) && (
                   <a
-                    href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
+                    href={`https://blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary text-xs mt-2 inline-block hover:underline"
@@ -678,7 +678,7 @@ export default function CompletePendingPlanModal({
               </p>
               {approveTxHash && (
                 <a
-                  href={`https://sepolia-blockscout.lisk.com/tx/${approveTxHash}`}
+                  href={`https://blockscout.lisk.com/tx/${approveTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary text-sm mt-4 inline-block hover:underline"
@@ -705,7 +705,7 @@ export default function CompletePendingPlanModal({
               </p>
               {createTxHash && (
                 <a
-                  href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash}`}
+                  href={`https://blockscout.lisk.com/tx/${createTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary text-sm mt-4 inline-block hover:underline"
@@ -764,7 +764,7 @@ export default function CompletePendingPlanModal({
               </p>
               {(createTxHash || approveTxHash) && (
                 <a
-                  href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
+                  href={`https://blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary text-sm mb-4 inline-block hover:underline"

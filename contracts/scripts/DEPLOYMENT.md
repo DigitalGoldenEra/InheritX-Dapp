@@ -135,7 +135,7 @@ Or the script will automatically use tokens from a previous deployment if found 
 ### Lisk Sepolia
 - **Chain ID**: 4202
 - **RPC URL**: https://rpc.sepolia-api.lisk.com
-- **Explorer**: https://sepolia-blockscout.lisk.com
+- **Explorer**: https://blockscout.lisk.com
 - **Faucet**: https://faucet.sepolia-api.lisk.com/
 
 ### Ethereum Sepolia

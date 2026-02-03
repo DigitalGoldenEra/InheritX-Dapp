@@ -1014,7 +1014,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   </p>
                   {approveTxHash && (
                     <a
-                      href={`https://sepolia-blockscout.lisk.com/tx/${approveTxHash}`}
+                      href={`https://blockscout.lisk.com/tx/${approveTxHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary text-sm mt-4 inline-block hover:underline"
@@ -1086,7 +1086,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   </p>
                   {(createTxHash || approveTxHash) && (
                     <a
-                      href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
+                      href={`https://blockscout.lisk.com/tx/${createTxHash || approveTxHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary text-sm mb-4 inline-block hover:underline"
@@ -1127,7 +1127,7 @@ export default function CreatePlanModal({ onClose, onSuccess }: CreatePlanModalP
                   </p>
                   {createTxHash && (
                     <a
-                      href={`https://sepolia-blockscout.lisk.com/tx/${createTxHash}`}
+                      href={`https://blockscout.lisk.com/tx/${createTxHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary text-sm mt-4 inline-block hover:underline"
