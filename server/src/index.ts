@@ -26,6 +26,7 @@ import adminRoutes from './routes/admin.routes';
 import webhookRoutes from './routes/webhook.routes';
 import beneficiaryKYCRoutes from './routes/beneficiary-kyc.routes';
 import notificationRoutes from './routes/notification.routes';
+import waitlistRoutes from './routes/waitlist.routes';
 import { startCronJobs } from './cron';
 
 // Initialize express app
@@ -122,6 +123,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/beneficiary-kyc', beneficiaryKYCRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

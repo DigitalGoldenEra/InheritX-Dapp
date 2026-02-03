@@ -221,6 +221,16 @@ model EmailQueue {
   @@index([scheduledAt])
 }
 
+model Waitlist {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
 model Setting {
   id        String   @id @default(uuid())
   key       String   @unique
