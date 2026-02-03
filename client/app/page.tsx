@@ -78,7 +78,7 @@ export default function WaitlistPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/waitlist`, {
+      const res = await fetch(`${API_BASE}/waitlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email }),
